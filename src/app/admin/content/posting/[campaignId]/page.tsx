@@ -14,10 +14,12 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { loadPostingRoster } from "@/lib/admin/content/queries";
 import { ErrorNote, EmptyRows, PageHeader } from "@/components/admin/ui";
 import { Avatar, Toolbar } from "@/components/admin/ops-bits";
-import { BtnLink, Card, Crumb, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BtnLink, Card, CardGrid, Crumb, ListCard, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
 import CopyButton from "@/components/admin/CopyButton";
 import PostingRowActions from "@/components/admin/content/PostingRowActions";
 import type { PostingRosterRow } from "@/lib/admin/content/types";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +36,10 @@ export default async function PostingCampaignPage({
   searchParams,
 }: {
   params: { campaignId: string };
-  searchParams: { status?: string; q?: string };
+  searchParams: { status?: string; q?: string; view?: string };
 }) {
   await requireAdmin("staff");
+  const view = getListView("content-posting-roster", searchParams);
   const back = <Crumb href="/admin/content/posting" label="Posting instructions" />;
   const detail = UUID.test(params.campaignId)
     ? await loadPostingRoster(createServiceSupabase(), params.campaignId)
@@ -106,9 +109,29 @@ export default async function PostingCampaignPage({
       </div>
 
       <Card>
-        <Toolbar action={base} placeholder="Search athlete or school" q={searchParams.q} hidden={{ status: status ?? undefined }} />
+        <Toolbar action={base} placeholder="Search athlete or school" q={searchParams.q} hidden={{ status: status ?? undefined }} right={<ViewToggle listKey="content-posting-roster" view={view} />} />
         {shown.length === 0 ? (
           <EmptyRows label={detail.rows.length ? "No athletes match." : "No posts on this campaign yet."} />
+        ) : view === "cards" ? (
+          <CardGrid>
+            {shown.map((r) => (
+              <ListCard
+                key={r.key}
+                mark={<Avatar name={r.name} />}
+                title={r.name}
+                subtitle={[r.handle && `@${r.handle}`, r.school].filter(Boolean).join(" · ") || "—"}
+                foot={<PostingRowActions link={r.link} draftIds={r.status === "ready" ? r.draftIds : []} />}
+              >
+                <span className="flex flex-wrap items-center gap-2">
+                  <Pill tone={r.status === "posted" ? "ok" : r.status === "sent" ? "info" : r.status === "ready" ? "accent" : "muted"}>
+                    {r.statusLabel}
+                  </Pill>
+                  <Pill tone={r.filesOk ? "ok" : "warn"}>{r.files}</Pill>
+                  <span className="text-stone-500">{r.postDate ? `Posts ${r.postDate}` : "No post date"}</span>
+                </span>
+              </ListCard>
+            ))}
+          </CardGrid>
         ) : (
           <TableWrap>
             <thead>

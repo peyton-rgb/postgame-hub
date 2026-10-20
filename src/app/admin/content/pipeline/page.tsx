@@ -15,7 +15,10 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { loadPostingCampaigns, loadRecaps, loadReviewCampaigns } from "@/lib/admin/content/queries";
 import { EmptyRows, ErrorNote, PageHeader } from "@/components/admin/ui";
 import { CampCell, CardFoot, CardTabs } from "@/components/admin/ops-bits";
-import { BtnLink, Card, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BtnLink, Card, CardGrid, CardStat, CardStats, ListCard, Pill, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BrandMark } from "@/components/admin/brand-bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 import { ReviewList } from "@/components/admin/content/ReviewList";
 import { PostingList } from "@/components/admin/content/PostingList";
 import { RecapGrid } from "@/components/admin/content/RecapGrid";
@@ -24,8 +27,9 @@ export const dynamic = "force-dynamic";
 
 type Tab = "collecting" | "review" | "posting" | "recaps";
 
-export default async function PipelinePage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function PipelinePage({ searchParams }: { searchParams: { tab?: string; view?: string } }) {
   await requireAdmin("staff");
+  const view = getListView("content-pipeline", searchParams);
   const tab: Tab = (["review", "posting", "recaps"] as const).includes(searchParams.tab as any)
     ? (searchParams.tab as Tab)
     : "collecting";
@@ -52,7 +56,16 @@ export default async function PipelinePage({ searchParams }: { searchParams: { t
 
   return (
     <div>
-      <PageHeader title="Content pipeline" subtitle="Every campaign's content from upload to recap." actions={action} />
+      <PageHeader
+        title="Content pipeline"
+        subtitle="Every campaign's content from upload to recap."
+        actions={
+          <>
+            <ViewToggle listKey="content-pipeline" view={view} />
+            {action}
+          </>
+        }
+      />
       {error && (
         <div className="mb-4">
           <ErrorNote message={error} />
@@ -71,6 +84,35 @@ export default async function PipelinePage({ searchParams }: { searchParams: { t
         {tab === "collecting" &&
           (review.rows.length === 0 ? (
             <EmptyRows label="No campaign has a submission form yet." />
+          ) : view === "cards" ? (
+            <CardGrid>
+              {review.rows.map((r) => {
+                const href = r.adminCampaignId ? `/admin/content/submissions/${r.adminCampaignId}` : `/admin/content/review/${r.id}`;
+                return (
+                  <ListCard
+                    key={r.id}
+                    href={href}
+                    mark={<BrandMark src={r.logo} name={r.brandName} />}
+                    title={r.name}
+                    subtitle={r.brandName ?? "No brand"}
+                    foot={
+                      r.waitingOnAthletes ? (
+                        <Pill tone="warn">Waiting on athletes</Pill>
+                      ) : r.needsUs ? (
+                        <Pill tone="accent">In review</Pill>
+                      ) : (
+                        <Pill tone="ok">Collected</Pill>
+                      )
+                    }
+                  >
+                    <CardStats>
+                      <CardStat label="Athletes" muted={!r.athletes}>{r.athletes || "—"}</CardStat>
+                      <CardStat label="Files in" muted={!r.files}>{r.files || "—"}</CardStat>
+                    </CardStats>
+                  </ListCard>
+                );
+              })}
+            </CardGrid>
           ) : (
             <TableWrap>
               <thead>
@@ -112,9 +154,9 @@ export default async function PipelinePage({ searchParams }: { searchParams: { t
             </TableWrap>
           ))}
 
-        {tab === "review" && <ReviewList rows={needs} emptyLabel="No campaign has files waiting on Postgame." />}
+        {tab === "review" && <ReviewList rows={needs} view={view} emptyLabel="No campaign has files waiting on Postgame." />}
 
-        {tab === "posting" && <PostingList rows={posting.rows} />}
+        {tab === "posting" && <PostingList rows={posting.rows} view={view} />}
 
         {tab === "recaps" && (
           <>
@@ -122,7 +164,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: { t
               Draft recaps, newest first
               {recaps.readyCount !== null && ` · ${recaps.readyCount} campaigns ready for a recap`}
             </div>
-            <RecapGrid cards={recaps.cards} emptyLabel="No draft recaps." />
+            <RecapGrid view={view} cards={recaps.cards} emptyLabel="No draft recaps." />
           </>
         )}
 

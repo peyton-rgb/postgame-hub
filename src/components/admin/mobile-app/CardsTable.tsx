@@ -18,10 +18,13 @@ import {
   type Whitelist,
 } from "@/lib/admin/mobile-app/types";
 import { deleteCard, reorderCards } from "@/app/admin/mobile-app/cards/actions";
+import CardArt from "./CardArt";
 
 interface CardsTableProps {
   initialCards: CardRow[];
   whitelists: Record<string, Whitelist>;
+  /** Rows (drag to reorder) or Cards (read-only order) — getListView("mobile-app-cards") */
+  view?: "rows" | "cards";
 }
 
 function layoutOf(c: CardRow): string {
@@ -45,7 +48,17 @@ function formatUpdated(v: string | null): string {
   });
 }
 
-export default function CardsTable({ initialCards, whitelists }: CardsTableProps) {
+function StatusPill({ status }: { status: CardRow["status"] }) {
+  return status === "live" ? (
+    <span className="inline-block rounded-full bg-[#D73F09] px-2.5 py-0.5 text-[11px] font-semibold text-white">live</span>
+  ) : status === "draft" ? (
+    <span className="inline-block rounded-full bg-[#E9EBEE] px-2.5 py-0.5 text-[11px] font-semibold text-stone-600">draft</span>
+  ) : (
+    <span className="inline-block rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-stone-400">archived</span>
+  );
+}
+
+export default function CardsTable({ initialCards, whitelists, view = "rows" }: CardsTableProps) {
   const [cards, setCards] = useState<CardRow[]>(initialCards);
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const [reordering, setReordering] = useState(false);
@@ -148,6 +161,63 @@ export default function CardsTable({ initialCards, whitelists }: CardsTableProps
     );
   }
 
+  // Cards view: the same order, read-only (reordering lives in the Rows view)
+  if (view === "cards") {
+    return (
+      <div className="space-y-2">
+        <p className="text-[12px] text-stone-500">Shown in app order. Switch to Rows to drag cards into a new order.</p>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {cards.map((c, idx) => {
+            const spec = CARD_SPEC[c.card_type];
+            return (
+              <li key={c.id} className="min-w-0">
+                <Link
+                  href={`/admin/mobile-app/cards/${c.id}`}
+                  className="flex h-full flex-col gap-3 rounded-[10px] border border-[#E3E5E9] bg-white p-3.5 text-inherit no-underline transition-colors hover:border-stone-300"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-stone-100 text-[12px] font-semibold tabular-nums text-stone-600">
+                      {idx + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-stone-900">{c.name || "Untitled card"}</span>
+                      <span className="block truncate text-[12px] text-stone-500">
+                        {spec.label} · {spec.aspect}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="flex justify-center rounded-lg bg-stone-100 p-3">
+                    <CardArt
+                      style={{ width: c.card_type === "strip_banner" ? "100%" : spec.width >= spec.height ? 180 : 130 }}
+                      type={c.card_type}
+                      bgColor={c.bg_color}
+                      mediaUrl={c.media_url}
+                      posterUrl={c.poster_url}
+                      eyebrow={c.eyebrow}
+                      headline={c.headline}
+                      ctaLabel={c.cta_label}
+                      brandLogoUrl={null}
+                      brandName={null}
+                      stripText={c.headline}
+                    />
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 text-[12px]">
+                    <StatusPill status={c.status} />
+                    <span className="font-mono text-stone-500">{layoutOf(c)}</span>
+                  </span>
+                  <span className="mt-auto flex items-center justify-between gap-2 border-t border-[#E3E5E9] pt-2.5 text-[12px] text-stone-500">
+                    <span className="min-w-0 truncate">{visibilityLabel(c, whitelists[c.id])}</span>
+                    <span className="shrink-0 whitespace-nowrap">{formatUpdated(c.updated_at)}</span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
   // Group cards for the display if desired, or show flat order
   return (
     <div className="rounded-xl border border-stone-200 bg-white shadow-sm overflow-hidden">
@@ -245,19 +315,7 @@ export default function CardsTable({ initialCards, whitelists }: CardsTableProps
 
                   {/* Status */}
                   <td className="px-3 py-3">
-                    {c.status === "live" ? (
-                      <span className="inline-block rounded-full bg-[#D73F09] px-2.5 py-0.5 text-[11px] font-semibold text-white">
-                        live
-                      </span>
-                    ) : c.status === "draft" ? (
-                      <span className="inline-block rounded-full bg-[#E9EBEE] px-2.5 py-0.5 text-[11px] font-semibold text-stone-600">
-                        draft
-                      </span>
-                    ) : (
-                      <span className="inline-block rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-semibold text-stone-400">
-                        archived
-                      </span>
-                    )}
+                    <StatusPill status={c.status} />
                   </td>
 
                   {/* Layout */}

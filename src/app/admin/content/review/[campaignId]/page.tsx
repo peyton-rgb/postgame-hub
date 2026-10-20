@@ -12,8 +12,11 @@ import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { loadCampaignFiles, loadReviewCampaignHeader, reviewAthletes } from "@/lib/admin/content/queries";
 import { ErrorNote, EmptyRows, PageHeader } from "@/components/admin/ui";
-import { BtnLink, Card, Crumb, SegLinks, TableWrap, Td, Th } from "@/components/admin/content/bits";
+import { BtnLink, Card, CardGrid, Crumb, ListCard, SegLinks, TableWrap, Td, Th } from "@/components/admin/content/bits";
 import { BrandMark } from "@/components/admin/brand-bits";
+import { Avatar } from "@/components/admin/ops-bits";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +27,10 @@ export default async function ReviewCampaignPage({
   searchParams,
 }: {
   params: { campaignId: string };
-  searchParams: { tab?: string };
+  searchParams: { tab?: string; view?: string };
 }) {
   await requireAdmin("staff");
+  const view = getListView("content-review-athletes", searchParams);
   const back = <Crumb href="/admin/content/review" label="Review & edit" />;
   if (!UUID.test(params.campaignId)) {
     return (
@@ -94,10 +98,48 @@ export default async function ReviewCampaignPage({
               { href: `${base}?tab=all`, label: "All", count: athletes.length, active: tab === "all" },
             ]}
           />
+          <div className="ml-auto">
+            <ViewToggle listKey="content-review-athletes" view={view} />
+          </div>
         </div>
         <div className="mt-3">
           {shown.length === 0 ? (
             <EmptyRows label={files.length ? "No athletes here." : "No files have been uploaded to this campaign's form yet."} />
+          ) : view === "cards" ? (
+            <CardGrid>
+              {shown.map((a) => {
+                const pct = a.required ? Math.round((a.approved / a.required) * 100) : 0;
+                const href = a.firstFileId ? `${base}/${a.firstFileId}` : null;
+                return (
+                  <ListCard
+                    key={a.key}
+                    href={href}
+                    mark={<Avatar name={a.name} />}
+                    title={a.name}
+                    subtitle={a.school ?? "—"}
+                    foot={
+                      <>
+                        <span className="min-w-0 flex-1 truncate text-stone-700">{a.next}</span>
+                        {href ? (
+                          <BtnLink href={href} primary={a.ctaPrimary}>
+                            {a.cta}
+                          </BtnLink>
+                        ) : null}
+                      </>
+                    }
+                  >
+                    <span className="flex items-center gap-2 text-stone-600">
+                      <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100">
+                        <i className="block h-full rounded-full bg-status-ok" style={{ width: `${pct}%` }} />
+                      </span>
+                      <span className="whitespace-nowrap tabular-nums">
+                        {a.approved} of {a.required} approved
+                      </span>
+                    </span>
+                  </ListCard>
+                );
+              })}
+            </CardGrid>
           ) : (
             <TableWrap>
               <thead>

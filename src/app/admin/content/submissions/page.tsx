@@ -10,11 +10,17 @@ import { createServiceSupabase } from "@/lib/supabase-server";
 import { listSubmissionForms } from "@/lib/admin/submissions/queries";
 import { PageHeader } from "@/components/admin/ui";
 import { SubmissionsTable } from "@/components/admin/submissions/SubmissionsTable";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function SubmissionFormsPage() {
+export default async function SubmissionFormsPage({
+  searchParams = {},
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   await requireAdmin("staff");
+  const view = getListView("content-submissions", searchParams);
 
   const supabase = createServiceSupabase();
   const res = await listSubmissionForms(supabase);
@@ -31,6 +37,7 @@ export default async function SubmissionFormsPage() {
         pending083={res.pending083}
         pending087={res.pending087}
         worker={res.worker}
+        view={view}
       />
     </div>
   );

@@ -15,11 +15,14 @@ import { loadReviewCampaigns } from "@/lib/admin/content/queries";
 import { ErrorNote, PageHeader } from "@/components/admin/ui";
 import { Card, SegLinks } from "@/components/admin/content/bits";
 import { ReviewList } from "@/components/admin/content/ReviewList";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReviewPage({ searchParams }: { searchParams: { tab?: string } }) {
+export default async function ReviewPage({ searchParams }: { searchParams: { tab?: string; view?: string } }) {
   await requireAdmin("staff");
+  const view = getListView("content-review", searchParams);
   const supabase = createServiceSupabase();
   const { rows, error } = await loadReviewCampaigns(supabase);
 
@@ -37,12 +40,15 @@ export default async function ReviewPage({ searchParams }: { searchParams: { tab
             : "Nothing is waiting on us right now"
         }
         actions={
+          <>
+          <ViewToggle listKey="content-review" view={view} />
           <SegLinks
             items={[
               { href: "/admin/content/review", label: "Needs us", count: needs.length, active: tab === "needs" },
               { href: "/admin/content/review?tab=all", label: "All", count: rows.length, active: tab === "all" },
             ]}
           />
+          </>
         }
       />
       {error && (
@@ -53,6 +59,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: { tab
       <Card>
         <ReviewList
           rows={shown}
+          view={view}
           emptyLabel={tab === "needs" ? "No campaign has files waiting on Postgame." : "No campaign has a submission form yet."}
         />
       </Card>

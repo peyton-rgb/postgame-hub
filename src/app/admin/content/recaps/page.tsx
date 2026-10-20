@@ -17,10 +17,25 @@ import { ErrorNote, PageHeader, Paginator } from "@/components/admin/ui";
 import { Toolbar } from "@/components/admin/ops-bits";
 import { BtnLink, Card } from "@/components/admin/content/bits";
 import { RecapGrid } from "@/components/admin/content/RecapGrid";
+import { cookies } from "next/headers";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView, listViewCookie, type ListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f-]{36}$/i;
+
+/** This list was a grid before the Rows / Cards toggle: keep Cards as its default until someone picks. */
+function viewDefaultCards(listKey: string, sp: Record<string, string | undefined>): ListView {
+  if (sp.view === "rows" || sp.view === "cards") return sp.view;
+  let saved: string | undefined;
+  try {
+    saved = cookies().get(listViewCookie(listKey))?.value;
+  } catch {
+    /* outside a request */
+  }
+  return saved === "rows" || saved === "cards" ? getListView(listKey, sp) : "cards";
+}
 
 export default async function RecapsPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   await requireAdmin("staff");
@@ -28,6 +43,7 @@ export default async function RecapsPage({ searchParams }: { searchParams: Recor
   const brand = UUID.test(searchParams.brand ?? "") ? searchParams.brand : undefined;
   const status = ["published", "draft", "archived"].includes(searchParams.status ?? "") ? searchParams.status : undefined;
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
+  const view = viewDefaultCards("content-recaps", searchParams);
 
   const res = await loadRecaps(createServiceSupabase(), { q, brand, status, page });
 
@@ -71,21 +87,25 @@ export default async function RecapsPage({ searchParams }: { searchParams: Recor
               ],
             },
           ]}
+          hidden={{ view: searchParams.view }}
           right={
-            <span className="text-[12px] text-stone-500">
-              {res.readyCount !== null && `${res.readyCount} campaigns ready for a recap · `}
-              {res.total.toLocaleString()} of {res.all.toLocaleString()} recaps
-            </span>
+            <>
+              <span className="text-[12px] text-stone-500">
+                {res.readyCount !== null && `${res.readyCount} campaigns ready for a recap · `}
+                {res.total.toLocaleString()} of {res.all.toLocaleString()} recaps
+              </span>
+              <ViewToggle listKey="content-recaps" view={view} />
+            </>
           }
         />
-        <RecapGrid cards={res.cards} emptyLabel={q ? `No recaps match “${q}”.` : "No recaps match these filters."} />
+        <RecapGrid view={view} cards={res.cards} emptyLabel={q ? `No recaps match “${q}”.` : "No recaps match these filters."} />
         <div className="border-t border-stone-200 px-3">
           <Paginator
             page={page}
             total={res.total}
             pageSize={RECAP_PAGE}
             basePath="/admin/content/recaps"
-            params={{ q: q || undefined, brand, status }}
+            params={{ q: q || undefined, brand, status, view: searchParams.view }}
           />
         </div>
       </Card>

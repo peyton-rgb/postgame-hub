@@ -16,11 +16,18 @@ import { ErrorNote, PageHeader } from "@/components/admin/ui";
 import { Card } from "@/components/admin/content/bits";
 import { CardFoot } from "@/components/admin/ops-bits";
 import { PostingList } from "@/components/admin/content/PostingList";
+import ViewToggle from "@/components/admin/ViewToggle";
+import { getListView } from "@/lib/admin/list-view";
 
 export const dynamic = "force-dynamic";
 
-export default async function PostingPage() {
+export default async function PostingPage({
+  searchParams = {},
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   await requireAdmin("staff");
+  const view = getListView("content-posting", searchParams);
   const supabase = createServiceSupabase();
   const { rows, error } = await loadPostingCampaigns(supabase);
   return (
@@ -28,6 +35,7 @@ export default async function PostingPage() {
       <PageHeader
         title="Posting instructions"
         subtitle="Campaigns with posts scheduled. Copy each athlete's posting link and mark it sent."
+        actions={<ViewToggle listKey="content-posting" view={view} />}
       />
       {error && (
         <div className="mb-4">
@@ -35,7 +43,7 @@ export default async function PostingPage() {
         </div>
       )}
       <Card>
-        <PostingList rows={rows} />
+        <PostingList rows={rows} view={view} />
         <CardFoot>
           <span>
             {rows.length} campaign{rows.length === 1 ? "" : "s"} · real data
