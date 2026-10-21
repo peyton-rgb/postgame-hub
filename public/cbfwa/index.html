@@ -453,6 +453,17 @@ body.presenting .slide.cur{display:block;width:min(100vw,177.78vh);margin:calc((
 @media (max-width:760px){.asks-grid{grid-template-columns:1fr}.phone{width:210px}.ft-controls i{width:30px;height:30px}.ft-pip{top:56px;width:46px}}
 </style>
 
+<style>
+/* Phone fixes (added for the Hub deploy). Placed last so these win over earlier rules. */
+@media (max-width:760px){
+  .ctrl{display:none}
+  .deck{padding-bottom:32px}
+  .hero .lockup{flex-direction:column;gap:14px}
+  .asks .ar{grid-template-columns:1fr;gap:8px;padding:16px 0}
+  .get{grid-template-columns:28px 1fr;gap:8px}
+}
+</style>
+
 <main class="deck" id="deck">
 
   <!-- 01 hero -->
