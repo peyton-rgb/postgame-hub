@@ -22,7 +22,19 @@ import { summarizeFrameioPayload, verifyFrameioSignature } from "@/lib/frameio-w
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.FRAMEIO_WEBHOOK_SECRET;
+  const supabase = createLiveServiceSupabase();
+
+  // The signing secret is saved by /api/frameio/register-webhook into
+  // frameio_connection. FRAMEIO_WEBHOOK_SECRET in Vercel, if set, wins.
+  let secret = process.env.FRAMEIO_WEBHOOK_SECRET || null;
+  if (!secret) {
+    const { data } = await supabase
+      .from("frameio_connection")
+      .select("webhook_secret")
+      .eq("id", 1)
+      .maybeSingle();
+    secret = data?.webhook_secret ?? null;
+  }
   if (!secret) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
@@ -46,7 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const supabase = createLiveServiceSupabase();
   const { error } = await supabase
     .from("frameio_webhook_events")
     .insert({ ...summarizeFrameioPayload(payload), payload });
