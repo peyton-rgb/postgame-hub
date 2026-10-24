@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
   // Default "ready" = tagged OR complete (complete is the worker-path status).
   // Absent param behaves the same as an explicit "ready".
   const taggingStatus = searchParams.get('tagging_status') || 'ready';
+  // Triage status (pending / approved / rejected). Optional — absent means no
+  // triage filter (current default view is unchanged).
+  const triageStatus = searchParams.get('triage_status');
   const sport = searchParams.get('sport');
   const brandId = searchParams.get('brand_id');
   const campaignId = searchParams.get('campaign_id');
@@ -56,6 +59,11 @@ export async function GET(request: NextRequest) {
     // Content type enum filter
     if (contentType) {
       query = query.eq('content_type', contentType);
+    }
+
+    // Triage status filter — exact match (pending / approved / rejected)
+    if (triageStatus) {
+      query = query.eq('triage_status', triageStatus);
     }
 
     // Brand / campaign filters
@@ -125,6 +133,7 @@ export async function GET(request: NextRequest) {
       countQuery = countQuery.eq('tagging_status', taggingStatus);
     }
     if (contentType) countQuery = countQuery.eq('content_type', contentType);
+    if (triageStatus) countQuery = countQuery.eq('triage_status', triageStatus);
     if (brandId) countQuery = countQuery.eq('brand_id', brandId);
     if (campaignId) countQuery = countQuery.eq('campaign_id', campaignId);
     if (sport) countQuery = countQuery.contains('context_tags', { sport: [sport] });
