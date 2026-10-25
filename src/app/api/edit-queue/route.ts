@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { NextResponse } from "next/server";
-import { getStaffUser } from "@/lib/staff-auth";
+import { getHubStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { num, readInstructions, OPEN_JOB_STATUSES, JOB_STATUS } from "@/lib/edit-queue";
 
@@ -58,8 +58,8 @@ function one<T>(v: T | T[] | null | undefined): T | null {
 }
 
 export async function GET() {
-  const staff = await getStaffUser();
-  if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   const svc = createServiceSupabase();
 

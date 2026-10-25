@@ -22,7 +22,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
-import { getStaffUser } from "@/lib/staff-auth";
+import { getHubStaff } from "@/lib/staff-auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import {
   num,
@@ -108,8 +108,8 @@ async function nameFor(svc: ReturnType<typeof createServiceSupabase>, id: string
 }
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const staff = await getStaffUser();
-  if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   const svc = createServiceSupabase();
   const job = await loadJob(svc, params.id);
@@ -124,8 +124,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const staff = await getStaffUser();
-  if (!staff) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff access required" }, { status: 403 });
 
   let body: any;
   try {
