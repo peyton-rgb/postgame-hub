@@ -99,27 +99,25 @@ export default function CampaignDetail({
 
   return (
     <div className="pgd-page">
-      {/* Hero: the name on a dark ground, with the photo taking the right 46%
-          where there is one. Not a full-bleed band — the arithmetic is in
-          dashboard.css; at 1325x220 a portrait hero shows 12.5% of its own
-          height and no crop point can contain a face.
+      {/* THE HERO CARRIES EVERYTHING THE HEADER USED TO. Full-bleed photo
+          with a left-to-right scrim: the name and quarter · type sit on the
+          solid end, the three At-a-glance figures on the right, and the
+          separate At-a-glance panel that used to sit under the tabs is gone
+          along with the small subtitle above the hero.
 
-          The name is the page's h1. It was an h2 sitting under an h1 in the
-          page header carrying the same words; the header's copy is gone, so
-          this is now the one place the campaign is named. */}
+          The scrim is heavy at the left and light at the right on purpose.
+          The geometry from pass 3 has not changed — a 220px full-bleed band
+          shows about 12.5% of a portrait hero's height, so no crop point can
+          contain a face — but with the copy on the dark end, the part of the
+          photograph that stays legible is the part that carries no text.
+          focal_y is honoured where the row has one. */}
+      {/* The figures are a SIBLING of the hero, not a child. The hero is a
+          fixed-height box with overflow: hidden for its rounded corners, so a
+          child could never sit outside it — and on a phone the figures have to,
+          because three Anton numbers and a 30px name cannot share 350px. The
+          wrapper gives desktop somewhere to absolutely position them into. */}
+      <div className="pgd-hero-block">
       <div className="pgd-hero">
-        <div className="pgd-hero-in">
-          <h1>{c.name}</h1>
-          {/* The designed in-progress state: a live campaign with no roster,
-              no content and no recap has nothing else true to show, so it says
-              that in one line instead of rendering three empty tabs. */}
-          {inProgress ? (
-            <p className="pgd-hero-note">
-              This campaign is in progress — athletes and content will appear
-              as they&rsquo;re confirmed.
-            </p>
-          ) : null}
-        </div>
         {c.heroUrl ? (
           <div
             className="pgd-hero-photo"
@@ -133,6 +131,47 @@ export default function CampaignDetail({
             <img src={c.heroUrl} alt="" />
           </div>
         ) : null}
+
+        <div className="pgd-hero-in">
+          <h1>{c.name}</h1>
+          {[c.quarter, c.campaignType].filter(Boolean).length > 0 && (
+            <p className="pgd-hero-meta">
+              {[c.quarter, c.campaignType].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {inProgress ? (
+            <p className="pgd-hero-note">
+              This campaign is in progress — athletes and content will appear
+              as they&rsquo;re confirmed.
+            </p>
+          ) : null}
+        </div>
+
+      </div>
+
+        {/* At a glance. Only figures that exist. */}
+        {(c.athleteCount > 0 || c.schoolCount > 0 || c.media.length > 0) && (
+          <div className="pgd-hero-figs">
+            {c.athleteCount > 0 && (
+              <span className="pgd-stat">
+                <b>{c.athleteCount}</b>
+                <span>Athletes</span>
+              </span>
+            )}
+            {c.schoolCount > 0 && (
+              <span className="pgd-stat">
+                <b>{c.schoolCount}</b>
+                <span>Schools</span>
+              </span>
+            )}
+            {c.media.length > 0 && (
+              <span className="pgd-stat">
+                <b>{c.media.length}</b>
+                <span>Files</span>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* One tab is not a tab row — it is a heading for the only thing here. */}
@@ -187,32 +226,6 @@ export default function CampaignDetail({
            goes across the top because it holds the only real figures; the
            short panels share the narrow right-hand column. */
         <div className="pgd-overview">
-          {(c.athleteCount > 0 || c.schoolCount > 0 || c.media.length > 0) && (
-            <section className="pgd-panel">
-              <h3>At a glance</h3>
-              <div className="pgd-figs">
-                {c.athleteCount > 0 && (
-                  <span className="pgd-stat">
-                    <b>{c.athleteCount}</b>
-                    <span>Athletes</span>
-                  </span>
-                )}
-                {c.schoolCount > 0 && (
-                  <span className="pgd-stat">
-                    <b>{c.schoolCount}</b>
-                    <span>Schools</span>
-                  </span>
-                )}
-                {c.media.length > 0 && (
-                  <span className="pgd-stat">
-                    <b>{c.media.length}</b>
-                    <span>Files</span>
-                  </span>
-                )}
-              </div>
-            </section>
-          )}
-
           <div className="pgd-overview-split">
             <section className="pgd-panel">
               <h3>Objective</h3>
@@ -280,23 +293,25 @@ export default function CampaignDetail({
             </div>
           ) : (
             <>
+              {/* A DROPDOWN, not a row of pills. SPF has 102 schools; the
+                  pill row showed the first eight and silently dropped 94,
+                  which is a filter that lies about its own options. A select
+                  holds all of them and costs one line. */}
               {schools.length > 1 && (
                 <div className="pgd-filters">
-                  <button
-                    className={`pgd-pill${school === "" ? " on" : ""}`}
-                    onClick={() => setSchool("")}
+                  <select
+                    className="pgd-select"
+                    value={school}
+                    onChange={(e) => setSchool(e.target.value)}
+                    aria-label="Filter by school"
                   >
-                    All schools
-                  </button>
-                  {schools.slice(0, 8).map((s) => (
-                    <button
-                      key={s}
-                      className={`pgd-pill${school === s ? " on" : ""}`}
-                      onClick={() => setSchool(s)}
-                    >
-                      {s}
-                    </button>
-                  ))}
+                    <option value="">All schools ({schools.length})</option>
+                    {schools.map((sch) => (
+                      <option key={sch} value={sch}>
+                        {sch}
+                      </option>
+                    ))}
+                  </select>
                   <span className="pgd-count">
                     {roster.length} of {c.athletes.length}
                   </span>

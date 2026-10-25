@@ -19,7 +19,7 @@ export default async function Page({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   const [icon, data] = await Promise.all([getPostgameIcon(), loadAthleteDirectory(brand.id)]);
 
   return (
@@ -27,6 +27,8 @@ export default async function Page({
       active="athletes"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       title="Athletes"
       subtitle={data.total > 0 ? `${data.total} athletes` : null}
     >

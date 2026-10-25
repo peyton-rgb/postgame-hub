@@ -22,7 +22,7 @@ export default async function Page({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   // ?period= drives the whole page, so a filtered view is a shareable URL and
   // the back button steps through periods.
   const [icon, data] = await Promise.all([
@@ -35,6 +35,8 @@ export default async function Page({
       active="reports"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       title="Reports"
       subtitle={
         data.rows.length > 0

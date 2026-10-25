@@ -59,7 +59,7 @@ export default async function Page({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   const q = searchParams.q ?? "";
   const [icon, results] = await Promise.all([
     getPostgameIcon(),
@@ -78,6 +78,8 @@ export default async function Page({
       active="home"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       title="Search"
       subtitle={subtitle}
       searchValue={results.query}

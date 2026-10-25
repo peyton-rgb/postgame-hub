@@ -38,11 +38,13 @@ export default function BrandDashboard({
   postgameIcon,
   data,
   preview,
+  accountLabel,
 }: {
   brand: PortalBrand;
   postgameIcon: string | null;
   data: DashboardData;
   preview?: PortalPreviewChrome | null;
+  accountLabel?: string | null;
 }) {
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -55,20 +57,27 @@ export default function BrandDashboard({
       active="home"
       postgameIcon={postgameIcon}
       preview={preview}
+      brand={brand}
+      accountLabel={accountLabel}
       title="Welcome back"
       subtitle={today}
-      aside={
-        <div className="pgd-kpis">
+    >
+      {/* THREE SMALL TILES, not figures floating in the header. In the header
+          they sat level with the greeting and read as chrome; as tiles they
+          are the first row of the page's content, which is what they are.
+          Live · Wrapped · Athletes is the whole account in one line. */}
+      {data.kpis.length > 0 && (
+        <div className="pgd-topkpis">
           {data.kpis.map((k) => (
-            <div className="pgd-kpi" key={k.label}>
+            <div className="pgd-tile pgd-topkpi" key={k.label}>
               <b>{k.value}</b>
               <span>{k.label}</span>
               {k.sub ? <small>{k.sub}</small> : null}
             </div>
           ))}
         </div>
-      }
-    >
+      )}
+
       <div className="pgd-grid">
 
           {/* 1 · Latest wrapped. Photo from the campaign's hero media; figures
@@ -104,6 +113,13 @@ export default function BrandDashboard({
                         </span>
                       )}
                     </>
+                  )}
+                  {/* The tile was a dead end: a photo, a name and figures with
+                      no way into the campaign they describe. */}
+                  {data.latestWrapped.slug && (
+                    <a className="pgd-over-link" href={`/portal/campaigns/${data.latestWrapped.slug}`}>
+                      View campaign &rarr;
+                    </a>
                   )}
                 </div>
               </>
@@ -153,10 +169,14 @@ export default function BrandDashboard({
                   <table>
                     <thead>
                       <tr>
+                        {/* No "Top reel" column. The Top posts tile sits
+                            directly beside this one and ranks the same
+                            campaign's reels — the column was the same fact
+                            twice, and dropping it is what lets the roster fit
+                            five columns so the hero photo can have three. */}
                         <th scope="col">Athlete</th>
                         <th scope="col">School</th>
                         <th scope="col">Followers</th>
-                        <th scope="col">Top reel</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -178,8 +198,9 @@ export default function BrandDashboard({
                             </div>
                           </td>
                           <td>{r.school ?? ""}</td>
-                          <td>{r.followers !== null ? compactNumber(r.followers) : ""}</td>
-                          <td>{r.views !== null ? `${compactNumber(r.views)} views` : ""}</td>
+                          <td className="pgd-nowrap">
+                            {r.followers !== null ? compactNumber(r.followers) : ""}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -221,10 +242,11 @@ export default function BrandDashboard({
                         IG Reel{p.school ? ` · ${p.school}` : ""}
                       </small>
                     </div>
-                    <div className="pgd-v">
-                      <b>{compactNumber(p.views)}</b>
-                      <br />
-                      views
+                    {/* One line: the number and its unit belong together, and
+                        the stacked pair cost a second row in every one of six
+                        cards. */}
+                    <div className="pgd-v pgd-v-inline">
+                      <b>{compactNumber(p.views)}</b> views
                     </div>
                   </>
                 );
@@ -260,12 +282,9 @@ export default function BrandDashboard({
                  Wrapped in a card it was a box holding boxes, and the outer
                  one carried nothing the heading didn't already say. */}
           <section className="pgd-camps" aria-labelledby="pgd-camps-h">
-            <h3 id="pgd-camps-h">
-              Campaigns
-              <small>
-                {data.liveCount} live · {data.wrappedCount} wrapped
-              </small>
-            </h3>
+            {/* No "0 live · 10 wrapped" here: the tiles at the top of the
+                page carry both counts. */}
+            <h3 id="pgd-camps-h">Campaigns</h3>
             {data.campaigns.length > 0 ? (
               <div className="pgd-campgrid">
                 {data.campaigns.map((c) => (

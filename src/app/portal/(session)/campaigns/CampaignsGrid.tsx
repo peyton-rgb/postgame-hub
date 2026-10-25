@@ -34,9 +34,13 @@ function Card({ c }: { c: CampaignListItem }) {
           <img src={c.heroUrl} alt="" />
         </span>
       ) : (
-        <span className="pgd-card-band">
-          {meta ? <span className="pgd-band-meta">{meta}</span> : null}
+        /* No photo: a flat dark panel at half the height of a photo card,
+           with the name in Bebas. Not a gradient — a gradient reads as an
+           image that failed to load, and half height stops a row of
+           photoless campaigns claiming the space of a row with pictures. */
+        <span className="pgd-card-flat">
           <span className="pgd-band-name">{c.name}</span>
+          {meta ? <span className="pgd-band-meta">{meta}</span> : null}
         </span>
       )}
 
@@ -89,6 +93,12 @@ export default function CampaignsGrid({
   const [state, setState] = useState<"all" | "live" | "wrapped">("all");
   const [quarter, setQuarter] = useState("");
   const [q, setQ] = useState("");
+  // EVENTS ARE HIDDEN BY DEFAULT. 27 of CVS's 46 wrapped campaigns have no
+  // athletes — Valentine's Day, PNW Content, Leadership Video, CVS Round
+  // Table, the surveys — because they are events and one-offs rather than
+  // content campaigns. They are real and reachable; they are just not what
+  // someone opening this page came to see.
+  const [showEvents, setShowEvents] = useState(false);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -97,9 +107,12 @@ export default function CampaignsGrid({
       if (state === "wrapped" && i.live) return false;
       if (quarter && i.quarter !== quarter) return false;
       if (needle && !i.name.toLowerCase().includes(needle)) return false;
+      if (!showEvents && i.athletes === 0) return false;
       return true;
     });
-  }, [items, state, quarter, q]);
+  }, [items, state, quarter, q, showEvents]);
+
+  const eventCount = useMemo(() => items.filter((i) => i.athletes === 0).length, [items]);
 
   const live = shown.filter((c) => c.live);
   const wrapped = shown.filter((c) => !c.live);
@@ -141,8 +154,13 @@ export default function CampaignsGrid({
           aria-label="Search campaigns by name"
         />
         <span className="pgd-count">
-          {shown.length} of {items.length}
+          {shown.length} of {showEvents ? items.length : items.length - eventCount}
         </span>
+        {eventCount > 0 && (
+          <button type="button" className="pgd-toggle" onClick={() => setShowEvents((v) => !v)}>
+            {showEvents ? "Hide events" : `Show events (${eventCount})`}
+          </button>
+        )}
       </div>
 
       {shown.length === 0 ? (
@@ -157,19 +175,44 @@ export default function CampaignsGrid({
           {/* A section heading appears only when that section has cards in
               it, so filtering to Wrapped doesn't leave an empty "Live" rule
               across the page. */}
+          {/* LIVE CAMPAIGNS ARE A LIST, not cards. A live campaign has no
+              recap, no hero and usually no roster yet, so a card is a large
+              empty rectangle carrying two facts. A row states the same two
+              and stacks. */}
           {live.length > 0 && (
             <>
               <h2 className="pgd-group-h">
                 Live
                 <span className="pgd-group-note">{live.length}</span>
               </h2>
-              <div className="pgd-cards">
-                {live.map((c) => (
-                  <Card c={c} key={c.id} />
-                ))}
+              <div className="pgd-panel pgd-live-list">
+                <div className="pgd-rows">
+                  {live.map((c) => {
+                    const meta = [c.quarter, c.campaignType].filter(Boolean).join(" · ");
+                    const inner = (
+                      <>
+                        <span className="pgd-row-main">
+                          <b>{c.name}</b>
+                          {meta ? <span>{meta}</span> : null}
+                        </span>
+                        <span className="pgd-state-live">In progress</span>
+                      </>
+                    );
+                    return c.slug ? (
+                      <a className="pgd-row" key={c.id} href={`/portal/campaigns/${c.slug}`}>
+                        {inner}
+                      </a>
+                    ) : (
+                      <div className="pgd-row" key={c.id}>
+                        {inner}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </>
           )}
+
           {wrapped.length > 0 && (
             <>
               <h2 className="pgd-group-h">

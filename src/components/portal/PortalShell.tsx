@@ -1,5 +1,7 @@
 import "@/components/portal/dashboard/dashboard.css";
 import { anton, arimo } from "@/components/portal/fonts";
+import { initials } from "@/lib/portal/format";
+import type { PortalBrand } from "@/lib/portal-data";
 import type { PortalPreviewChrome } from "@/components/portal/PortalFrame";
 
 // ============================================================
@@ -91,6 +93,34 @@ function PersonIcon() {
 }
 
 /**
+ * The brand's logo FOR A DARK SURFACE.
+ *
+ * Not pickBrandLogo(): that helper's fallback chain reaches
+ * `logo_dark_url` before `logo_light_url`, and per CLAUDE.md those names
+ * describe the INK, not the background — logo_dark_url is dark ink, meant for
+ * a light background. On this near-black ground it would render as an
+ * invisible smudge. Brands with brand_logos rows are unaffected either way
+ * (attachPortalLogo already resolved a dark-surface variant); this only
+ * changes which legacy column a brand WITHOUT those rows falls back to.
+ *
+ * Returning null is a real outcome, not a failure: the header then sets the
+ * brand's name in Bebas, which is a fact, where a placeholder square is not.
+ */
+function darkSurfaceLogo(brand: Record<string, unknown> | undefined): string | null {
+  if (!brand) return null;
+  const resolved = brand.portalLogo as { url?: string } | string | null | undefined;
+  if (resolved && typeof resolved === "object" && typeof resolved.url === "string") {
+    return resolved.url;
+  }
+  if (typeof resolved === "string") return resolved;
+  for (const key of ["logo_light_url", "logo_white_url", "logo_primary_url"]) {
+    const v = brand[key];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return null;
+}
+
+/**
  * The one shared "none" mark for empty states, on every page.
  * Not the section's own icon — repeating a header icon directly beneath
  * itself reads as a rendering bug.
@@ -134,6 +164,8 @@ export default function PortalShell({
   active,
   postgameIcon,
   preview,
+  brand,
+  accountLabel,
   title,
   subtitle,
   aside,
@@ -143,6 +175,14 @@ export default function PortalShell({
   active: PortalSection;
   postgameIcon: string | null;
   preview?: PortalPreviewChrome | null;
+  /**
+   * Whose portal this is. `portalLogo` is already resolved by
+   * attachPortalLogo() — a dark-surface lockup from brand_logos — so the
+   * shell only has to render it. Nothing new is queried for the brand mark.
+   */
+  brand?: Pick<PortalBrand, "id" | "name"> & Record<string, unknown>;
+  /** The signed-in person, for the account disc's initials. */
+  accountLabel?: string | null;
   /**
    * The page's h1. Pass null when the page names itself in its own body —
    * campaign detail puts the name in the hero, and printing it here as well
@@ -160,6 +200,9 @@ export default function PortalShell({
       className={`pgd ${anton.variable} ${arimo.variable}`}
       style={{ fontFamily: "var(--font-arimo), Arimo, Arial, sans-serif" }}
     >
+      {/* LABELLED RAIL. 200px with icon + label down to 1100px, icons only
+          below that, and the phone tab bar below 640 as before. The tooltips
+          stay: they are what the collapsed rail falls back to. */}
       <nav className="pgd-rail" aria-label="Portal sections">
         {/* Hard rule 1: the Postgame mark is a FILE. Square slot, so the ICON,
             not the ~5:1 wordmark. No file, nothing rendered. */}
@@ -173,10 +216,10 @@ export default function PortalShell({
             key={item.key}
             href={item.href}
             className={item.key === active ? "on" : undefined}
-            aria-label={item.label}
             aria-current={item.key === active ? "page" : undefined}
           >
             {item.icon}
+            <span className="pgd-rail-label">{item.label}</span>
             <span className="pgd-tip" aria-hidden="true">
               {item.label}
             </span>
@@ -188,19 +231,57 @@ export default function PortalShell({
         <a
           href="/portal/settings"
           className={active === "settings" ? "on" : undefined}
-          aria-label="Settings"
           aria-current={active === "settings" ? "page" : undefined}
         >
           <GearIcon />
+          <span className="pgd-rail-label">Settings</span>
           <span className="pgd-tip" aria-hidden="true">
             Settings
           </span>
         </a>
-        <span className="pgd-ava" aria-hidden="true" />
+
+        {/* The account. Initials, not an empty circle — a blank disc read as a
+            missing avatar; initials read as a person we have no photo of,
+            which is the same rule the roster and the athletes directory
+            follow. */}
+        <span className="pgd-account">
+          <span className="pgd-account-disc" aria-hidden="true">
+            {accountLabel ? initials(accountLabel) : ""}
+          </span>
+          <span className="pgd-rail-label pgd-account-label">
+            {accountLabel ?? "Account"}
+          </span>
+        </span>
       </nav>
 
       <div className="pgd-main">
         <header className="pgd-head">
+          {/* WHOSE PORTAL THIS IS. The brand's own dark-surface lockup, left
+              of the page title, with a fixed "Brand portal" under it — the
+              rail carries the Postgame mark, so the two marks never compete
+              for the same corner.
+
+              brand_logos is already resolved upstream by attachPortalLogo(),
+              which picks a dark-surface lockup; nothing is queried here. With
+              no logo on file the brand's NAME is set in Bebas rather than a
+              placeholder square, because a name is a fact and a grey box
+              isn't. Hard rule: a client logo is never redrawn or generated —
+              it is the file from brand_logos or it is type. */}
+          {brand ? (
+            <div className="pgd-brandmark">
+              {(() => {
+                const logo = darkSurfaceLogo(brand);
+                return logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logo} alt={brand.name ?? "Brand"} />
+                ) : (
+                  <span className="pgd-brandmark-name">{brand.name}</span>
+                );
+              })()}
+              <span className="pgd-brandmark-sub">Brand portal</span>
+            </div>
+          ) : null}
+
           <div>
             {title !== null ? <h1 className="pgd-h1">{title}</h1> : null}
             {/* With no title the subtitle is the header's only line, so it
@@ -243,7 +324,7 @@ export default function PortalShell({
                   type="search"
                   name="q"
                   defaultValue={searchValue ?? ""}
-                  placeholder="Search campaigns and athletes"
+                  placeholder="Search campaigns, athletes"
                   aria-label="Search campaigns and athletes"
                 />
                 {/* A real submit control beside the field. Enter already

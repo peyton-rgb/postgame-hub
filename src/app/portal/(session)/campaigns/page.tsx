@@ -22,7 +22,7 @@ export default async function Page({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  const { brand, preview } = await resolveSessionPortal(searchParams.brand);
+  const { brand, preview, chrome } = await resolveSessionPortal(searchParams.brand);
   const [icon, data] = await Promise.all([getPostgameIcon(), loadCampaignList(brand.id)]);
 
   return (
@@ -30,6 +30,8 @@ export default async function Page({
       active="campaigns"
       postgameIcon={icon}
       preview={preview}
+      brand={brand}
+      accountLabel={chrome.personLabel}
       title="Campaigns"
       subtitle={`${data.liveCount} live · ${data.wrappedCount} wrapped`}
     >

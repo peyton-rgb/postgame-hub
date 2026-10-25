@@ -57,9 +57,17 @@ export default function RecapLibrary({ groups }: { groups: ReportGroup[] }) {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={c.heroUrl} alt="" />
                   </span>
-                ) : null}
+                ) : (
+                  /* Same height as a photo card's band, dark, name in Bebas.
+                     A short card beside tall ones reads as one that failed to
+                     load, and these recaps are as delivered as the rest. */
+                  <span className="pgd-recap-noimg">
+                    <span>{c.name}</span>
+                  </span>
+                )}
                 <span className="pgd-recap-body">
-                  <span className="pgd-card-name">{c.name}</span>
+                  {/* The name is in the band when there is no photo. */}
+                  {c.heroUrl ? <span className="pgd-card-name">{c.name}</span> : null}
                   {/* The quarter is the heading this card sits under, so it is
                       not repeated. Shown only where the group was derived from
                       delivery dates and the card's own recorded quarter could
