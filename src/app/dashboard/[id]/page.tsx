@@ -4055,6 +4055,19 @@ export default function CampaignEditor() {
                 <p className="text-xs text-gray-500 mb-4 ml-9">
                   Posts shared by several athletes at once — auto-detected from the tracker, handled as one.
                 </p>
+                {(() => {
+                  // Non-blocking: a team card only shows team content now (no
+                  // more borrowing a teammate's solo shots), so an empty card
+                  // simply stays off the recap until a team shot is imported.
+                  const missing = collabCardData.filter((c) => !c.items.some((m) => m.type === "image"));
+                  if (missing.length === 0) return null;
+                  return (
+                    <div className="ml-9 mb-4 rounded-lg border border-status-warn/40 bg-status-warn/10 px-3 py-2 text-xs text-status-warn">
+                      <span className="font-bold">Needs a team shot:</span>{" "}
+                      {missing.map((c) => c.teamName).join(", ")}. Import a team photo onto each card for its cover. A card with no content stays off the recap.
+                    </div>
+                  );
+                })()}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   {collabCardData.map(({ group, container, teamName, items }) => {
                     const crestSchool = athletes.find((a) => a.id === group.athleteIds[0])?.school || teamName;

@@ -506,6 +506,49 @@ export default function DrivePicker({
     if (isTeamView) setTeamPoolSelection(new Set());
     else if (activeAthleteId) setSelections((prev) => ({ ...prev, [activeAthleteId]: new Set() }));
   };
+  // "Pick best": the latest video + up to 10 best photos that aren't
+  // near-copies (see /api/drive/pick-best). Always scores the FULL folder,
+  // regardless of the image/video filter, and replaces the current selection.
+  const [pickingBest, setPickingBest] = useState(false);
+  const [pickBestNote, setPickBestNote] = useState<string | null>(null);
+  useEffect(() => { setPickBestNote(null); }, [activeAthleteId, activeTeamFolderId]);
+  const pickBestCurrent = async () => {
+    if (!driveData || pickingBest) return;
+    const destAthleteId = activeAthleteId;
+    const teamView = isTeamView;
+    const pool: DriveFile[] = [];
+    if (activeTeamFolderId) {
+      const folder = driveData.athletes.find((df) => df.folderId === activeTeamFolderId);
+      pool.push(...(folder?.files || []));
+    } else if (activeAthlete) {
+      const personal = matchAthleteToFolder(activeAthlete.name, driveData.athletes);
+      pool.push(...(personal?.files || []));
+    }
+    const files = pool
+      .filter((f) => !alreadyImportedSet.has(f.id))
+      .map((f) => ({ id: f.id, name: f.name, mimeType: f.mimeType }));
+    if (files.length === 0) return;
+    setPickingBest(true);
+    setPickBestNote(null);
+    try {
+      const res = await fetch("/api/drive/pick-best", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Pick best failed");
+      const ids = new Set<string>(json.ids || []);
+      if (teamView) setTeamPoolSelection(ids);
+      else if (destAthleteId) setSelections((prev) => ({ ...prev, [destAthleteId]: ids }));
+      setFilterType("all");
+      setPickBestNote(`Picked ${ids.size} of ${files.length}`);
+    } catch (e: any) {
+      setPickBestNote(e?.message || "Pick best failed");
+    } finally {
+      setPickingBest(false);
+    }
+  };
 
   // ── Build athlete tabs with match info (personal folder + team membership) ──
   const athleteTabs = useMemo(() => {
@@ -1101,6 +1144,17 @@ export default function DrivePicker({
                   {/* Bulk actions (athlete or team view) */}
                   {displayFiles.length > 0 && (
                     <>
+                      {pickBestNote && (
+                        <span className="text-[10px] text-gray-500">{pickBestNote}</span>
+                      )}
+                      <button
+                        onClick={pickBestCurrent}
+                        disabled={pickingBest}
+                        className="px-3 py-1 text-[10px] font-bold uppercase rounded bg-[#D73F09] text-white hover:bg-[#D73F09]/90 disabled:opacity-60"
+                        title="Select the latest video and up to 10 best photos that aren't near-copies"
+                      >
+                        {pickingBest ? "Picking…" : "Pick Best"}
+                      </button>
                       <button
                         onClick={selectAllCurrent}
                         className="px-3 py-1 text-[10px] font-bold uppercase text-gray-400 hover:text-white"
