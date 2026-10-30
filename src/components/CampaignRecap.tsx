@@ -1054,20 +1054,12 @@ export function CampaignRecap({
   // rows — so we filter them out of the solo list below.
   const collabAthleteNameSet = new Set<string>();
   for (const g of collabGroups) for (const n of g.athleteNames) collabAthleteNameSet.add(n);
-  // Pick the media list for a collab group. Prefer media uploaded directly
-  // against the collab group (keyed by g.id); fall back to media uploaded
-  // against any participating athlete so legacy campaigns without
-  // collab-specific media still render. Used by both Top Performers and
-  // Content Gallery sections.
-  const collabMediaItems = (g: CollabGroup): Media[] => {
-    const own = media[g.id];
-    if (own && own.length) return own;
-    for (const id of g.athleteIds) {
-      const items = media[id];
-      if (items && items.length) return items;
-    }
-    return [];
-  };
+  // Media for a collab group: ONLY what was imported onto the team card itself
+  // (keyed by g.id). It used to fall back to the first teammate's solo media,
+  // which put one athlete's solo shots on a team card and duplicated their own
+  // card (approved by Peyton 2026-10-29). With no team content the gallery
+  // hides the card, and the editor flags it as needing a team shot.
+  const collabMediaItems = (g: CollabGroup): Media[] => media[g.id] || [];
   const topPerformers: TopPerformerEntry[] = topPerformerMode === "engagement"
     ? getTopPerformers(fullRoster, collabGroups)
     : getTopPerformersByImpressions(fullRoster, collabGroups);
