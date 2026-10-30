@@ -115,7 +115,15 @@ export function versionOf(name: string): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-/** The single latest video, or null if there are none. */
+/** An athlete's raw form upload ("copy_ABC…", "<hash> - First Last.mov"),
+ *  as opposed to a Postgame edit ("V2 w Intro", "No End Card"). */
+export function isRawUpload(name: string): boolean {
+  return /^copy_/i.test(name) || /^[0-9a-f-]{16,}/i.test(name) || /\s-\s[A-Z][\w'.-]+(\s[\w'.-]+)+\.\w+$/i.test(name) || /_-_[A-Z][\w'.-]+_[\w'.-]+\.\w+$/i.test(name);
+}
+
+/** The single latest video, or null if there are none. Versioned edits
+ *  win (highest version first); then any edit beats a raw upload; then the
+ *  most recently modified. */
 export function pickLatestVideo(videos: VideoCandidate[]): string | null {
   if (videos.length === 0) return null;
   const time = (v: VideoCandidate) => (v.modifiedTime ? Date.parse(v.modifiedTime) || 0 : 0);
@@ -127,6 +135,9 @@ export function pickLatestVideo(videos: VideoCandidate[]): string | null {
       if (vb === null) return -1;
       if (va !== vb) return vb - va;
     }
+    const ra = isRawUpload(a.name) ? 1 : 0;
+    const rb = isRawUpload(b.name) ? 1 : 0;
+    if (ra !== rb) return ra - rb;
     return time(b) - time(a);
   });
   return sorted[0].id;

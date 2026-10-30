@@ -63,4 +63,11 @@ test("latest video: highest version beats raw clips and older versions", () => {
     "new",
   );
   assert.equal(pickLatestVideo([]), null);
+  assert.equal(
+    pickLatestVideo([
+      { id: "raw", name: "62EF0B53-4511-49FD-B48B-528EC63C1646 - Xavier Harris.mp4", modifiedTime: "2026-10-01T00:00:00Z" },
+      { id: "edit", name: "Xavier Harris No End Card .mp4", modifiedTime: "2026-09-01T00:00:00Z" },
+    ]),
+    "edit",
+  );
 });
