@@ -1,4 +1,4 @@
-import { createPlainSupabase, createServiceSupabase } from "@/lib/supabase";
+import { createLiveSupabase, createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
@@ -29,7 +29,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const sp = (await searchParams) ?? {};
   const preview = allowPreviewBypass(sp);
   // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
-  const supabase = preview ? createServiceSupabase() : createPlainSupabase();
+  const supabase = preview ? createServiceSupabase() : createLiveSupabase();
   let q = supabase
     .from("campaign_recaps")
     .select("name, client_name, settings")
@@ -55,7 +55,7 @@ export default async function RecapPage({ params, searchParams }: Props) {
   const sp = (await searchParams) ?? {};
   const preview = allowPreviewBypass(sp);
   // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
-  const supabase = preview ? createServiceSupabase() : createPlainSupabase();
+  const supabase = preview ? createServiceSupabase() : createLiveSupabase();
 
   let recapQ = supabase.from("campaign_recaps").select("*").eq("slug", slug);
   if (!preview) recapQ = recapQ.eq("published", true);
