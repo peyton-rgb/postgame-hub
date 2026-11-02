@@ -33,6 +33,7 @@ import { Readable } from "stream";
 import { createServiceSupabase } from "@/lib/supabase";
 import { getDriveClient, ensureFolder } from "@/lib/google-drive";
 import { rateLimit } from "@/lib/rate-limit";
+import { appendW9Row } from "@/lib/w9-sheet";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -341,6 +342,10 @@ export async function POST(request: NextRequest) {
         fileName: meta.data.name ?? "W9.pdf",
         fileSizeBytes: Number(meta.data.size ?? 0) || null,
       });
+      await logToSheet(payee, taxYear, row, {
+        driveFileId: meta.data.id!,
+        fileName: meta.data.name ?? "W9.pdf",
+      });
       return NextResponse.json({
         ok: true,
         id: row.id,
@@ -384,6 +389,7 @@ export async function POST(request: NextRequest) {
         fileName,
         fileSizeBytes: size,
       });
+      await logToSheet(payee, taxYear, row, { driveFileId, fileName });
       return NextResponse.json({
         ok: true,
         id: row.id,
@@ -467,4 +473,41 @@ async function insertRow(
     throw new Error(`insert failed: ${error?.message ?? "no row returned"}`);
   }
   return data as { id: string; created_at: string };
+}
+
+/**
+ * Mirror the submission into the "W-9 Submissions Log" sheet.
+ *
+ * Runs only after the PDF is in Drive AND the row is saved, and never throws:
+ * the sheet is a convenience view, so a Sheets outage must not turn a finished
+ * W-9 into an error screen (or worse, a retry that re-uploads the PDF). A miss
+ * is logged; the row can be re-added from videographer_w9_submissions later.
+ */
+async function logToSheet(
+  payee: Payee,
+  taxYear: number,
+  row: { id: string; created_at: string },
+  doc: { driveFileId: string; fileName: string }
+): Promise<void> {
+  try {
+    await appendW9Row({
+      taxYear,
+      submittedAt: new Date(row.created_at),
+      businessName: payee.business_name,
+      firstName: payee.first_name,
+      lastName: payee.last_name,
+      email: payee.email,
+      phone: payee.phone,
+      addressLine1: payee.address_line1,
+      addressLine2: payee.address_line2,
+      city: payee.city,
+      state: payee.state,
+      postalCode: payee.postal_code,
+      driveFileId: doc.driveFileId,
+      fileName: doc.fileName,
+      recordId: row.id,
+    });
+  } catch (err) {
+    console.error(`[w9] saved ${row.id} but could not add it to the log sheet`, err);
+  }
 }
