@@ -39,7 +39,16 @@ export default function CarouselEditor({
   const [seams, setSeams] = useState(true);
   const [snap, setSnap] = useState(true);
   const [frameMode, setFrameMode] = useState(false);
-  const [tab, setTab] = useState<Tab>('layer');
+  const [, setTab] = useState<Tab>('layer'); // kept so older calls stay harmless
+  const [view, setView] = useState<'all' | number>('all');
+  const [drawer, setDrawer] = useState(false);
+  const [time, setTime] = useState(0);
+  const [seek, setSeek] = useState<{ t: number; n: number } | undefined>();
+  const [maxH, setMaxH] = useState(720);
+  useEffect(() => {
+    const f = () => setMaxH(Math.max(320, window.innerHeight - 300));
+    f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
+  }, []);
   const [toast, setToast] = useState<string | null>(null);
   const [guide, setGuide] = useState<{ gx: number | null; gy: number | null }>({ gx: null, gy: null });
   const [measureOn, setMeasureOn] = useState(false);
@@ -162,10 +171,10 @@ export default function CarouselEditor({
   const addText = useCallback(() => {
     if (!layout) return;
     const sel = layout.layers.find((l) => l.id === selId);
-    const slide = sel ? Math.max(0, Math.min(4, Math.floor((sel.x + (sel.type === 'text' ? 0 : sel.w / 2)) / SLIDE))) : 2;
+    const slide = view !== 'all' ? view : sel ? Math.max(0, Math.min(4, Math.floor((sel.x + (sel.type === 'text' ? 0 : sel.w / 2)) / SLIDE))) : 2;
     const r = newText(layout, slide);
     setLayout(r.layout); setSelId(r.id); setTab('layer'); commit(r.layout);
-  }, [layout, selId, commit, setSelId]);
+  }, [layout, selId, commit, setSelId, view]);
   const cutout = useCallback(() => {
     if (!layout || !selected) return;
     const r = makeCutout(layout, selected.id, media, isBgLike(selected));
@@ -192,7 +201,7 @@ export default function CarouselEditor({
       if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
       setLoaded((cur) => (cur ? { ...cur, media: { ...cur.media, [body.key]: body.media } } : cur));
       const sel = layout.layers.find((l) => l.id === selId);
-      const slide = sel ? Math.max(0, Math.min(4, Math.floor((sel.x + sel.w / 2) / SLIDE))) : 2;
+      const slide = view !== 'all' ? view : sel ? Math.max(0, Math.min(4, Math.floor((sel.x + sel.w / 2) / SLIDE))) : 2;
       const r = newCard(layout, body.key, body.media, c.name.replace(/\.[^.]+$/, ''), slide);
       setLayout(r.layout); setSelId(r.id); setTab('layer'); commit(r.layout);
       flash(c.kind === 'video' ? `Added to slide ${slide + 1} — pick the moment in Clip section` : `Added to slide ${slide + 1}`);
@@ -201,7 +210,7 @@ export default function CarouselEditor({
     } finally {
       setAdding(null);
     }
-  }, [layout, selId, athlete.slug, adding, commit, flash]);
+  }, [layout, selId, athlete.slug, adding, commit, flash, view]);
 
   // Text boxes are measured from the page so handles/snapping fit the real glyphs.
   const measure = (L: Layer): Box => {
@@ -320,6 +329,11 @@ export default function CarouselEditor({
         if (e.altKey) updateGuides({ lock: !G.lock }); else updateGuides({ show: !G.show });
         return;
       }
+      if (!selId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        setView((v) => (v === 'all' ? 0 : Math.max(0, Math.min(4, v + (e.key === 'ArrowRight' ? 1 : -1)))));
+        return;
+      }
       if (!selId || !layout) return;
       if (e.key === 'Escape') { setSelId(null); return; }
       const st = e.shiftKey ? 10 : 1;
@@ -414,85 +428,140 @@ export default function CarouselEditor({
   // ---------- render ----------
   const visible = layout?.layers.filter((l) => !l.hidden).length ?? 0;
   const h = hist.current;
-  const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
+  const fmt = (v?: string | null) => (v ? new Date(v).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '');
   const saveText = { saved: save.at ? `Saved ${fmt(save.at)}` : 'Saved', unsaved: 'Unsaved changes', saving: 'Saving…', error: 'Not saved — retrying on next change', conflict: 'Saved elsewhere — reload' }[save.state];
-  const arrow = 'grid h-10 w-10 place-items-center rounded-full border border-hairline-soft bg-surface-card text-[18px] text-ink-2 hover:text-ink-1';
-  const chip = (on: boolean) => `min-h-[36px] rounded-full border px-4 text-[12px] font-bold uppercase tracking-[.12em] disabled:opacity-40 ${on ? 'border-ink-1 bg-ink-1 text-ground' : 'border-hairline-soft bg-surface-card text-ink-3 hover:text-ink-1'}`;
+  const G = layout ? guidesOf(layout) : null;
+  const step = (d: number) => setView((v) => (v === 'all' ? (d > 0 ? 0 : 4) : Math.max(0, Math.min(4, v + d))));
+
+  // pill-group building blocks (one font everywhere: Arimo)
+  const group = 'flex items-center gap-0.5 rounded-full border border-hairline-soft bg-surface-card p-[3px]';
+  const seg = (on: boolean) => `grid h-[30px] min-w-[32px] place-items-center rounded-full px-3 text-[11px] font-bold uppercase tracking-[.1em] whitespace-nowrap disabled:opacity-35 ${on ? 'bg-ink-1 text-ground' : 'text-ink-3 hover:text-ink-1'}`;
+  const pill = (on = false) => `grid h-9 place-items-center rounded-full border px-4 text-[11px] font-bold uppercase tracking-[.12em] whitespace-nowrap disabled:opacity-40 ${on ? 'border-ink-1 bg-ink-1 text-ground' : 'border-hairline text-ink-1 hover:border-ink-3'}`;
+  const arrow = 'grid h-10 w-10 place-items-center rounded-full border border-hairline-soft text-[18px] text-ink-2 hover:text-ink-1';
+  const fmtT = (t: number) => `${t.toFixed(1)}s`;
 
   return (
-    <div className="mx-auto flex max-w-[1600px] flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="flex flex-col gap-3">
+    <div className="mx-auto flex max-w-[1680px] flex-col gap-4 px-4 py-6 font-sans sm:px-6 lg:px-8">
+      {/* header */}
+      <header className="flex flex-col gap-2">
         <Link href="/dashboard/carousels" className="text-[11px] font-bold uppercase tracking-[.16em] text-ink-3 hover:text-ink-1">
           {athlete.campaign ?? "Raising Cane's Basketball 2027"} · IG feed carousel
         </Link>
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/dashboard/carousels/${prevSlug}`} aria-label="Previous athlete" className={arrow}>‹</Link>
-          <h1 className="font-display text-[44px] leading-none sm:text-[56px]">{athlete.name}</h1>
+          <h1 className="text-[28px] font-bold leading-tight text-ink-1 sm:text-[30px]">{athlete.name}</h1>
           <Link href={`/dashboard/carousels/${nextSlug}`} aria-label="Next athlete" className={arrow}>›</Link>
           <span className="text-[14px] text-ink-3">{position} of {total}</span>
           <span role="status" className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[.14em] ${
             save.state === 'error' || save.state === 'conflict' ? 'border-status-bad/50 text-status-bad-ink' : 'border-hairline-soft text-ink-3'}`}>
             {saveText}
           </span>
-          {save.state === 'conflict' && <button type="button" className={chip(false)} onClick={load}>Reload</button>}
+          {save.state === 'conflict' && <button type="button" className={pill()} onClick={load}>Reload</button>}
         </div>
       </header>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <section aria-label="Carousel canvas" className="flex min-w-0 flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" className={chip(false)} onClick={undo} disabled={h.pos <= 0} title="Undo (⌘Z)">↶ Undo</button>
-            <button type="button" className={chip(false)} onClick={redo} disabled={h.pos >= h.list.length - 1} title="Redo (⇧⌘Z)">↷ Redo</button>
-            <span className="mx-1 h-6 w-px bg-hairline" />
-            <button type="button" aria-pressed={playing} onClick={() => setPlaying((p) => !p)} className={chip(playing)}>{playing ? '❚❚ Pause' : '▶ Play'}</button>
-            <button type="button" aria-pressed={snap} onClick={() => setSnap((s) => !s)} className={chip(snap)}>Snap</button>
-            <button type="button" aria-pressed={seams} onClick={() => setSeams((s) => !s)} className={chip(seams)}>Slide edges</button>
-            <button type="button" aria-pressed={frameMode} onClick={() => setFrameMode((f) => !f)} className={chip(frameMode)} title="Drag slides the picture inside its frame">Reframe</button>
-            {layout && (() => { const G = guidesOf(layout); return (<>
-              <button type="button" aria-pressed={G.show} onClick={() => updateGuides({ show: !G.show })} className={chip(G.show)} title="Show guides (⌘;)">Guides{G.v.length + G.h.length ? ` ${G.v.length + G.h.length}` : ''}</button>
-              <button type="button" aria-pressed={G.lock} onClick={() => updateGuides({ lock: !G.lock })} className={chip(G.lock)} title="Lock guides (⌥⌘;)">{G.lock ? '🔒 Locked' : 'Lock guides'}</button>
-              {G.v.length + G.h.length > 0 && !G.lock && <button type="button" onClick={() => updateGuides({ v: [], h: [] })} className={chip(false)}>Clear guides</button>}
-            </>); })()}
-            <button type="button" onClick={addText} className={chip(false)} disabled={!layout}>+ Text</button>
-            {layout && <span className="ml-1 text-[13px] text-ink-4">{visible} layers</span>}
-          </div>
+      {/* toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className={group}>
+          <button type="button" className={seg(false)} onClick={undo} disabled={h.pos <= 0} title="Undo (⌘Z)" aria-label="Undo">↶</button>
+          <button type="button" className={seg(false)} onClick={redo} disabled={h.pos >= h.list.length - 1} title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
+        </div>
+        <div className={group} role="group" aria-label="View">
+          <button type="button" className={seg(view === 'all')} onClick={() => setView('all')}>Full</button>
+          {[0, 1, 2, 3, 4].map((k) => (
+            <button key={k} type="button" className={seg(view === k)} onClick={() => setView(k)} aria-label={`Slide ${k + 1}`}>{k + 1}</button>
+          ))}
+        </div>
+        <div className={group} role="group" aria-label="Display">
+          <button type="button" aria-pressed={snap} className={seg(snap)} onClick={() => setSnap((v) => !v)}>Snap</button>
+          <button type="button" aria-pressed={seams} className={seg(seams)} onClick={() => setSeams((v) => !v)}>Edges</button>
+          <button type="button" aria-pressed={frameMode} className={seg(frameMode)} onClick={() => setFrameMode((f) => !f)} title="Drag slides the picture inside its frame">Reframe</button>
+          {G && <button type="button" aria-pressed={G.show} className={seg(G.show)} onClick={() => updateGuides({ show: !G.show })} title="Show guides (⌘;)">Guides{G.v.length + G.h.length ? ` ${G.v.length + G.h.length}` : ''}</button>}
+          {G && <button type="button" aria-pressed={G.lock} className={seg(G.lock)} onClick={() => updateGuides({ lock: !G.lock })} title="Lock guides (⌥⌘;)">{G.lock ? 'Locked' : 'Lock'}</button>}
+          {G && G.v.length + G.h.length > 0 && !G.lock && <button type="button" className={seg(false)} onClick={() => updateGuides({ v: [], h: [] })}>Clear</button>}
+        </div>
+        <div className="flex-1" />
+        <button type="button" className={pill()} onClick={addText} disabled={!layout}>+ Text</button>
+        <button type="button" onClick={() => setDrawer((d) => !d)} aria-expanded={drawer}
+          className={`grid h-9 place-items-center rounded-full px-4 text-[11px] font-bold uppercase tracking-[.12em] text-white ${drawer ? 'bg-accent/70' : 'bg-accent'}`}>
+          + Add from Frame.io
+        </button>
+      </div>
 
-          <div className="overflow-hidden rounded-2xl border border-hairline-soft bg-surface-card p-3">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+        {/* canvas column */}
+        <section aria-label="Carousel canvas" className="flex min-w-0 flex-col gap-3">
+          <div className="relative overflow-hidden rounded-2xl border border-hairline-soft bg-surface-card p-2"
+            onWheel={(e) => { if (view !== 'all' && Math.abs(e.deltaX) > 40 && Math.abs(e.deltaX) > Math.abs(e.deltaY)) step(e.deltaX > 0 ? 1 : -1); }}>
             {error && <p className="p-6 text-[14px] text-status-bad-ink">{error}</p>}
             {!error && !loaded && <div className="aspect-[4/1] animate-pulse rounded-lg bg-surface-raised" />}
             {loaded && !layout && <p className="p-6 text-[14px] text-ink-3">{firstName} doesn&apos;t have a saved carousel yet.</p>}
             {layout && (
               <div className="grid grid-cols-[14px_minmax(0,1fr)] grid-rows-[14px_auto]">
                 <div />
-                <div title="Drag down from here for a horizontal guide" className="cursor-s-resize touch-none bg-surface-raised [background-image:repeating-linear-gradient(90deg,transparent_0,transparent_19.8%,rgb(var(--ink-rgb)/.35)_19.8%,rgb(var(--ink-rgb)/.35)_20%)]"
+                <div title="Drag down from here for a horizontal guide" className="cursor-s-resize touch-none rounded-t bg-surface-raised"
                   onPointerDown={(e) => startGuide('h', e)} onPointerMove={moveGuide} onPointerUp={onUp} onPointerCancel={onUp} />
-                <div title="Drag right from here for a vertical guide" className="cursor-e-resize touch-none bg-surface-raised"
+                <div title="Drag right from here for a vertical guide" className="cursor-e-resize touch-none rounded-l bg-surface-raised"
                   onPointerDown={(e) => startGuide('v', e)} onPointerMove={moveGuide} onPointerUp={onUp} onPointerCancel={onUp} />
                 <CarouselCanvas ref={canvas} layout={layout} media={media} playing={playing} showSeams={seams}
+                  view={view} maxHeight={view === 'all' ? undefined : maxH} seek={seek} onTick={setTime}
                   overlay={overlay} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
               </div>
             )}
+            {layout && view !== 'all' && (
+              <>
+                <button type="button" aria-label="Previous slide" onClick={() => step(-1)} disabled={view === 0}
+                  className="absolute left-6 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-ground/70 text-[20px] text-ink-1 disabled:opacity-0">‹</button>
+                <button type="button" aria-label="Next slide" onClick={() => step(1)} disabled={view === 4}
+                  className="absolute right-4 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-ground/70 text-[20px] text-ink-1 disabled:opacity-0">›</button>
+              </>
+            )}
           </div>
-          <p className="text-[13px] text-ink-4">
-            Drag to move · ⇧-click to select several · corners resize (⇧ keeps shape) · orange tabs crop · drag a background, or ⌥-drag a card, to slide the picture · drag from the rulers for guides (off the canvas deletes) · arrows nudge (⇧ ×10) · ⌫ deletes · ⌘Z undo
+
+          {/* playback */}
+          <div className="flex items-center gap-2">
+            <button type="button" className={pill(false)} onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause' : 'Play'}>{playing ? '❚❚' : '▶'}</button>
+            <button type="button" className={pill(false)} onClick={() => setSeek({ t: 0, n: Date.now() })} aria-label="Restart" title="Back to the start">⟲</button>
+            <input type="range" min={0} max={6} step={0.01} value={time} aria-label="Playback position"
+              onChange={(e) => { setPlaying(false); setSeek({ t: +e.target.value, n: Date.now() }); }}
+              className="flex-1 accent-[#FAF8F5]" />
+            <span className="w-[86px] text-right text-[12px] tabular-nums text-ink-3">{fmtT(time)} / 6.0s</span>
+          </div>
+
+          {/* slide navigator */}
+          {layout && (
+            <div className="relative w-full max-w-[520px] overflow-hidden rounded-xl">
+              <CarouselCanvas layout={layout} media={media} playing={false} still showSeams={false} />
+              <div className="absolute inset-0 grid grid-cols-5">
+                {[0, 1, 2, 3, 4].map((k) => (
+                  <button key={k} type="button" onClick={() => setView(k)} aria-label={`View slide ${k + 1}`}
+                    className={`relative border-2 ${view === k ? 'border-ink-1' : 'border-transparent bg-ground/35 hover:bg-transparent'}`}>
+                    <span className="absolute bottom-1 left-1.5 text-[11px] font-bold text-white [text-shadow:0_1px_3px_#000]">{k + 1}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {drawer && (
+            <ClipPicker slug={athlete.slug} firstName={firstName} busyId={adding}
+              onPick={async (c) => { await addClip(c); setDrawer(false); }} onClose={() => setDrawer(false)} />
+          )}
+
+          <p className="text-[12px] leading-relaxed text-ink-4">
+            Drag to move · ⇧-click to select several · corners resize (⇧ keeps shape) · orange tabs crop · drag a background, or ⌥-drag a card, to slide the picture · drag from the rulers for guides (off the canvas deletes) · arrows nudge (⇧ ×10), or step slides when nothing is selected · ⌫ deletes · ⌘Z undo
           </p>
           {toast && <p role="status" className="text-[13px] text-ink-2">{toast}</p>}
         </section>
 
-        <section aria-label="Editor panels" className="flex min-w-0 flex-col gap-3 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]">
-          <div className="flex gap-1.5" role="tablist">
-            {(['layer', 'layers', 'add'] as Tab[]).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={chip(tab === k)}>
-                {{ layer: 'Selected', layers: `Layers ${layout?.layers.length ?? ''}`, add: 'Add' }[k]}
-              </button>
-            ))}
-          </div>
-          <div className={`${tab === 'add' ? 'hidden' : ''} min-h-0 flex-1 overflow-y-auto rounded-2xl border border-hairline-soft bg-surface-card p-5`}>
-            {tab === 'layer' && multi && layout && (
+        {/* right column: settings, then layers — both always visible */}
+        <section aria-label="Editor panels" className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)]">
+          <div className="max-h-[56vh] overflow-y-auto rounded-2xl border border-hairline-soft bg-surface-card p-4">
+            <h2 className="mb-3 text-[16px] font-bold text-ink-1">{multi ? 'Selected' : selected ? 'Selected' : 'Nothing selected'}</h2>
+            {multi && layout ? (
               <MultiProps layers={layout.layers.filter((l) => selSet.includes(l.id))} media={media}
                 onChange={(p, c) => patchMany(selSet, p, c)} onClear={() => setSelId(selId)} onDelete={() => runAct('del')} />
-            )}
-            {tab === 'layer' && !multi && (
+            ) : (
               <LayerProps layer={selected} media={selected ? media[selected.media] : undefined}
                 onChange={(p, c) => selected && patchLayer(selected.id, p, c)} onAct={(a) => runAct(a)}
                 frameMode={frameMode} setFrameMode={setFrameMode}
@@ -500,17 +569,24 @@ export default function CarouselEditor({
                 hasPair={!!(selected && layout && pairOf(layout, selected.id).length > 1)}
                 onCutout={cutout} onPair={() => selected && layout && selectMany(pairOf(layout, selected.id))} />
             )}
-            {tab === 'layers' && layout && (
-              <LayersList layers={layout.layers} media={media} selectedId={selId}
-                onSelect={(id, add) => (add ? toggleSel(id) : setSelId(id))} selectedIds={selSet}
+          </div>
+          {layout && (
+            <div className="min-h-[220px] flex-1 overflow-y-auto rounded-2xl border border-hairline-soft bg-surface-card p-3">
+              <div className="mb-1 flex items-baseline justify-between px-1">
+                <h2 className="text-[16px] font-bold text-ink-1">Layers</h2>
+                <span className="text-[12px] text-ink-4">{visible} showing · {layout.layers.length} total</span>
+              </div>
+              <p className="mb-2 px-1 text-[11px] text-ink-4">Front at the top · ⇧-click for several</p>
+              <LayersList layers={layout.layers} media={media} selectedId={selId} selectedIds={selSet}
+                onSelect={(id, add) => {
+                  if (add) toggleSel(id); else setSelId(id);
+                  const L = layout.layers.find((l) => l.id === id);
+                  if (L && view !== 'all' && L.type !== 'text') setView(Math.max(0, Math.min(4, Math.floor((L.x + L.w / 2) / SLIDE))));
+                }}
                 onToggle={(id, k) => { const L = layout.layers.find((l) => l.id === id); if (L) patchLayer(id, { [k]: !L[k] }, true); }}
                 onMove={(id, dir) => runAct(dir, id)} />
-            )}
-          </div>
-          <div className={tab === 'add' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
-            <ClipPicker slug={athlete.slug} firstName={firstName}
-              onPick={addClip} />
-          </div>
+            </div>
+          )}
         </section>
       </div>
     </div>

@@ -32,10 +32,14 @@ export default function ClipPicker({
   slug,
   firstName,
   onPick,
+  onClose,
+  busyId,
 }: {
   slug: string;
   firstName: string;
   onPick: (clip: PickerClip) => void;
+  onClose?: () => void;
+  busyId?: string | null;
 }) {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +87,8 @@ export default function ClipPicker({
         onFocus={() => setHover(c.id)}
         onBlur={() => setHover(null)}
         aria-label={`Add ${short(c.name)} to the selected slide`}
-        className="group flex w-full flex-col gap-1.5 text-left"
+        disabled={!!busyId}
+        className={`group flex w-full flex-col gap-1.5 text-left disabled:cursor-wait ${busyId === c.id ? 'opacity-50' : ''}`}
       >
         <span className="relative block aspect-[16/10] overflow-hidden rounded-[10px] bg-surface-raised">
           {hover === c.id && c.kind === 'video' ? (
@@ -112,19 +117,15 @@ export default function ClipPicker({
   return (
     <section
       aria-label="Content picker"
-      className="flex w-full flex-col gap-4 rounded-2xl border border-hairline-soft bg-surface-card p-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]"
+      className="flex w-full flex-col gap-3 rounded-2xl border border-hairline-soft bg-surface-card p-4"
     >
-      <div>
-        <h2 className="font-display text-[30px] leading-[.95]">Add to {firstName}&apos;s carousel</h2>
-        <p className="mt-1.5 text-[14px] text-ink-3">Live from Frame.io · {firstName}&apos;s SELECTED CLIPS + Approved</p>
-        <p className="mt-0.5 text-[13px] text-ink-4">
-          {loading ? 'Syncing…' : synced ? `Synced ${synced}` : ''}{' '}
-          {!loading && (
-            <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">
-              Refresh
-            </button>
-          )}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h2 className="text-[16px] font-bold text-ink-1">Add from Frame.io</h2>
+        <p className="text-[13px] text-ink-4">
+          {firstName}&apos;s SELECTED CLIPS + Approved · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
+          {!loading && <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
         </p>
+        {onClose && <button type="button" onClick={onClose} className="ml-auto min-h-[32px] rounded-full border border-hairline-soft px-3 text-[11px] font-bold uppercase tracking-[.12em] text-ink-2 hover:text-ink-1">Close</button>}
       </div>
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter">
@@ -143,12 +144,12 @@ export default function ClipPicker({
         ))}
       </div>
 
-      <div className="-mr-2 flex-1 overflow-y-auto pr-2">
+      <div className="-mr-2 max-h-[380px] overflow-y-auto pr-2">
         {error && (
           <p className="rounded-xl border border-status-bad/40 bg-status-bad/10 p-3 text-[14px] text-status-bad-ink">{error}</p>
         )}
         {loading && !data && (
-          <ul className="grid grid-cols-2 gap-2.5" aria-hidden>
+          <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6" aria-hidden>
             {Array.from({ length: 8 }).map((_, i) => (
               <li key={i} className="aspect-[16/10] animate-pulse rounded-[10px] bg-surface-raised" />
             ))}
@@ -159,13 +160,13 @@ export default function ClipPicker({
             <h3 className="mb-2 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
               Selected clips <span className="font-normal text-ink-4">{selected.filter(pass).length}</span>
             </h3>
-            <ul className="grid grid-cols-2 gap-2.5">{selected.filter(pass).map(Card)}</ul>
+            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{selected.filter(pass).map(Card)}</ul>
 
             <h3 className="mb-2 mt-5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
               Approved in other folders <span className="font-normal text-ink-4">{elsewhere.filter(pass).length}</span>
             </h3>
             {elsewhere.filter(pass).length ? (
-              <ul className="grid grid-cols-2 gap-2.5">{elsewhere.filter(pass).map(Card)}</ul>
+              <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{elsewhere.filter(pass).map(Card)}</ul>
             ) : (
               <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">
                 None right now. Mark a clip Approved anywhere in {firstName}&apos;s Frame.io folder and it shows up here.
@@ -174,9 +175,7 @@ export default function ClipPicker({
           </>
         )}
       </div>
-      <p className="text-[13px] leading-relaxed text-ink-4">
-        Only clips in SELECTED CLIPS or marked Approved in Frame.io can be added.
-      </p>
+      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Only clips in SELECTED CLIPS or marked Approved in Frame.io can be added.</p>
     </section>
   );
 }

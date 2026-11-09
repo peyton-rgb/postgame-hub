@@ -28,6 +28,16 @@ export default function LayersList({
           className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 ${L.id === selectedId || selectedIds.includes(L.id) ? 'border-accent bg-surface-raised' : 'border-transparent hover:bg-surface-raised'}`}>
           <button type="button" aria-label={L.hidden ? `Show ${L.name}` : `Hide ${L.name}`} title={L.hidden ? 'Show' : 'Hide'}
             className={icon} onClick={() => onToggle(L.id, 'hidden')}>{L.hidden ? '◌' : '◉'}</button>
+          {(() => {
+            const m = media[L.media];
+            const pic = L.type === 'text' ? null : m?.thumb ?? (m && m.kind !== 'video' ? m.src : null);
+            return (
+              <span aria-hidden className="grid h-10 w-8 shrink-0 place-items-center overflow-hidden rounded bg-surface-raised text-[12px] font-bold text-ink-3"
+                style={pic ? { backgroundImage: `url(${pic})`, backgroundSize: m?.kind === 'logo' || m?.kind === 'cutout' ? 'contain' : 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}>
+                {L.type === 'text' ? 'T' : null}
+              </span>
+            );
+          })()}
           <button type="button" onClick={(e) => onSelect(L.id, e.shiftKey || e.metaKey || e.ctrlKey)} className="min-w-0 flex-1 text-left">
             <span className={`block truncate text-[13px] ${L.hidden ? 'text-ink-4 line-through' : 'text-ink-1'}`}>{L.name ?? L.id}</span>
             <span className="block text-[11px] uppercase tracking-[.12em] text-ink-4">{KIND[L.type === 'text' ? 'text' : media[L.media]?.kind ?? ''] ?? 'Layer'}</span>

@@ -37,6 +37,15 @@ type Props = {
   media: Record<string, CanvasMedia>;
   playing: boolean;
   showSeams?: boolean;
+  /** 'all' fits the whole strip; a slide number (0–4) zooms to that slide with its neighbours dimmed. */
+  view?: 'all' | number;
+  /** Cap the drawn height (px) so a zoomed slide still fits on screen. */
+  maxHeight?: number;
+  /** Jump the shared clock to t seconds; bump n to re-seek to the same t. */
+  seek?: { t: number; n: number };
+  onTick?: (t: number) => void;
+  /** Draw videos as their thumbnail picture — for small previews that shouldn't decode video. */
+  still?: boolean;
   overlay?: (scale: number) => React.ReactNode;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -44,15 +53,23 @@ type Props = {
 };
 
 const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
-  { layout, media, playing, showSeams = true, overlay, onPointerDown, onPointerMove, onPointerUp },
+  { layout, media, playing, showSeams = true, overlay, onPointerDown, onPointerMove, onPointerUp, view = 'all', maxHeight, seek, onTick, still },
   ref,
 ) {
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(0.15);
+  const [boxW, setBoxW] = useState(800);
+  // Zoomed view: the slide plus 260px of each neighbour, so seams still line up by eye.
+  const PAD = 260;
+  const x0 = view === 'all' ? 0 : Math.max(0, view * SLIDE - PAD);
+  const x1 = view === 'all' ? W : Math.min(W, (view + 1) * SLIDE + PAD);
+  const scale = Math.min(boxW / (x1 - x0), maxHeight ? maxHeight / H : Infinity);
   const clock = useRef({ t0: performance.now(), pausedAt: 0 });
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
+  const onTickRef = useRef(onTick);
+  onTickRef.current = onTick;
+  const syncRef = useRef<((force?: boolean) => void) | null>(null);
 
   useImperativeHandle(ref, () => ({
     toStage: (cx, cy) => {
@@ -67,7 +84,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setScale(e.contentRect.width / W));
+    const ro = new ResizeObserver(([e]) => setBoxW(e.contentRect.width));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -99,17 +116,27 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
       });
     };
     sync(true);
-    const id = window.setInterval(() => sync(), 250);
+    const id = window.setInterval(() => { sync(); onTickRef.current?.(now() % DUR); }, 250);
+    syncRef.current = sync;
     return () => window.clearInterval(id);
   }, [playing, media, clipKey]);
+
+  // Scrubbing: move the shared clock and re-seek every clip.
+  useEffect(() => {
+    if (!seek) return;
+    const c = clock.current;
+    c.pausedAt = seek.t; c.t0 = performance.now() - seek.t * 1000;
+    syncRef.current?.(true);
+    onTickRef.current?.(seek.t);
+  }, [seek?.n]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   return (
     <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: H * scale, touchAction: onPointerDown ? 'none' : undefined }}>
       <div
         ref={stage}
-        className="absolute left-0 top-0 select-none bg-black"
-        style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: '0 0' }}
+        className="absolute top-0 select-none bg-black"
+        style={{ width: W, height: H, left: ((boxW - (x1 - x0) * scale) / 2) - x0 * scale, transform: `scale(${scale})`, transformOrigin: '0 0' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -152,7 +179,12 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 cursor: onPointerDown ? (L.locked ? 'default' : 'move') : undefined,
               }}
             >
-              {m.kind === 'video' && m.stream === 'hls' ? (
+              {m.kind === 'video' && still ? (
+                m.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={m.thumb} alt="" draggable={false} style={mediaStyle} />
+                ) : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
+              ) : m.kind === 'video' && m.stream === 'hls' ? (
                 <StreamVideo id={L.id} src={m.src} style={mediaStyle} />
               ) : m.kind === 'video' ? (
                 <video data-id={L.id} src={m.src ?? undefined} muted loop playsInline preload="auto" style={mediaStyle} />
@@ -167,6 +199,12 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           [1, 2, 3, 4].map((k) => (
             <div key={k} className="pointer-events-none absolute top-0 bg-white/75" style={{ left: k * SLIDE - 1 / scale, width: 2 / scale, height: H }} />
           ))}
+        {view !== 'all' && (
+          <>
+            <div className="pointer-events-none absolute top-0 left-0" style={{ width: view * SLIDE, height: H, background: 'rgba(7,7,10,.66)' }} />
+            <div className="pointer-events-none absolute top-0" style={{ left: (view + 1) * SLIDE, width: W - (view + 1) * SLIDE, height: H, background: 'rgba(7,7,10,.66)' }} />
+          </>
+        )}
         {overlay?.(scale)}
       </div>
     </div>

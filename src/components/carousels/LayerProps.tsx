@@ -158,14 +158,13 @@ export default function LayerProps({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-2">
+      <span className={label}>Position &amp; size</span>
+      <div className="-mt-2 grid grid-cols-2 gap-2">
         {numField('x', 'X')}{numField('y', 'Y')}{numField('w', 'Width')}{numField('h', 'Height')}
       </div>
 
       {!isLogo && (
         <>
-          <Slider name="Crop focus ↔" k="cx" min={0} max={1} step={0.01} value={L.cx ?? 0.5} onChange={onChange} />
-          <Slider name="Crop focus ↕" k="cy" min={0} max={1} step={0.01} value={L.cy ?? 0.5} onChange={onChange} />
           <Slider name="Zoom" k="zoom" min={1} max={4} step={0.01} value={L.zoom ?? 1} onChange={onChange} />
           <div className="flex flex-wrap gap-x-5 gap-y-2">
             <label className="flex items-center gap-2 text-[14px] text-ink-2">
@@ -177,6 +176,12 @@ export default function LayerProps({
           </div>
           <Slider name="Brightness" k="bright" min={0.3} max={1.5} step={0.01} value={L.bright ?? 1} onChange={onChange} />
           <Slider name="Contrast" k="contrast" min={0.5} max={1.8} step={0.01} value={L.contrast ?? 1} onChange={onChange} />
+
+          <details className="group flex flex-col gap-4 rounded-xl border border-hairline-soft p-3 [&[open]>summary]:mb-3">
+          <summary className={`${label} cursor-pointer select-none list-none`}><span className="group-open:hidden">▸</span><span className="hidden group-open:inline">▾</span> More · crop focus, saturation, blur, crop edges, seam split, fill, order{canCutout ? ', cutout' : ''}</summary>
+          <div className="flex flex-col gap-4">
+          <Slider name="Crop focus ↔" k="cx" min={0} max={1} step={0.01} value={L.cx ?? 0.5} onChange={onChange} />
+          <Slider name="Crop focus ↕" k="cy" min={0} max={1} step={0.01} value={L.cy ?? 0.5} onChange={onChange} />
           <Slider name="Saturation" k="sat" min={0} max={2} step={0.01} value={L.sat ?? 1} onChange={onChange} />
           <Slider name="Blur" k="blur" min={0} max={20} step={0.1} value={L.blur ?? 0} onChange={onChange} />
 
@@ -215,10 +220,23 @@ export default function LayerProps({
             </div>
           )}
           {hasPair && <div><button type="button" className={btn} onClick={onPair}>Select its pair (photo + cutout)</button></div>}
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" className={btn} onClick={() => onAct('front')}>To front</button>
+            <button type="button" className={btn} onClick={() => onAct('fwd')}>Forward</button>
+            <button type="button" className={btn} onClick={() => onAct('back')}>Backward</button>
+            <button type="button" className={btn} onClick={() => onAct('bottom')}>To back</button>
+          </div>
+          </div>
+          </details>
         </>
       )}
 
-      {order}
+      {isLogo ? order : (
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" className={btn} onClick={() => onAct('dup')}>Duplicate</button>
+          <button type="button" className={`${btn} hover:!text-status-bad-ink`} onClick={() => onAct('del')}>Delete</button>
+        </div>
+      )}
     </div>
   );
 }
