@@ -10,11 +10,14 @@
 //   3. Ask a vision model which is the best cover, and which is the best photo.
 //   4. If the AI call fails, fall back to the first still — never no cover.
 //
-// ffmpeg is the bundled @ffmpeg-installer binary. It is pointed at a local
-// copy of the video, not the URL: this build segfaults reading https inputs.
+// ffmpeg is the @ffmpeg-installer/linux-x64 binary, located by path rather
+// than through @ffmpeg-installer/ffmpeg's index.js (its dynamic require() of
+// the platform package.json breaks once webpack bundles it). It is pointed at
+// a local copy of the video, not the URL: this build segfaults reading https.
 // ─────────────────────────────────────────────────────────────
 
 import { execFile } from "child_process";
+import { accessSync, chmodSync, constants, copyFileSync, existsSync } from "fs";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -39,9 +42,29 @@ export interface CoverChoice {
   judged: boolean;
 }
 
+let resolvedFfmpeg: string | null = null;
+
 function ffmpegPath(): string {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require("@ffmpeg-installer/ffmpeg").path;
+  if (resolvedFfmpeg) return resolvedFfmpeg;
+  const candidates = [
+    process.env.FFMPEG_PATH,
+    join(process.cwd(), "node_modules", "@ffmpeg-installer", "linux-x64", "ffmpeg"),
+    "/var/task/node_modules/@ffmpeg-installer/linux-x64/ffmpeg",
+  ].filter(Boolean) as string[];
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) throw new Error(`ffmpeg binary not found (looked in ${candidates.join(", ")})`);
+  try {
+    accessSync(found, constants.X_OK);
+    resolvedFfmpeg = found;
+  } catch {
+    // The package's postinstall chmod may not have run (npm allowScripts), and
+    // the deployed filesystem is read-only — run a copy from /tmp instead.
+    const tmpCopy = join(tmpdir(), "ffmpeg");
+    if (!existsSync(tmpCopy)) copyFileSync(found, tmpCopy);
+    chmodSync(tmpCopy, 0o755);
+    resolvedFfmpeg = tmpCopy;
+  }
+  return resolvedFfmpeg;
 }
 
 function ffmpeg(args: string[]): Promise<{ stdout: Buffer; stderr: string }> {
