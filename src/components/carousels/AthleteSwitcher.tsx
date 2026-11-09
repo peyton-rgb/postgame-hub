@@ -77,7 +77,7 @@ export default function AthleteSwitcher({
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-hairline-soft bg-surface-card p-2 shadow-2xl">
+        <div className="absolute left-0 top-full z-50 mt-2 w-[min(340px,calc(100vw-2rem))] rounded-2xl border border-hairline bg-ground p-2 shadow-2xl shadow-black/60">
           <input
             ref={input}
             value={q}
