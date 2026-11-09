@@ -1935,6 +1935,12 @@ export function CampaignRecap({
                     <div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
                       {i + 1}
                     </div>
+                    {a.metrics?.boosted && (
+                      <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-brand text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                        Boosted
+                      </div>
+                    )}
                   </div>
                   <div className="mt-3 px-1 text-center">
                     <div className="text-base font-black uppercase truncate">{a.name}</div>
@@ -2029,6 +2035,12 @@ export function CampaignRecap({
                     <div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
                       {i + 1}
                     </div>
+                    {a.metrics?.boosted && (
+                      <div className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand text-white text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                        Boosted
+                      </div>
+                    )}
                   </div>
                   <div className="mt-2.5 px-1 text-center">
                     <div className="text-sm font-black uppercase truncate">{a.name}</div>

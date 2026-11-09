@@ -168,7 +168,12 @@ export async function POST(
           notes: pa.notes || existing.notes || "",
           post_type: pa.post_type || existing.post_type || "IG Feed",
           post_url: pa.post_url || existing.post_url,
-          metrics: pa.metrics || existing.metrics || {},
+          // The sheet has no "boosted" column, so carry the staff-set flag over
+          // rather than letting a refresh silently drop it.
+          metrics: {
+            ...(pa.metrics || existing.metrics || {}),
+            ...(existing.metrics?.boosted ? { boosted: true } : {}),
+          },
           sort_order: i,
         },
       });
