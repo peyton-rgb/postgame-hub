@@ -2,9 +2,8 @@
 // POST /api/carousels/[slug]/media   (staff only)   body: { fioId }
 //
 // Adds a Frame.io clip to the media this athlete's carousel can use. The
-// picker rule is enforced here too, not just in the browser: the file must be
-// in the athlete's SELECTED CLIPS folder, marked Approved in their folder, or
-// an image in their PHOTOS folder.
+// picker rule is enforced here too, not just in the browser: the file must sit
+// somewhere inside this athlete's own Frame.io folder.
 // Records the clip in carousel_media as `fio_<id>` (nothing is copied out of
 // Frame.io) and returns it with fresh play/thumbnail links.
 // ============================================================
@@ -41,11 +40,11 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       rootFolderId = sel.data?.parent_id ?? null;
     }
     if (!rootFolderId) throw new Error("Could not find the athlete's main Frame.io folder");
-    const { selected, approvedElsewhere, photos } = await athletePickerClips({
+    const { selected, elsewhere, photos } = await athletePickerClips({
       token, accountId: conn.account_id, rootFolderId, selectedFolderId: athlete.frameio_selected_folder_id,
     });
-    const clip = [...selected, ...approvedElsewhere, ...photos].find((c) => c.id === fioId);
-    if (!clip) return NextResponse.json({ error: "That file isn't in SELECTED CLIPS, PHOTOS, or marked Approved" }, { status: 403 });
+    const clip = [...selected, ...elsewhere, ...photos].find((c) => c.id === fioId);
+    if (!clip) return NextResponse.json({ error: "That file isn't in this athlete's Frame.io folder" }, { status: 403 });
     if (clip.kind === "video" ? !clip.play : !clip.thumb) return NextResponse.json({ error: "Frame.io can't play that file" }, { status: 422 });
 
     const key = `fio_${clip.id}`;

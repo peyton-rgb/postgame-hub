@@ -1,9 +1,8 @@
 'use client';
 
-// The content picker: only what Frame.io says this athlete may use —
-// everything in their SELECTED CLIPS folder, plus clips marked Approved
-// elsewhere in their folder, plus every image in their PHOTOS folder.
-// Data from /api/carousels/[slug]/clips.
+// The content picker: every clip and photo in the athlete's Frame.io folder,
+// one section per folder (Selected clips, Main folder, Camera originals,
+// Photos…). Data from /api/carousels/[slug]/clips.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import HlsVideo from './HlsVideo';
@@ -12,7 +11,7 @@ export type PickerClip = {
   id: string;
   name: string;
   kind: 'video' | 'image';
-  source: 'selected' | 'approved' | 'photos';
+  source: 'selected' | 'folder' | 'photos';
   approved: boolean;
   duration: number | null;
   width: number | null;
@@ -23,7 +22,7 @@ export type PickerClip = {
   folder: string;
 };
 
-type Payload = { selected: PickerClip[]; approvedElsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
+type Payload = { selected: PickerClip[]; elsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
 type Filter = 'all' | 'video' | 'image';
 
 const fmt = (s: number | null) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`);
@@ -72,10 +71,28 @@ export default function ClipPicker({
   const usable = (c: PickerClip) => (c.kind === 'video' ? Boolean(c.play) : Boolean(c.thumb));
   const pass = (c: PickerClip) => filter === 'all' || c.kind === filter;
   const selected = useMemo(() => (data?.selected ?? []).filter(usable), [data]);
-  const elsewhere = useMemo(() => (data?.approvedElsewhere ?? []).filter(usable), [data]);
+  const elsewhere = useMemo(() => (data?.elsewhere ?? []).filter(usable), [data]);
   const photos = useMemo(() => (data?.photos ?? []).filter(usable), [data]);
   const all = [...selected, ...elsewhere, ...photos];
   const count = (k: Filter) => all.filter((c) => k === 'all' || c.kind === k).length;
+
+  // One section per folder: SELECTED CLIPS, then the main folder, then each
+  // sub-folder (CAMERA ORIGINALS first), then PHOTOS. Click a heading to fold it.
+  const [closed, setClosed] = useState<Set<string>>(new Set());
+  const toggle = (k: string) => setClosed((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  type Section = { key: string; title: string; clips: PickerClip[]; tall?: boolean; always?: boolean; empty?: string };
+  const sections = useMemo<Section[]>(() => {
+    const byFolder = new Map<string, PickerClip[]>();
+    for (const c of elsewhere) byFolder.set(c.folder, [...(byFolder.get(c.folder) ?? []), c]);
+    const rank = (f: string) => (f === 'main folder' ? 0 : /^camera originals/i.test(f) ? 1 : 2);
+    const folders = Array.from(byFolder.keys()).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+    return [
+      { key: 'selected', title: 'Selected clips', clips: selected, always: true, empty: `Nothing in ${firstName}'s SELECTED CLIPS folder yet.` },
+      ...folders.map((f) => ({ key: `f:${f}`, title: f === 'main folder' ? 'Main folder' : f, clips: byFolder.get(f) ?? [] })),
+      ...(filter === 'video' ? [] : [{ key: 'photos', title: 'Photos', clips: photos, tall: true, always: true,
+        empty: `No photos yet. Put images in a PHOTOS folder inside ${firstName}'s Frame.io folder and they show up here.` }]),
+    ];
+  }, [selected, elsewhere, photos, filter, firstName]);
 
   const synced = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
 
@@ -124,7 +141,7 @@ export default function ClipPicker({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="text-[16px] font-bold text-ink-1">Add from Frame.io</h2>
         <p className="text-[13px] text-ink-4">
-          {firstName}&apos;s SELECTED CLIPS, Approved + PHOTOS · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
+          Everything in {firstName}&apos;s Frame.io folder · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
           {!loading && <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
         </p>
         {onClose && <button type="button" onClick={onClose} className="ml-auto min-h-[32px] rounded-full border border-hairline-soft px-3 text-[11px] font-bold uppercase tracking-[.12em] text-ink-2 hover:text-ink-1">Close</button>}
@@ -146,7 +163,7 @@ export default function ClipPicker({
         ))}
       </div>
 
-      <div className="-mr-2 max-h-[380px] overflow-y-auto pr-2">
+      <div className="-mr-2 max-h-[460px] overflow-y-auto pr-2">
         {error && (
           <p className="rounded-xl border border-status-bad/40 bg-status-bad/10 p-3 text-[14px] text-status-bad-ink">{error}</p>
         )}
@@ -159,40 +176,31 @@ export default function ClipPicker({
         )}
         {data && (
           <>
-            <h3 className="mb-2 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
-              Selected clips <span className="font-normal text-ink-4">{selected.filter(pass).length}</span>
-            </h3>
-            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{selected.filter(pass).map((c) => Card(c))}</ul>
-
-            <h3 className="mb-2 mt-5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
-              Approved in other folders <span className="font-normal text-ink-4">{elsewhere.filter(pass).length}</span>
-            </h3>
-            {elsewhere.filter(pass).length ? (
-              <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{elsewhere.filter(pass).map((c) => Card(c))}</ul>
-            ) : (
-              <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">
-                None right now. Mark a clip Approved anywhere in {firstName}&apos;s Frame.io folder and it shows up here.
-              </p>
-            )}
-
-            {filter !== 'video' && (
-              <>
-                <h3 className="mb-2 mt-5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
-                  Photos <span className="font-normal text-ink-4">{photos.length}</span>
-                </h3>
-                {photos.length ? (
-                  <ul className="grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-8">{photos.map((c) => Card(c, true))}</ul>
-                ) : (
-                  <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">
-                    No photos yet. Put images in a PHOTOS folder inside {firstName}&apos;s Frame.io folder and they show up here.
-                  </p>
-                )}
-              </>
-            )}
+            {sections.map((sec) => {
+              const items = sec.clips.filter(pass);
+              if (!items.length && !sec.always) return null;
+              const shut = closed.has(sec.key);
+              return (
+                <div key={sec.key} className="mb-4">
+                  <button type="button" onClick={() => toggle(sec.key)} aria-expanded={!shut}
+                    className="mb-2 flex w-full items-baseline gap-2 text-left text-[11px] font-bold uppercase tracking-[.16em] text-ink-1 hover:text-accent">
+                    <span aria-hidden className={`inline-block w-3 text-ink-3 transition-transform ${shut ? '-rotate-90' : ''}`}>▾</span>
+                    {sec.title} <span className="font-normal text-ink-4">{items.length}</span>
+                  </button>
+                  {shut ? null : items.length ? (
+                    <ul className={sec.tall ? 'grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-8' : 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6'}>
+                      {items.map((c) => Card(c, sec.tall))}
+                    </ul>
+                  ) : (
+                    <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">{sec.empty}</p>
+                  )}
+                </div>
+              );
+            })}
           </>
         )}
       </div>
-      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Only files in SELECTED CLIPS or PHOTOS, or marked Approved in Frame.io, can be added.</p>
+      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Click a folder heading to fold it away.</p>
     </section>
   );
 }

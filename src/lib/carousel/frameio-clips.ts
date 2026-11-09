@@ -1,11 +1,11 @@
 // ============================================================
 // Carousel content picker — which Frame.io clips an athlete may use.
 //
-// Rule (Peyton, 2026-11-09): a clip can be added to an athlete's carousel
-// only if it sits in that athlete's SELECTED CLIPS folder, OR it is marked
-// Approved (the Frame.io "Status" field) anywhere inside the athlete's
-// Frame.io folder. Photos (added 2026-11-09): every image in the athlete's
-// PHOTOS folder may be used too. Nothing is copied: we ask Frame.io each time and hand the
+// Rule (Peyton, 2026-11-09, replacing the earlier "SELECTED CLIPS or Approved
+// only" rule): every clip and photo anywhere in the athlete's Frame.io folder
+// may be used — the main folder, SELECTED CLIPS, CAMERA ORIGINALS, PHOTOS and
+// any other sub-folder (except ones that never hold footage, like audio).
+// Approved clips keep their badge. Nothing is copied: we ask Frame.io each time and hand the
 // browser Frame.io's own short-lived play / thumbnail links.
 // ============================================================
 
@@ -48,7 +48,7 @@ export type PickerClip = {
   id: string;
   name: string;
   kind: "video" | "image";
-  source: "selected" | "approved" | "photos";
+  source: "selected" | "folder" | "photos";
   approved: boolean;
   duration: number | null;
   width: number | null;
@@ -124,17 +124,18 @@ function toClip(f: Asset, source: PickerClip["source"], folder: string): PickerC
   };
 }
 
-// Walks the athlete's Frame.io folder and returns the clips the picker may show:
-// everything in SELECTED CLIPS first, then Approved clips found elsewhere.
+// Walks the athlete's Frame.io folder and returns everything the picker may show:
+// SELECTED CLIPS, every other folder's clips (each tagged with its folder, e.g.
+// "main folder" or "CAMERA ORIGINALS"), and the images in PHOTOS.
 export async function athletePickerClips(opts: {
   token: string;
   accountId: string;
   rootFolderId: string;
   selectedFolderId: string;
-}): Promise<{ selected: PickerClip[]; approvedElsewhere: PickerClip[]; photos: PickerClip[] }> {
+}): Promise<{ selected: PickerClip[]; elsewhere: PickerClip[]; photos: PickerClip[] }> {
   const { token, accountId, rootFolderId, selectedFolderId } = opts;
   const selected: PickerClip[] = [];
-  const approvedElsewhere: PickerClip[] = [];
+  const elsewhere: PickerClip[] = [];
   const photos: PickerClip[] = [];
   const seen = new Set<string>();
 
@@ -152,16 +153,17 @@ export async function athletePickerClips(opts: {
         await walk(f.id, path ? `${path} › ${f.name}` : f.name, depth + 1, inPhotos || isPhotoFolder(f.name));
         continue;
       }
-      const c = toClip(f, "approved", path || "main folder");
+      const c = toClip(f, "folder", path || "main folder");
       if (!c || seen.has(c.id)) continue;
-      if (inPhotos && c.kind === "image") { seen.add(c.id); photos.push({ ...c, source: "photos" }); }
-      else if (c.approved) { seen.add(c.id); approvedElsewhere.push(c); }
+      seen.add(c.id);
+      if (inPhotos && c.kind === "image") photos.push({ ...c, source: "photos" });
+      else elsewhere.push(c);
     }
   };
   await walk(rootFolderId, "", 0, false);
 
   const byName = (a: PickerClip, b: PickerClip) => a.name.localeCompare(b.name);
-  return { selected: selected.sort(byName), approvedElsewhere: approvedElsewhere.sort(byName), photos: photos.sort(byName) };
+  return { selected: selected.sort(byName), elsewhere: elsewhere.sort(byName), photos: photos.sort(byName) };
 }
 
 // One file's fresh play/thumbnail links (they expire, so they're fetched

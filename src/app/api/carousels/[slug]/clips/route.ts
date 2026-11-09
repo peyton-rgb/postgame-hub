@@ -1,9 +1,9 @@
 // ============================================================
 // GET /api/carousels/[slug]/clips   (staff only)
 //
-// The carousel editor's content picker. Returns the clips this athlete may
-// use — SELECTED CLIPS, anything marked Approved, and the images in their
-// PHOTOS folder —
+// The carousel editor's content picker. Returns every clip and photo in this
+// athlete's Frame.io folder (main folder, SELECTED CLIPS, CAMERA ORIGINALS,
+// PHOTOS…) —
 // with Frame.io's own short-lived thumbnail and play links. Read-only: it
 // never changes anything in Frame.io.
 // ============================================================
