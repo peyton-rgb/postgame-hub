@@ -38,13 +38,21 @@ export function liveRecapUrl(slug: string): string {
   return `${hubBase()}/recap/${slug}`;
 }
 
+/** The real recap page, rendered while still a draft. Only signed-in Hub staff
+ *  can open it before publish (see allowPreviewBypass in /recap/[slug]). */
+export function previewRecapUrl(slug: string): string {
+  return `${hubBase()}/recap/${slug}?preview=1`;
+}
+
 export function editorUrl(recapId: string): string {
   return `${hubBase()}/dashboard/${recapId}`;
 }
 
-/** Call a Slack Web API method. Never throws — returns Slack's JSON (ok:false on failure). */
-export async function slack(method: string, body: Record<string, unknown>): Promise<any> {
-  const token = process.env.SLACK_BOT_TOKEN;
+/** Call a Slack Web API method. Never throws — returns Slack's JSON (ok:false on failure).
+ *  `tokenOverride` is for workflow-step calls, which use the short-lived token
+ *  Slack hands us in the function_executed event. */
+export async function slack(method: string, body: Record<string, unknown>, tokenOverride?: string): Promise<any> {
+  const token = tokenOverride || process.env.SLACK_BOT_TOKEN;
   if (!token) {
     console.error(`[slack-recap] ${method}: SLACK_BOT_TOKEN not set`);
     return { ok: false, error: "SLACK_BOT_TOKEN not set" };

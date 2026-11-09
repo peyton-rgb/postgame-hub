@@ -1,5 +1,6 @@
 import { createLiveSupabase, createServiceSupabase } from "@/lib/supabase";
 import { notFound } from "next/navigation";
+import { getHubStaff } from "@/lib/staff-auth";
 import { CampaignRecap } from "@/components/CampaignRecap";
 import { Top50Recap } from "@/components/Top50Recap";
 import { RecapV2 } from "@/components/recap-v2/RecapV2";
@@ -18,16 +19,22 @@ type Props = {
   searchParams?: Promise<{ preview?: string; v2?: string }>;
 };
 
-// `?preview=1` lets the recap render even when published=false. Gated to
-// non-production so a stray query string on the live site can't expose drafts.
-function allowPreviewBypass(sp: { preview?: string; v2?: string } | undefined) {
-  return sp?.preview === "1" && process.env.NODE_ENV !== "production";
+// `?preview=1` lets the recap render even when published=false. Off production
+// it's open (local dev); on production it requires a signed-in Hub staff
+// session (getHubStaff — the /dashboard boundary, which excludes brand
+// accounts), so a stray query string on the live site can't expose drafts.
+// This is what the Slack recap review's "Preview" link opens.
+async function allowPreviewBypass(sp: { preview?: string; v2?: string } | undefined): Promise<boolean> {
+  if (sp?.preview !== "1") return false;
+  if (process.env.NODE_ENV !== "production") return true;
+  const staff = await getHubStaff();
+  return staff.ok;
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
   const sp = (await searchParams) ?? {};
-  const preview = allowPreviewBypass(sp);
+  const preview = await allowPreviewBypass(sp);
   // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
   const supabase = preview ? createServiceSupabase() : createLiveSupabase();
   let q = supabase
@@ -53,7 +60,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function RecapPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const sp = (await searchParams) ?? {};
-  const preview = allowPreviewBypass(sp);
+  const preview = await allowPreviewBypass(sp);
   // Preview mode uses the service-role client so RLS doesn't hide draft recaps.
   const supabase = preview ? createServiceSupabase() : createLiveSupabase();
 

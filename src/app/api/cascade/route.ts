@@ -1,6 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk";
 import { waitUntil } from "@vercel/functions";
 import crypto from "crypto";
+import { handleRecapStep, isRecapStepEvent } from "@/lib/slack-recap/step";
 
 // Slack only waits 3 seconds for us to respond, so the model calls run in the
 // background after we've already replied 200. This caps how long that
@@ -328,6 +329,15 @@ export async function POST(request: Request) {
   }
 
   const event = payload.event;
+
+  // Recap requests: the featured "New Recap Request" workflow runs the Postgame
+  // Hub's custom step. Open the form now (its pointer is short-lived) and
+  // finish the step after replying. Nothing below this applies to it.
+  if (payload.type === "event_callback" && isRecapStepEvent(event)) {
+    const finish = await handleRecapStep(event);
+    waitUntil(finish().catch((e) => console.error("[slack-recap] step completion failed:", e)));
+    return new Response(null, { status: 200 });
+  }
 
   // Only answer plain messages from people. Skipping bot_id is what stops the
   // bot answering its own posts in an endless loop; skipping subtypes
