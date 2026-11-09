@@ -179,9 +179,17 @@ export async function runDataPhase(input: DataPhaseInput): Promise<{ athletes: n
 
 // ── Phase 2: content ──────────────────────────────────────────────────────────
 
+/**
+ * DriveFile.size is human-readable ("12.3 MB", "1.2 GB" — see humanFileSize in
+ * google-drive.ts), not bytes. Parse it back so the size cap actually works.
+ * Unknown/unparseable sizes count as too big, so we never blindly pull a huge file.
+ */
+const UNIT_BYTES: Record<string, number> = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };
 function sizeOf(f: DriveFile): number {
-  const n = parseInt(f.size || "0", 10);
-  return Number.isFinite(n) ? n : 0;
+  const m = /^\s*([\d.]+)\s*(B|KB|MB|GB|TB)\s*$/i.exec(f.size || "");
+  if (!m) return Number.POSITIVE_INFINITY;
+  const n = parseFloat(m[1]) * (UNIT_BYTES[m[2].toUpperCase()] ?? 1);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
 function pickFiles(files: DriveFile[]): DriveFile[] {
