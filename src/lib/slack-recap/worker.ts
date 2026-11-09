@@ -6,7 +6,7 @@ import { hubBase, workerHeaders } from "@/lib/slack-recap/api";
 
 export interface WorkerBody {
   recapId: string;
-  phase: "data" | "content";
+  phase: "data" | "content" | "covers";
   trackerUrl?: string;
   folderUrl?: string;
   takeaways?: string;

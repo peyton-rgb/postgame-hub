@@ -3,7 +3,9 @@
 // POST /api/slack/recap/build — background worker for "Request a recap".
 //
 // Called by the Hub itself (Bearer CRON_SECRET), never by Slack directly.
-// Body: { recapId, phase: "data" | "content", trackerUrl?, folderUrl?, takeaways? }
+// Body: { recapId, phase: "data" | "content" | "covers", trackerUrl?, folderUrl?, takeaways? }
+// ("covers" re-picks the video covers of an already-built recap — started from
+// /api/slack/recap/covers — and DMs the owner when done.)
 //
 // Replies 202 immediately and does the work after responding (waitUntil), so
 // the caller never waits on a long build. The content phase is time-boxed;
@@ -18,6 +20,7 @@ import {
   RECAP_CHANNEL_ID,
   RECAP_OWNER_ID,
   editorUrl,
+  previewRecapUrl,
   slack,
   workerAuthorized,
 } from "@/lib/slack-recap/api";
@@ -25,6 +28,7 @@ import { kickWorker, type WorkerBody } from "@/lib/slack-recap/worker";
 import {
   readRequestState,
   runContentPhase,
+  runCoversPhase,
   runDataPhase,
   summarize,
   writeRequestState,
@@ -35,8 +39,9 @@ import { displayName, failedBlocks, reviewBlocks, reviewPointerBlocks } from "@/
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-/** Leave a minute of headroom under maxDuration for Slack calls + the hand-off. */
-const WORK_BUDGET_MS = 230_000;
+/** Leave headroom under maxDuration: one athlete (download, stills, AI pick,
+ *  uploads) can take ~40s past the last deadline check. */
+const WORK_BUDGET_MS = 200_000;
 
 export async function POST(req: Request) {
   if (!workerAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -51,6 +56,21 @@ async function work(body: WorkerBody): Promise<void> {
   const deadline = Date.now() + WORK_BUDGET_MS;
   const campaign = await getCampaignForRequest(body.recapId);
   const name = campaign ? displayName(campaign) : body.recapId;
+
+  if (body.phase === "covers") {
+    const { state } = await readRequestState(body.recapId);
+    const res = await runCoversPhase(body.recapId, state?.covers_done || [], deadline);
+    await writeRequestState(body.recapId, { covers_done: res.handled });
+    if (!res.done) {
+      await kickWorker({ recapId: body.recapId, phase: "covers" });
+      return;
+    }
+    await slack("chat.postMessage", {
+      channel: RECAP_OWNER_ID,
+      text: `🖼️ Covers re-picked for *${name}*: ${res.handled.length} videos checked.`,
+    });
+    return;
+  }
 
   try {
     let extraWarnings: string[] = (await readRequestState(body.recapId)).state?.summary?.warnings || [];
@@ -79,26 +99,28 @@ async function work(body: WorkerBody): Promise<void> {
       return;
     }
 
-    // Done — post the full review (preview link + Publish / Request changes)
-    // in the channel thread under the request, and point the requester's DM at it.
+    // Done — post the review (preview link + Publish / Request changes) as a
+    // normal message in the channel, tagging the requester, and point their
+    // "Building…" DM at it.
     const summary = await summarize(body.recapId, extraWarnings);
     const next = await writeRequestState(body.recapId, { status: "review", summary });
-    const blocks = reviewBlocks(body.recapId, name, editorUrl(body.recapId), summary);
+    const previewUrl = campaign?.slug ? previewRecapUrl(campaign.slug) : editorUrl(body.recapId);
+    const blocks = reviewBlocks(body.recapId, name, previewUrl, summary);
     const text = `Ready for review: ${name}`;
 
-    let threadUrl: string | undefined;
+    let reviewUrl: string | undefined;
     const review = await slack("chat.postMessage", {
       channel: RECAP_CHANNEL_ID,
-      ...(next.channel_ts ? { thread_ts: next.channel_ts } : {}),
       text: `<@${next.requested_by}> ${text}`,
-      blocks: [{ type: "section", text: { type: "mrkdwn", text: `<@${next.requested_by}> your draft is ready.` } }, ...blocks],
+      blocks: [{ type: "section", text: { type: "mrkdwn", text: `<@${next.requested_by}> your recap is ready to review.` } }, ...blocks],
       unfurl_links: false,
     });
     if (review.ok) {
+      await writeRequestState(body.recapId, { review_ts: review.ts });
       const link = await slack("chat.getPermalink", { channel: RECAP_CHANNEL_ID, message_ts: review.ts });
-      if (link.ok) threadUrl = link.permalink;
+      if (link.ok) reviewUrl = link.permalink;
     }
-    const pointer = reviewPointerBlocks(name, threadUrl);
+    const pointer = reviewPointerBlocks(name, reviewUrl);
     if (next.dm_channel && next.dm_ts) {
       await slack("chat.update", { channel: next.dm_channel, ts: next.dm_ts, text, blocks: pointer });
     } else if (next.requested_by) {

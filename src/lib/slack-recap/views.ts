@@ -276,7 +276,7 @@ export function reviewBlocks(recapId: string, name: string, previewUrl: string, 
           `Check the numbers, covers and takeaways.`,
       ),
     },
-    { type: "section", text: md(`🔒 <${previewUrl}|Preview the draft in the Hub>  ·  private until you publish`) },
+    { type: "section", text: md(`🔒 <${previewUrl}|Preview the recap>  ·  only Postgame staff can see it until you publish`) },
     ...(warn.length ? [{ type: "context", elements: [md(warn.map((w) => `:warning: ${w}`).join("\n"))] }] : []),
     {
       type: "actions",

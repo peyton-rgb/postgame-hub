@@ -9,9 +9,12 @@
 //                     tracker, set takeaways + hidden heroes (same helpers the
 //                     10-minute recap-intake job uses)
 //   phase "content" → for each athlete without media, find their Drive folder
-//                     and import one video + one image (same storage + media
-//                     row shape as /api/drive/import). Time-boxed; the worker
-//                     re-invokes itself until every athlete has been tried.
+//                     and import one video + one photo (same storage + media
+//                     row shape as /api/drive/import). The video's cover and
+//                     the photo are chosen by AI (covers.ts): the athlete
+//                     clearly visible, ideally with the product. Time-boxed;
+//                     the worker re-invokes itself until every athlete has
+//                     been tried.
 //
 // Never touches a campaign that already has athletes (already built).
 // ─────────────────────────────────────────────────────────────
@@ -25,10 +28,18 @@ import {
   parseTrackerAthletes,
   toTipTapHtml,
 } from "@/lib/recap-intake";
-import { getCampaignDriveMedia, type DriveFile } from "@/lib/google-drive";
+import { getCampaignDriveMedia, getDriveThumbnail, type DriveFile } from "@/lib/google-drive";
 import { buildStoragePath, downloadAndUpload, removeUpload } from "@/lib/drive-import";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import type { BuildSummary } from "@/lib/slack-recap/views";
+import {
+  chooseCover,
+  coverFrame,
+  frameCandidates,
+  localVideo,
+  smallJpeg,
+  type Candidate,
+} from "@/lib/slack-recap/covers";
 
 /** Files bigger than this are skipped by the automatic import (serverless memory/time). */
 const MAX_AUTO_IMPORT_BYTES = 150 * 1024 * 1024;
@@ -43,6 +54,10 @@ export interface RecapRequestState {
   dm_channel?: string;
   dm_ts?: string;
   channel_ts?: string;
+  /** The top-level review message (Preview · Publish · Request changes). */
+  review_ts?: string;
+  /** Video media ids the "covers" re-pick has already handled. */
+  covers_done?: string[];
   /** Athlete ids the content phase has already tried (imported OR no match). */
   content_tried?: string[];
   summary?: BuildSummary;
@@ -192,11 +207,149 @@ function sizeOf(f: DriveFile): number {
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
-function pickFiles(files: DriveFile[]): DriveFile[] {
+/** Photos considered as cover/photo candidates per athlete. */
+const MAX_PHOTO_CANDIDATES = 4;
+
+const MEDIA_BUCKET = "campaign-media";
+
+async function uploadJpeg(supabase: any, storagePath: string, buf: Buffer): Promise<string> {
+  const { error } = await supabase.storage.from(MEDIA_BUCKET).upload(storagePath, buf, {
+    contentType: "image/jpeg",
+    cacheControl: "3600",
+    upsert: true,
+  });
+  if (error) throw new Error("cover upload failed: " + error.message);
+  return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(storagePath).data.publicUrl as string;
+}
+
+/**
+ * Import one athlete's video + photo with an AI-chosen cover.
+ * Returns how many media rows were created.
+ */
+async function importAthleteContent(
+  supabase: any,
+  recapId: string,
+  brand: string,
+  athlete: { id: string; name: string },
+  files: DriveFile[],
+): Promise<number> {
   const ok = files.filter((f) => sizeOf(f) <= MAX_AUTO_IMPORT_BYTES);
   const video = ok.find((f) => f.mimeType.startsWith("video/"));
-  const image = ok.find((f) => f.mimeType.startsWith("image/"));
-  return [video, image].filter(Boolean) as DriveFile[];
+  const photos = ok.filter((f) => f.mimeType.startsWith("image/")).slice(0, MAX_PHOTO_CANDIDATES);
+  if (!video && photos.length === 0) return 0;
+
+  let created = 0;
+  let videoUpload: { publicUrl: string; storagePath: string } | null = null;
+  let local: { path: string; cleanup: () => Promise<void> } | null = null;
+  const candidates: Candidate[] = [];
+
+  try {
+    if (video) {
+      videoUpload = await downloadAndUpload(supabase, {
+        fileId: video.id,
+        fileName: video.name,
+        storagePath: buildStoragePath(recapId, athlete.id, video.name),
+      });
+      try {
+        local = await localVideo(videoUpload.publicUrl);
+        candidates.push(...(await frameCandidates(local.path)));
+      } catch (e: any) {
+        console.warn(`[slack-recap] stills failed for ${athlete.name}:`, e?.message || e);
+      }
+    }
+    for (const p of photos) {
+      const thumb = await getDriveThumbnail(p.id);
+      const small = thumb ? await smallJpeg(thumb) : null;
+      if (small) candidates.push({ kind: "photo", key: p.id, small });
+    }
+
+    const choice =
+      candidates.length > 1
+        ? await chooseCover(athlete.name.trim(), brand, candidates)
+        : { cover: 0, photo: candidates[0]?.kind === "photo" ? 0 : null, judged: false };
+
+    // The athlete's photo: the AI's pick, else the first photo in the folder.
+    const pickedPhotoId =
+      choice.photo != null && candidates[choice.photo]?.kind === "photo"
+        ? (candidates[choice.photo] as { key: string }).key
+        : photos[0]?.id;
+    const photoFile = photos.find((p) => p.id === pickedPhotoId);
+    let photoUrl: string | null = null;
+    if (photoFile) {
+      const storagePath = buildStoragePath(recapId, athlete.id, photoFile.name);
+      try {
+        const up = await downloadAndUpload(supabase, { fileId: photoFile.id, fileName: photoFile.name, storagePath });
+        const { error } = await supabase.from("media").insert({
+          campaign_id: recapId,
+          athlete_id: athlete.id,
+          type: "image",
+          file_url: up.publicUrl,
+          thumbnail_url: up.publicUrl,
+          is_video_thumbnail: false,
+          drive_file_id: photoFile.id,
+        });
+        if (error) {
+          await removeUpload(supabase, storagePath);
+          console.error(`[slack-recap] photo insert failed for ${athlete.name}:`, error.message);
+        } else {
+          photoUrl = up.publicUrl;
+          created++;
+        }
+      } catch (e: any) {
+        console.error(`[slack-recap] photo import failed for ${athlete.name}:`, e?.message || e);
+      }
+    }
+
+    if (video && videoUpload) {
+      // The video's cover: a full-size still at the chosen moment, or the
+      // chosen photo. Null only if nothing at all could be produced.
+      let thumbnailUrl: string | null = null;
+      const c = candidates[choice.cover];
+      try {
+        if (c?.kind === "frame" && local) {
+          thumbnailUrl = await uploadJpeg(
+            supabase,
+            buildStoragePath(recapId, athlete.id, `cover-${video.name}.jpg`),
+            await coverFrame(local.path, c.t),
+          );
+        } else if (c?.kind === "photo") {
+          if (c.key === photoFile?.id && photoUrl) thumbnailUrl = photoUrl;
+          else {
+            const thumb = await getDriveThumbnail(c.key);
+            if (thumb) {
+              const sharp = (await import("sharp")).default;
+              const jpg = await sharp(thumb).rotate().resize({ width: 1080, withoutEnlargement: true }).jpeg({ quality: 85 }).toBuffer();
+              thumbnailUrl = await uploadJpeg(supabase, buildStoragePath(recapId, athlete.id, `cover-${video.name}.jpg`), jpg);
+            }
+          }
+        }
+      } catch (e: any) {
+        console.warn(`[slack-recap] cover save failed for ${athlete.name}:`, e?.message || e);
+      }
+      if (!thumbnailUrl) thumbnailUrl = photoUrl;
+
+      const { error } = await supabase.from("media").insert({
+        campaign_id: recapId,
+        athlete_id: athlete.id,
+        type: "video",
+        file_url: videoUpload.publicUrl,
+        thumbnail_url: thumbnailUrl,
+        is_video_thumbnail: false,
+        drive_file_id: video.id,
+      });
+      if (error) {
+        await removeUpload(supabase, videoUpload.storagePath);
+        console.error(`[slack-recap] video insert failed for ${athlete.name}:`, error.message);
+      } else {
+        created++;
+      }
+    }
+  } catch (e: any) {
+    console.error(`[slack-recap] import failed for ${athlete.name}:`, e?.message || e);
+  } finally {
+    await local?.cleanup().catch(() => {});
+  }
+  return created;
 }
 
 function folderMatches(folderName: string, athleteName: string): boolean {
@@ -221,8 +374,9 @@ export async function runContentPhase(recapId: string, alreadyTried: string[], d
   const tried = new Set(alreadyTried);
   let imported = 0;
 
-  const { data: row } = await supabase.from("campaign_recaps").select("drive_folder_id").eq("id", recapId).single();
+  const { data: row } = await supabase.from("campaign_recaps").select("drive_folder_id, client_name").eq("id", recapId).single();
   const folderId = (row as any)?.drive_folder_id as string | null;
+  const brand = ((row as any)?.client_name as string | null) || "";
   if (!folderId) return { done: true, imported, tried: Array.from(tried) };
 
   const [{ data: athletes }, { data: media }] = await Promise.all([
@@ -240,33 +394,69 @@ export async function runContentPhase(recapId: string, alreadyTried: string[], d
     tried.add(athlete.id);
     const folder = drive.athletes.find((f) => folderMatches(f.folderName, athlete.name));
     if (!folder) continue;
-
-    for (const file of pickFiles(folder.files)) {
-      if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried) };
-      const storagePath = buildStoragePath(recapId, athlete.id, file.name);
-      try {
-        const { publicUrl, isVideo } = await downloadAndUpload(supabase, { fileId: file.id, fileName: file.name, storagePath });
-        const { error } = await supabase.from("media").insert({
-          campaign_id: recapId,
-          athlete_id: athlete.id,
-          type: isVideo ? "video" : "image",
-          file_url: publicUrl,
-          thumbnail_url: isVideo ? null : publicUrl,
-          is_video_thumbnail: false,
-          drive_file_id: file.id,
-        });
-        if (error) {
-          await removeUpload(supabase, storagePath);
-          console.error(`[slack-recap] media insert failed for ${athlete.name}:`, error.message);
-        } else {
-          imported++;
-        }
-      } catch (e: any) {
-        console.error(`[slack-recap] import failed for ${athlete.name} / ${file.name}:`, e?.message || e);
-      }
-    }
+    imported += await importAthleteContent(supabase, recapId, brand, athlete, folder.files);
   }
   return { done: true, imported, tried: Array.from(tried) };
+}
+
+export interface CoversPhaseResult {
+  done: boolean;
+  handled: string[];
+  updated: number;
+}
+
+/**
+ * Re-pick covers for an already-built recap's videos (the "covers" phase).
+ * Candidates are stills from the video plus the athlete's photos already in
+ * the recap. Only thumbnail_url changes — no media is added or removed.
+ */
+export async function runCoversPhase(recapId: string, alreadyDone: string[], deadline: number): Promise<CoversPhaseResult> {
+  const supabase = createServiceSupabase();
+  const handled = new Set(alreadyDone);
+  let updated = 0;
+
+  const [{ data: recap }, { data: media }, { data: athletes }] = await Promise.all([
+    supabase.from("campaign_recaps").select("client_name").eq("id", recapId).single(),
+    supabase.from("media").select("id, athlete_id, type, file_url").eq("campaign_id", recapId),
+    supabase.from("athletes").select("id, name").eq("campaign_id", recapId),
+  ]);
+  const brand = ((recap as any)?.client_name as string) || "";
+  const rows = (media as any[]) || [];
+  const names = new Map(((athletes as any[]) || []).map((a) => [a.id, String(a.name || "").trim()]));
+  const videos = rows.filter((m) => m.type === "video" && m.file_url && !handled.has(m.id));
+
+  for (const v of videos) {
+    if (Date.now() > deadline) return { done: false, handled: Array.from(handled), updated };
+    handled.add(v.id);
+    const name = names.get(v.athlete_id) || "the athlete";
+    let local: { path: string; cleanup: () => Promise<void> } | null = null;
+    try {
+      const candidates: Candidate[] = [];
+      local = await localVideo(v.file_url);
+      candidates.push(...(await frameCandidates(local.path)));
+      const photos = rows.filter((m) => m.type === "image" && m.athlete_id && m.athlete_id === v.athlete_id).slice(0, MAX_PHOTO_CANDIDATES);
+      for (const p of photos) {
+        const res = await fetch(p.file_url, { cache: "no-store" }).catch(() => null);
+        const small = res?.ok ? await smallJpeg(Buffer.from(await res.arrayBuffer())) : null;
+        if (small) candidates.push({ kind: "photo", key: p.file_url, small });
+      }
+      if (candidates.length === 0) continue;
+      const choice = candidates.length > 1 ? await chooseCover(name, brand, candidates) : { cover: 0, photo: null, judged: false };
+      const c = candidates[choice.cover];
+      const thumbnailUrl =
+        c.kind === "photo"
+          ? c.key
+          : await uploadJpeg(supabase, buildStoragePath(recapId, v.athlete_id || "collab", `cover-${v.id}.jpg`), await coverFrame(local.path, c.t));
+      const { error } = await supabase.from("media").update({ thumbnail_url: thumbnailUrl }).eq("id", v.id);
+      if (error) console.error(`[slack-recap] cover update failed for ${name}:`, error.message);
+      else updated++;
+    } catch (e: any) {
+      console.error(`[slack-recap] cover re-pick failed for ${name}:`, e?.message || e);
+    } finally {
+      await local?.cleanup().catch(() => {});
+    }
+  }
+  return { done: true, handled: Array.from(handled), updated };
 }
 
 /** Final numbers for the review message. */

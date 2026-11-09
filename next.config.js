@@ -20,6 +20,13 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // The recap cover picker shells out to the bundled ffmpeg binary, which
+    // Next's file tracing can't see through @ffmpeg-installer's dynamic require.
+    outputFileTracingIncludes: {
+      "/api/slack/recap/build": ["./node_modules/@ffmpeg-installer/linux-x64/**"],
+    },
+  },
   async rewrites() {
     return [
       // Athlete order forms: /order/<slug> serves the static page in
