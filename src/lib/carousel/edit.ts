@@ -11,8 +11,18 @@ export type Box = { x: number; y: number; w: number; h: number };
 type Snap = { d: number; l: number; i: number } | null;
 export type Lines = { xs: number[]; ys: number[]; px: number[]; py: number[] };
 
+/** Rough text size for snapping when the real one can't be measured (Bebas runs ~0.42em per glyph). */
+export function textBox(L: Layer, measured?: { w: number; h: number }): Box {
+  const size = L.size ?? 40;
+  const w = measured?.w ?? Math.max(size * 0.5, (L.text ?? '').length * size * 0.42);
+  const h = measured?.h ?? size;
+  const x = L.align === 'center' ? L.x - w / 2 : L.align === 'right' ? L.x - w : L.x;
+  return { x, y: L.y, w, h };
+}
+
 /** The visible box of a layer on the strip (after crop + seam split). */
-export function boxOf(L: Layer): Box {
+export function boxOf(L: Layer, measured?: { w: number; h: number }): Box {
+  if (L.type === 'text') return textBox(L, measured);
   const v = visRect(L);
   return { x: L.x + v.x0, y: L.y + v.y0, w: v.x1 - v.x0, h: v.y1 - v.y0 };
 }
@@ -36,7 +46,7 @@ export function snapLines(layout: Layout, skip: Set<string>): Lines {
   const G = guidesOf(layout);
   if (G.show) { px.push(...G.v); py.push(...G.h); }
   for (const o of layout.layers) {
-    if (skip.has(o.id) || o.hidden || o.type === 'text') continue;
+    if (skip.has(o.id) || o.hidden) continue;
     const b = boxOf(o);
     xs.push(b.x, b.x + b.w / 2, b.x + b.w);
     ys.push(b.y, b.y + b.h / 2, b.y + b.h);
@@ -101,11 +111,55 @@ export type Drag =
   | { mode: 'resize'; id: string; corner: string; o: Box; ratio: number }
   | { mode: 'edge'; id: string; edge: 'n' | 's' | 'e' | 'w'; o: { l: number; t: number; r: number; b: number } };
 
+export type GroupItem = { id: string; x: number; y: number; w: number; h: number; size?: number; inset?: Layer['inset'] };
+export type GroupDrag =
+  | { mode: 'gmove'; items: GroupItem[]; box: Box }
+  | { mode: 'gresize'; corner: string; items: GroupItem[]; box: Box };
+
+export function groupBox(layers: Layer[]): Box {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const L of layers) { const b = boxOf(L); x1 = Math.min(x1, b.x); y1 = Math.min(y1, b.y); x2 = Math.max(x2, b.x + b.w); y2 = Math.max(y2, b.y + b.h); }
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+export function startGroup(layout: Layout, ids: string[], mode: 'gmove' | 'gresize', corner = 'se'): GroupDrag {
+  const sel = layout.layers.filter((l) => ids.includes(l.id));
+  const items = sel.filter((o) => !o.locked).map((o) => ({ id: o.id, x: o.x, y: o.y, w: o.w, h: o.h, size: o.size, inset: o.inset ? { ...o.inset } : undefined }));
+  return mode === 'gmove' ? { mode, items, box: groupBox(sel) } : { mode, corner, items, box: groupBox(sel) };
+}
+/** Move or scale several layers together. One scale for everything, so nothing drifts apart. */
+export function applyGroup(g: GroupDrag, layout: Layout, dx: number, dy: number, opt: { scale: number; snap: boolean }) {
+  const th = 12 / opt.scale, b = g.box;
+  let gx: number | null = null, gy: number | null = null;
+  const byId = new Map(g.items.map((i) => [i.id, i]));
+  if (g.mode === 'gmove') {
+    let ddx = dx, ddy = dy;
+    if (opt.snap) {
+      const ln = snapLines(layout, new Set(g.items.map((i) => i.id)));
+      const sx = snapPri([b.x + ddx, b.x + ddx + b.w / 2, b.x + ddx + b.w], ln, 'x', th); if (sx) { ddx += sx.d; gx = sx.l; }
+      const sy = snapPri([b.y + ddy, b.y + ddy + b.h / 2, b.y + ddy + b.h], ln, 'y', th); if (sy) { ddy += sy.d; gy = sy.l; }
+    }
+    const layers = layout.layers.map((o) => { const it = byId.get(o.id); return it ? { ...o, x: Math.round(it.x + ddx), y: Math.round(it.y + ddy) } : o; });
+    return { layout: { ...layout, layers }, gx, gy };
+  }
+  const c = g.corner;
+  const ax = c.includes('w') ? b.x + b.w : b.x, ay = c.includes('n') ? b.y + b.h : b.y;
+  const nw = c.includes('w') ? b.w - dx : b.w + dx, nh = c.includes('n') ? b.h - dy : b.h + dy;
+  const k = Math.max(0.1, Math.max(nw / b.w, nh / b.h));
+  const layers = layout.layers.map((o) => {
+    const it = byId.get(o.id); if (!it) return o;
+    const n: Layer = { ...o, x: Math.round(ax + (it.x - ax) * k), y: Math.round(ay + (it.y - ay) * k) };
+    if (o.type === 'text') n.size = Math.max(6, Math.round((it.size ?? 40) * k));
+    else { n.w = Math.round(it.w * k); n.h = Math.round(it.h * k); if (it.inset) n.inset = { l: (it.inset.l ?? 0) * k, t: (it.inset.t ?? 0) * k, r: (it.inset.r ?? 0) * k, b: (it.inset.b ?? 0) * k }; }
+    return n;
+  });
+  return { layout: { ...layout, layers }, gx, gy };
+}
+
 export type DragResult = { layer: Layer; gx: number | null; gy: number | null; paired: boolean };
 
 /** Start a drag on a layer body: background (or Reframe mode, or ⌥) slides the picture, otherwise moves the box. */
 export function startBodyDrag(L: Layer, media: Media, frameMode: boolean, alt: boolean): Drag {
-  const pan = frameMode ? true : isBg(L, media) ? !alt : alt;
+  const pan = L.type !== 'text' && (frameMode ? true : isBg(L, media) ? !alt : alt);
   if (pan) {
     const b = mediaBox(L, media[L.media]);
     return { mode: 'pan', id: L.id, o: { cx: L.cx ?? 0.5, cy: L.cy ?? 0.5 }, mw: b.mw, mh: b.mh };
@@ -152,6 +206,7 @@ export function applyDrag(
 
   if (drag.mode === 'move') {
     let nx = Math.round(drag.o.x + dx), ny = Math.round(drag.o.y + dy);
+    if (L.type === 'text') { L.x = nx; L.y = ny; return { layer: L, gx, gy, paired }; }
     if (opt.snap) {
       const ln = snapLines(layout, new Set([L.id]));
       const v = visRect(L);
@@ -267,4 +322,50 @@ export function newCard(layout: Layout, key: string, m: MediaInfo, label: string
   const top = arr.findIndex((o) => o.type === 'text' || o.media === 'logo_white' || o.media?.startsWith('logo'));
   if (top < 0) arr.push(L); else arr.splice(top, 0, L);
   return { layout: { ...layout, layers: arr }, id };
+}
+
+// ---- guides ----
+export function setGuides(layout: Layout, patch: Partial<{ v: number[]; h: number[]; show: boolean; lock: boolean }>): Layout {
+  return { ...layout, guides: { ...guidesOf(layout), ...patch } };
+}
+/** A dragged guide snaps to slide edges/centres, the middle, and other layers' edges (hold ⇧ to place freely). */
+export function snapGuide(layout: Layout, axis: 'v' | 'h', pos: number, scale: number) {
+  const ln = snapLines(layout, new Set());
+  const s = snapVal([pos], axis === 'v' ? ln.px.concat(ln.xs) : ln.py.concat(ln.ys), 10 / scale);
+  return Math.round(s ? s.l : pos);
+}
+
+// ---- text ----
+export function newText(layout: Layout, slide: number): { layout: Layout; id: string } {
+  const id = `text_${rid()}`;
+  const L: Layer = { id, name: 'New text', type: 'text', media: '', text: 'NEW TEXT', x: slide * SLIDE + SLIDE / 2, y: Math.round(H / 2 - 40),
+    w: 0, h: 0, size: 80, weight: 400, align: 'center', color: '#ffffff', opacity: 1, font: 'Bebas Neue' };
+  return { layout: { ...layout, layers: [...layout.layers, L] }, id };
+}
+
+// ---- cutouts ----
+/** A cutout copy sits on top of its photo, lined up exactly, with the full frame so it can break out past a crop. */
+export function makeCutout(layout: Layout, id: string, media: Media, bgLike: boolean): { layout: Layout; ids: string[] } | null {
+  const L = layout.layers.find((l) => l.id === id);
+  const cut = L && media[L.media]?.cutout;
+  if (!L || !cut || !media[cut]) return null;
+  const c: Layer = { ...structuredClone(L), id: `cut_${rid()}`, media: cut, name: `✂️ Cutout of ${(L.name ?? '').replace(/^(Card|Seam[^:]*):\s*/, '')}`,
+    shadow: true, locked: false, clip: '' };
+  delete c.hidden; delete c.inset;
+  const arr = layout.layers.slice();
+  let at = arr.indexOf(L) + 1;
+  if (bgLike) { const top = arr.findIndex((o) => o.type === 'text' || media[o.media]?.kind === 'logo'); at = top < 0 ? arr.length : top; }
+  arr.splice(at, 0, c);
+  return { layout: { ...layout, layers: arr }, ids: [L.id, c.id] };
+}
+/** Layers sharing this one's exact frame (a photo and its cutout). */
+export function pairOf(layout: Layout, id: string) {
+  const L = layout.layers.find((l) => l.id === id);
+  if (!L) return [];
+  return [L.id, ...layout.layers.filter((o) => o.id !== L.id && o.x === L.x && o.y === L.y && o.w === L.w && o.h === L.h).map((o) => o.id)];
+}
+
+/** Remove several layers at once. */
+export function removeLayers(layout: Layout, ids: string[]): Layout {
+  return { ...layout, layers: layout.layers.filter((l) => !ids.includes(l.id)) };
 }

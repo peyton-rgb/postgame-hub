@@ -80,3 +80,28 @@ test('a new card lands centred on the chosen slide, under the logo', () => {
   assert.deepEqual([c.x, c.w, c.h], [2160 + 540 - 340, 680, 383]);
   assert.equal(r.layout.layers[r.layout.layers.length - 1].id, 'logo');
 });
+
+import { startGroup, applyGroup, makeCutout, pairOf, snapGuide, newText } from './edit.ts';
+test('group move keeps relative positions; group resize scales everything by one factor', () => {
+  const L = base();
+  const m = applyGroup(startGroup(L, ['card', 'cut'], 'gmove'), L, 37, 0, { scale: 0.2, snap: false });
+  assert.deepEqual(m.layout.layers.slice(1, 3).map((l) => l.x), [1237, 2337]);
+  const r = applyGroup(startGroup(L, ['card', 'cut'], 'gresize', 'se'), L, 1700, 0, { scale: 0.2, snap: false });
+  const [a, b] = r.layout.layers.slice(1, 3);
+  assert.equal(a.x, 1200); assert.equal(a.w, 1200); assert.equal(b.x, 3400); assert.equal(b.w, 1200);
+});
+test('make cutout copy lines up exactly on top and both stay selected; pair finds it', () => {
+  const L = base();
+  const r = makeCutout(L, 'card', media, false)!;
+  const c = r.layout.layers[2];
+  assert.equal(c.media, 'cut'); assert.deepEqual([c.x, c.y, c.w, c.h], [1200, 300, 600, 400]);
+  assert.deepEqual(pairOf(r.layout, 'card'), ['card', c.id]);
+  assert.equal(makeCutout(L, 'bg', media, true), null, 'no cutout file, no button');
+});
+test('guides snap to slide edges and centres; new text is centred on its slide', () => {
+  assert.equal(snapGuide(base(), 'v', 1625, 0.2), 1620);
+  assert.equal(snapGuide(base(), 'v', 1810, 0.2), 1800, 'snaps to a card edge');
+  assert.equal(snapGuide(base(), 'v', 1700, 0.2), 1700);
+  const t = newText(base(), 1);
+  assert.equal(t.layout.layers.at(-1)!.x, 1620);
+});

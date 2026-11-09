@@ -33,7 +33,7 @@ function Slider({ name, k, min, max, step, value, onChange }: {
 }
 
 export default function LayerProps({
-  layer, media, onChange, onAct, frameMode, setFrameMode,
+  layer, media, onChange, onAct, frameMode, setFrameMode, canCutout, hasPair, onCutout, onPair,
 }: {
   layer: Layer | null;
   media: CanvasMedia | undefined;
@@ -41,7 +41,76 @@ export default function LayerProps({
   onAct: (a: Action) => void;
   frameMode: boolean;
   setFrameMode: (on: boolean) => void;
+  canCutout?: boolean;
+  hasPair?: boolean;
+  onCutout?: () => void;
+  onPair?: () => void;
 }) {
+  const order = (
+    <>
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" className={btn} onClick={() => onAct('front')}>To front</button>
+        <button type="button" className={btn} onClick={() => onAct('fwd')}>Forward</button>
+        <button type="button" className={btn} onClick={() => onAct('back')}>Backward</button>
+        <button type="button" className={btn} onClick={() => onAct('bottom')}>To back</button>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <button type="button" className={btn} onClick={() => onAct('dup')}>Duplicate</button>
+        <button type="button" className={`${btn} hover:!text-status-bad-ink`} onClick={() => onAct('del')}>Delete</button>
+      </div>
+    </>
+  );
+  if (layer?.type === 'text') {
+    const T = layer;
+    return (
+      <div className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1">
+          <span className={label}>Name</span>
+          <input className={num} value={T.name ?? ''} onChange={(e) => onChange({ name: e.target.value }, false)} onBlur={() => onChange({}, true)} />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className={label}>Text</span>
+          <textarea rows={2} className={num} value={T.text ?? ''} onChange={(e) => onChange({ text: e.target.value }, false)} onBlur={() => onChange({}, true)} />
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {(['x', 'y', 'size'] as const).map((k) => (
+            <label key={k} className="flex flex-col gap-1">
+              <span className={label}>{{ x: 'X', y: 'Y', size: 'Size' }[k]}</span>
+              <input type="number" className={num} value={Math.round((T[k] as number) ?? 0)}
+                onChange={(e) => Number.isFinite(+e.target.value) && onChange({ [k]: +e.target.value }, false)} onBlur={() => onChange({}, true)} />
+            </label>
+          ))}
+          <label className="flex flex-col gap-1">
+            <span className={label}>Weight</span>
+            <select className={num} value={T.weight ?? 400} onChange={(e) => onChange({ weight: +e.target.value }, true)}>
+              {[400, 700].map((w) => <option key={w} value={w}>{w === 400 ? 'Regular' : 'Bold'}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={label}>Font</span>
+            <select className={num} value={T.font ?? 'Bebas Neue'} onChange={(e) => onChange({ font: e.target.value }, true)}>
+              {['Bebas Neue', 'Anton', 'Arimo'].map((f) => <option key={f}>{f}</option>)}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={label}>Align</span>
+            <select className={num} value={T.align ?? 'left'} onChange={(e) => onChange({ align: e.target.value as Layer['align'] }, true)}>
+              {['left', 'center', 'right'].map((a) => <option key={a}>{a}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="flex flex-col gap-1">
+          <span className={label}>Colour</span>
+          <span className="flex gap-2">
+            <input type="color" value={T.color ?? '#ffffff'} onChange={(e) => onChange({ color: e.target.value }, false)} onBlur={() => onChange({}, true)} className="h-9 w-12 rounded border border-hairline-soft bg-transparent" />
+            <input className={num} value={T.color ?? '#ffffff'} onChange={(e) => onChange({ color: e.target.value }, false)} onBlur={() => onChange({}, true)} />
+          </span>
+        </label>
+        <Slider name="Opacity" k="opacity" min={0} max={1} step={0.01} value={T.opacity ?? 1} onChange={onChange} />
+        {order}
+      </div>
+    );
+  }
   if (!layer || !media) {
     return (
       <p className="text-[14px] leading-relaxed text-ink-3">
@@ -139,18 +208,47 @@ export default function LayerProps({
             <button type="button" className={btn} onClick={() => onAct('fill')}>Fill slide</button>
             <button type="button" className={btn} onClick={() => onAct('fillstrip')}>Fill whole carousel</button>
           </div>
+          {canCutout && (
+            <div className="flex flex-col gap-1">
+              <div><button type="button" className={btn} onClick={onCutout}>✂️ Make cutout copy</button></div>
+              <p className="text-[12px] text-ink-4">Adds the athlete (no background) on top, lined up exactly. Both stay selected so you can move/scale them together.</p>
+            </div>
+          )}
+          {hasPair && <div><button type="button" className={btn} onClick={onPair}>Select its pair (photo + cutout)</button></div>}
         </>
       )}
 
-      <div className="flex flex-wrap gap-1.5">
-        <button type="button" className={btn} onClick={() => onAct('front')}>To front</button>
-        <button type="button" className={btn} onClick={() => onAct('fwd')}>Forward</button>
-        <button type="button" className={btn} onClick={() => onAct('back')}>Backward</button>
-        <button type="button" className={btn} onClick={() => onAct('bottom')}>To back</button>
+      {order}
+    </div>
+  );
+}
+
+/** Several layers selected — the artifact's group panel. Sliders change every selected photo/clip at once. */
+export function MultiProps({ layers, media, onChange, onClear, onDelete }: {
+  layers: Layer[]; media: Record<string, CanvasMedia>;
+  onChange: (p: Patch, commit: boolean) => void; onClear: () => void; onDelete: () => void;
+}) {
+  const P0 = layers.find((o) => o.type !== 'text' && media[o.media] && media[o.media].kind !== 'logo');
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <p className="text-[15px] font-bold text-ink-1">{layers.length} layers selected</p>
+        <p className="mt-1 text-[12px] text-ink-4">Drag any of them to move all together. Corner handles scale them all from the same anchor. Sliders change every selected card at once (handy for a photo + its cutout).</p>
+        <ul className="mt-2 list-disc pl-5 text-[13px] text-ink-2">{layers.map((o) => <li key={o.id}>{o.name ?? o.id}</li>)}</ul>
       </div>
+      {P0 && (
+        <>
+          <Slider name="Crop focus ↔" k="cx" min={0} max={1} step={0.01} value={P0.cx ?? 0.5} onChange={onChange} />
+          <Slider name="Crop focus ↕" k="cy" min={0} max={1} step={0.01} value={P0.cy ?? 0.5} onChange={onChange} />
+          <Slider name="Zoom" k="zoom" min={1} max={4} step={0.01} value={P0.zoom ?? 1} onChange={onChange} />
+          <Slider name="Brightness" k="bright" min={0.3} max={1.5} step={0.01} value={P0.bright ?? 1} onChange={onChange} />
+          <Slider name="Contrast" k="contrast" min={0.5} max={1.8} step={0.01} value={P0.contrast ?? 1} onChange={onChange} />
+          <Slider name="Saturation" k="sat" min={0} max={2} step={0.01} value={P0.sat ?? 1} onChange={onChange} />
+        </>
+      )}
       <div className="flex flex-wrap gap-1.5">
-        <button type="button" className={btn} onClick={() => onAct('dup')}>Duplicate</button>
-        <button type="button" className={`${btn} hover:!text-status-bad-ink`} onClick={() => onAct('del')}>Delete</button>
+        <button type="button" className={btn} onClick={onClear}>Deselect all</button>
+        <button type="button" className={`${btn} hover:!text-status-bad-ink`} onClick={onDelete}>Delete all</button>
       </div>
     </div>
   );

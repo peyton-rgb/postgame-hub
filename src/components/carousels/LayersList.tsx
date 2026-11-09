@@ -6,15 +6,16 @@
 import type { Layer } from '@/lib/carousel/layout';
 import type { CanvasMedia } from './CarouselCanvas';
 
-const KIND: Record<string, string> = { video: 'Video', image: 'Still', cutout: 'Cutout', logo: 'Logo' };
+const KIND: Record<string, string> = { video: 'Video', image: 'Still', cutout: 'Cutout', logo: 'Logo', text: 'Text' };
 
 export default function LayersList({
-  layers, media, selectedId, onSelect, onToggle, onMove,
+  layers, media, selectedId, selectedIds = [], onSelect, onToggle, onMove,
 }: {
   layers: Layer[];
   media: Record<string, CanvasMedia>;
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  selectedIds?: string[];
+  onSelect: (id: string, add: boolean) => void;
   onToggle: (id: string, key: 'hidden' | 'locked') => void;
   onMove: (id: string, dir: 'fwd' | 'back') => void;
 }) {
@@ -24,12 +25,12 @@ export default function LayersList({
     <ul className="flex flex-col gap-1">
       {shown.map((L, i) => (
         <li key={L.id}
-          className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 ${L.id === selectedId ? 'border-accent bg-surface-raised' : 'border-transparent hover:bg-surface-raised'}`}>
+          className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 ${L.id === selectedId || selectedIds.includes(L.id) ? 'border-accent bg-surface-raised' : 'border-transparent hover:bg-surface-raised'}`}>
           <button type="button" aria-label={L.hidden ? `Show ${L.name}` : `Hide ${L.name}`} title={L.hidden ? 'Show' : 'Hide'}
             className={icon} onClick={() => onToggle(L.id, 'hidden')}>{L.hidden ? '◌' : '◉'}</button>
-          <button type="button" onClick={() => onSelect(L.id)} className="min-w-0 flex-1 text-left">
+          <button type="button" onClick={(e) => onSelect(L.id, e.shiftKey || e.metaKey || e.ctrlKey)} className="min-w-0 flex-1 text-left">
             <span className={`block truncate text-[13px] ${L.hidden ? 'text-ink-4 line-through' : 'text-ink-1'}`}>{L.name ?? L.id}</span>
-            <span className="block text-[11px] uppercase tracking-[.12em] text-ink-4">{KIND[media[L.media]?.kind ?? ''] ?? 'Layer'}</span>
+            <span className="block text-[11px] uppercase tracking-[.12em] text-ink-4">{KIND[L.type === 'text' ? 'text' : media[L.media]?.kind ?? ''] ?? 'Layer'}</span>
           </button>
           <button type="button" aria-label="Bring forward" title="Forward" disabled={i === 0} className={`${icon} disabled:opacity-30`} onClick={() => onMove(L.id, 'fwd')}>↑</button>
           <button type="button" aria-label="Send backward" title="Backward" disabled={i === shown.length - 1} className={`${icon} disabled:opacity-30`} onClick={() => onMove(L.id, 'back')}>↓</button>

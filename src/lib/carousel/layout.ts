@@ -19,6 +19,8 @@ export type Layer = {
   bright?: number; contrast?: number; sat?: number; bw?: boolean; blur?: number;
   shadow?: boolean; hidden?: boolean; locked?: boolean; pop?: boolean;
   vin?: number; vlen?: number;
+  // text layers
+  text?: string; size?: number; weight?: number; align?: 'left' | 'center' | 'right'; color?: string; opacity?: number; font?: string;
 };
 export type Layout = {
   canvas: { w: number; h: number; slides: number; duration: number; border?: unknown };

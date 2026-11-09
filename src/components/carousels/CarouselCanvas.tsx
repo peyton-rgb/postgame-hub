@@ -103,7 +103,6 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
     return () => window.clearInterval(id);
   }, [playing, media, clipKey]);
 
-  const layers = useMemo(() => layout.layers.filter((l): l is Layer => l.type !== 'text'), [layout]);
 
   return (
     <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: H * scale, touchAction: onPointerDown ? 'none' : undefined }}>
@@ -116,7 +115,25 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        {layers.map((L) => {
+        {layout.layers.map((L: Layer) => {
+          if (L.type === 'text') {
+            return (
+              <div key={L.id} data-layer={L.id} title={L.name}
+                style={{
+                  position: 'absolute', left: L.x, top: L.y, display: L.hidden ? 'none' : undefined,
+                  // next/font hashes family names — go through the CSS variables (see tailwind.config.js).
+                  fontFamily: L.font === 'Arimo' ? 'var(--font-arimo), Arial, sans-serif'
+                    : L.font === 'Anton' ? 'var(--font-anton), Impact, sans-serif'
+                    : 'var(--font-bebas), Impact, sans-serif',
+                  fontSize: L.size ?? 40, fontWeight: L.weight ?? 400, color: L.color ?? '#fff', opacity: L.opacity ?? 1,
+                  lineHeight: 1, whiteSpace: 'pre',
+                  transform: L.align === 'center' ? 'translateX(-50%)' : L.align === 'right' ? 'translateX(-100%)' : undefined,
+                  cursor: onPointerDown ? (L.locked ? 'default' : 'move') : undefined,
+                }}>
+                {L.text}
+              </div>
+            );
+          }
           const m = media[L.media];
           if (!m) return null;
           const p = placeLayer(L, m);
