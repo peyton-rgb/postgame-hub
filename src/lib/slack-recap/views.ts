@@ -112,7 +112,7 @@ export function requestModal(
         type: "context",
         elements: [
           { type: "image", image_url: SHEETS_ICON_URL, alt_text: "Google Sheets" },
-          md(`*Performance tracker*${campaign.trackerUrl ? "  ·  ✓ from the Hub" : ""}`),
+          md("*Performance tracker*"),
         ],
       },
       {
@@ -124,14 +124,13 @@ export function requestModal(
           type: "url_text_input",
           action_id: "tracker",
           placeholder: plain("Paste the Google Sheets link"),
-          ...(campaign.trackerUrl ? { initial_value: campaign.trackerUrl } : {}),
         },
       },
       {
         type: "context",
         elements: [
           { type: "image", image_url: DRIVE_ICON_URL, alt_text: "Google Drive" },
-          md(`*Content folder*${campaign.contentFolderUrl ? "  ·  ✓ from the Hub" : ""}`),
+          md("*Content folder*"),
         ],
       },
       {
@@ -141,8 +140,7 @@ export function requestModal(
         element: {
           type: "url_text_input",
           action_id: "folder",
-          placeholder: plain("Paste the Google Drive folder link"),
-          ...(campaign.contentFolderUrl ? { initial_value: campaign.contentFolderUrl } : {}),
+          placeholder: plain("Paste the folder that holds the athlete content"),
         },
       },
       {
@@ -299,6 +297,19 @@ export function reviewBlocks(recapId: string, name: string, previewUrl: string, 
         },
         { type: "button", action_id: ACTIONS.requestChanges, text: plain("Request changes"), value: recapId },
       ],
+    },
+  ];
+}
+
+export function reviewPointerBlocks(name: string, threadUrl?: string): any[] {
+  return [
+    {
+      type: "section",
+      text: md(
+        `👀 *Ready for review: ${name}*\n` +
+          (threadUrl ? `<${threadUrl}|Open the review in #campaign-recaps>` : "Open the review in the recaps channel thread.") +
+          ` to preview and publish.`,
+      ),
     },
   ];
 }
