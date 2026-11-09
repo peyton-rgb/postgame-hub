@@ -14,7 +14,7 @@ import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselC
 import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
 import { H, SLIDE, W, insetOf, type Layer, type Layout } from '@/lib/carousel/layout';
-import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
+import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
 
 type Athlete = { slug: string; name: string; campaign: string | null };
@@ -47,6 +47,8 @@ export default function CarouselEditor({
   const [, setTab] = useState<Tab>('layer'); // kept so older calls stay harmless
   const [view, setView] = useState<'all' | number>('all');
   const [drawer, setDrawer] = useState(false);
+  // When set, the drawer is in "Replace" mode for this layer (Swap button).
+  const [swapId, setSwapId] = useState<string | null>(null);
   const [time, setTime] = useState(0);
   const [seek, setSeek] = useState<{ t: number; n: number } | undefined>();
   const [maxH, setMaxH] = useState(720);
@@ -203,17 +205,23 @@ export default function CarouselEditor({
 
   // ---------- add a Frame.io clip from the picker ----------
   const [adding, setAdding] = useState<string | null>(null);
+  // Records a Frame.io file as usable media for this athlete and loads it.
+  const register = useCallback(async (c: PickerClip): Promise<{ key: string; media: CanvasMedia }> => {
+    const res = await fetch(`/api/carousels/${athlete.slug}/media`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fioId: c.id }),
+    });
+    const body = await res.json();
+    if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
+    setLoaded((cur) => (cur ? { ...cur, media: { ...cur.media, [body.key]: body.media } } : cur));
+    return body;
+  }, [athlete.slug]);
+
   const addClip = useCallback(async (c: PickerClip) => {
     if (!layout || adding) return;
     setAdding(c.id);
     flash(`Adding ${c.name}…`);
     try {
-      const res = await fetch(`/api/carousels/${athlete.slug}/media`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fioId: c.id }),
-      });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
-      setLoaded((cur) => (cur ? { ...cur, media: { ...cur.media, [body.key]: body.media } } : cur));
+      const body = await register(c);
       const sel = layout.layers.find((l) => l.id === selId);
       const slide = view !== 'all' ? view : sel ? Math.max(0, Math.min(4, Math.floor((sel.x + sel.w / 2) / SLIDE))) : 2;
       const r = newCard(layout, body.key, body.media, c.name.replace(/\.[^.]+$/, ''), slide);
@@ -224,7 +232,24 @@ export default function CarouselEditor({
     } finally {
       setAdding(null);
     }
-  }, [layout, selId, athlete.slug, adding, commit, flash, view]);
+  }, [layout, selId, register, adding, commit, flash, view]);
+
+  // Swap: put a different clip/photo into an existing layer's frame.
+  const swapClip = useCallback(async (id: string, c: PickerClip) => {
+    if (!layout || adding) return;
+    setAdding(c.id);
+    flash(`Swapping in ${c.name}…`);
+    try {
+      const body = await register(c);
+      const n = swapMedia(layout, id, body.key, c.name.replace(/\.[^.]+$/, ''));
+      setLayout(n); setSelId(id); commit(n);
+      flash(c.kind === 'video' ? 'Swapped — pick the moment in Clip section' : 'Swapped');
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not swap that clip');
+    } finally {
+      setAdding(null);
+    }
+  }, [layout, register, adding, commit, flash]);
 
   // Text boxes are measured from the page so handles/snapping fit the real glyphs.
   const measure = (L: Layer): Box => {
@@ -496,7 +521,7 @@ export default function CarouselEditor({
         </div>
         <div className="flex-1" />
         <button type="button" className={pill()} onClick={addText} disabled={!layout}>+ Text</button>
-        <button type="button" onClick={() => setDrawer((d) => !d)} aria-expanded={drawer}
+        <button type="button" onClick={() => { setSwapId(null); setDrawer((d) => !d || swapId !== null); }} aria-expanded={drawer && !swapId}
           className={`grid h-9 place-items-center rounded-full px-4 text-[11px] font-bold uppercase tracking-[.12em] text-white ${drawer ? 'bg-accent/70' : 'bg-accent'}`}>
           + Add from Frame.io
         </button>
@@ -559,7 +584,9 @@ export default function CarouselEditor({
 
           {drawer && (
             <ClipPicker slug={athlete.slug} firstName={firstName} busyId={adding}
-              onPick={async (c) => { await addClip(c); setDrawer(false); }} onClose={() => setDrawer(false)} />
+              replacing={swapId ? layout?.layers.find((l) => l.id === swapId)?.name ?? 'this layer' : null}
+              onPick={async (c) => { if (swapId) await swapClip(swapId, c); else await addClip(c); setDrawer(false); setSwapId(null); }}
+              onClose={() => { setDrawer(false); setSwapId(null); }} />
           )}
 
           <p className="text-[12px] leading-relaxed text-ink-4">
@@ -581,7 +608,8 @@ export default function CarouselEditor({
                 frameMode={frameMode} setFrameMode={setFrameMode}
                 canCutout={!!(selected && media[selected.media]?.cutout && media[media[selected.media]!.cutout!])}
                 hasPair={!!(selected && layout && pairOf(layout, selected.id).length > 1)}
-                onCutout={cutout} onPair={() => selected && layout && selectMany(pairOf(layout, selected.id))} />
+                onCutout={cutout} onPair={() => selected && layout && selectMany(pairOf(layout, selected.id))}
+                onSwap={() => { if (selected) { setSwapId(selected.id); setDrawer(true); } }} />
             )}
           </div>
           {layout && (

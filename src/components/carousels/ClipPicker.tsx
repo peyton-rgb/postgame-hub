@@ -33,12 +33,15 @@ export default function ClipPicker({
   firstName,
   onPick,
   onClose,
+  replacing,
   busyId,
 }: {
   slug: string;
   firstName: string;
   onPick: (clip: PickerClip) => void;
   onClose?: () => void;
+  /** Set when the drawer is picking a replacement for an existing layer. */
+  replacing?: string | null;
   busyId?: string | null;
 }) {
   const [data, setData] = useState<Payload | null>(null);
@@ -105,7 +108,7 @@ export default function ClipPicker({
         onMouseLeave={() => setHover(null)}
         onFocus={() => setHover(c.id)}
         onBlur={() => setHover(null)}
-        aria-label={`Add ${short(c.name)} to the selected slide`}
+        aria-label={replacing ? `Swap in ${short(c.name)}` : `Add ${short(c.name)} to the selected slide`}
         disabled={!!busyId}
         className={`group flex w-full flex-col gap-1.5 text-left disabled:cursor-wait ${busyId === c.id ? 'opacity-50' : ''}`}
       >
@@ -139,7 +142,7 @@ export default function ClipPicker({
       className="flex w-full flex-col gap-3 rounded-2xl border border-hairline-soft bg-surface-card p-4"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="text-[16px] font-bold text-ink-1">Add from Frame.io</h2>
+        <h2 className="text-[16px] font-bold text-ink-1">{replacing ? <>Replace <span className="text-accent">{replacing}</span></> : 'Add from Frame.io'}</h2>
         <p className="text-[13px] text-ink-4">
           Everything in {firstName}&apos;s Frame.io folder · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
           {!loading && <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
@@ -200,7 +203,7 @@ export default function ClipPicker({
           </>
         )}
       </div>
-      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Click a folder heading to fold it away.</p>
+      <p className="text-[12px] text-ink-4">{replacing ? 'Click a clip or photo to put it into that layer’s frame.' : 'Click a clip to drop it on the slide you’re viewing.'} Click a folder heading to fold it away.</p>
     </section>
   );
 }

@@ -33,7 +33,7 @@ function Slider({ name, k, min, max, step, value, onChange }: {
 }
 
 export default function LayerProps({
-  layer, media, onChange, onAct, frameMode, setFrameMode, canCutout, hasPair, onCutout, onPair,
+  layer, media, onChange, onAct, frameMode, setFrameMode, canCutout, hasPair, onCutout, onPair, onSwap,
 }: {
   layer: Layer | null;
   media: CanvasMedia | undefined;
@@ -45,6 +45,7 @@ export default function LayerProps({
   hasPair?: boolean;
   onCutout?: () => void;
   onPair?: () => void;
+  onSwap?: () => void;
 }) {
   const order = (
     <>
@@ -144,6 +145,7 @@ export default function LayerProps({
           <button type="button" aria-pressed={!frameMode} onClick={() => setFrameMode(false)} className={`${btn} ${!frameMode ? '!border-ink-1 !bg-ink-1 !text-ground' : ''}`}>Move box</button>
           <button type="button" aria-pressed={frameMode} onClick={() => setFrameMode(true)} className={`${btn} ${frameMode ? '!border-ink-1 !bg-ink-1 !text-ground' : ''}`}>Reframe</button>
           <button type="button" onClick={() => onChange({ cx: 0.5, cy: 0.5, zoom: 1 }, true)} className={btn}>Reset</button>
+          {onSwap && <button type="button" onClick={onSwap} className={btn} title="Replace this picture or clip, keeping its frame">Swap</button>}
         </div>
       )}
 

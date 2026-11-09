@@ -324,6 +324,22 @@ export function newCard(layout: Layout, key: string, m: MediaInfo, label: string
   return { layout: { ...layout, layers: arr }, id };
 }
 
+/** Swap a layer's picture/clip for another while keeping its frame, cropped
+ *  edges, zoom, look and stack position. The crop focus re-centres (a new shot
+ *  has its subject somewhere else) and a video's in-point/length reset to the
+ *  new clip's defaults. */
+export function swapMedia(layout: Layout, id: string, key: string, label: string): Layout {
+  return {
+    ...layout,
+    layers: layout.layers.map((L) => {
+      if (L.id !== id || L.type === 'text') return L;
+      const n: Layer = { ...L, media: key, name: label, cx: 0.5, cy: 0.5 };
+      delete n.vin; delete n.vlen;
+      return n;
+    }),
+  };
+}
+
 // ---- guides ----
 export function setGuides(layout: Layout, patch: Partial<{ v: number[]; h: number[]; show: boolean; lock: boolean }>): Layout {
   return { ...layout, guides: { ...guidesOf(layout), ...patch } };

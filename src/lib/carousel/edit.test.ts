@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyDrag, startBodyDrag, act, isBg, margins, moveLayerTo } from './edit.ts';
+import { applyDrag, startBodyDrag, act, isBg, margins, moveLayerTo, swapMedia } from './edit.ts';
 import type { Layout } from './layout.ts';
 
 const media = {
@@ -116,4 +116,20 @@ test('moveLayerTo: front-first index, everything else keeps its order', () => {
   assert.equal(ids(moveLayerTo(lay, 'c', 99)), 'cabd');  // past the end clamps
   assert.equal(moveLayerTo(lay, 'zz', 0), lay);          // unknown id: unchanged
   assert.equal(lay.layers.length, 4);                    // original untouched
+});
+
+test('swapMedia keeps frame, crop edges, zoom, look and order; resets focus and clip timing', () => {
+  const lay = { ...base(), layers: [
+    { id: 'a', media: 'bg', x: 0, y: 0, w: 1080, h: 1350 },
+    { id: 'v', name: 'Old clip', media: 'old', x: 100, y: 200, w: 600, h: 400, inset: { l: 20 }, zoom: 1.4, cx: 0.2, cy: 0.9, bw: true, bright: 1.2, vin: 3, vlen: 2 },
+    { id: 't', type: 'text' as const, media: '', text: 'HI', x: 0, y: 0, w: 10, h: 10 },
+  ] } as Layout;
+  const out = swapMedia(lay, 'v', 'fio_new', 'C9971');
+  const v = out.layers[1];
+  assert.deepEqual([v.media, v.name, v.x, v.y, v.w, v.h, v.zoom, v.bw, v.bright], ['fio_new', 'C9971', 100, 200, 600, 400, 1.4, true, 1.2]);
+  assert.deepEqual(v.inset, { l: 20 });
+  assert.deepEqual([v.cx, v.cy, v.vin, v.vlen], [0.5, 0.5, undefined, undefined]);
+  assert.deepEqual(out.layers.map((l) => l.id), ['a', 'v', 't']);
+  assert.equal(swapMedia(lay, 't', 'x', 'x').layers[2].media, '');   // text layers are left alone
+  assert.equal(lay.layers[1].media, 'old');                           // original untouched
 });
