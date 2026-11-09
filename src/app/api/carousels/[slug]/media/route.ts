@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       key,
       media: { ...info, hasFull: clip.kind === "video", stream: clip.kind === "video" ? "hls" : null,
         // Images use Frame.io's full-quality copy; the thumbnail is only a fallback.
-        src: clip.kind === "video" ? clip.play : clip.play ?? clip.thumb, thumb: clip.thumb, strip: null },
+        src: clip.kind === "video" ? clip.play : clip.play ?? clip.thumb, thumb: clip.thumb, strip: null, scrub: clip.scrub },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";

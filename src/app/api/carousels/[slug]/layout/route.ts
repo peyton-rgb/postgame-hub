@@ -56,7 +56,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
 
   // Clips added from Frame.io aren't copied: fetch fresh links for them.
   const fio = (mediaRows ?? []).filter((m) => (m.info as { source?: string }).source === "frameio");
-  const fioLinks: Record<string, { play: string | null; thumb: string | null }> = {};
+  const fioLinks: Record<string, Awaited<ReturnType<typeof frameioFileLinks>>> = {};
   if (fio.length) {
     try {
       const { data: conn } = await supabase.from("frameio_connection").select("account_id").eq("id", 1).maybeSingle();
@@ -76,7 +76,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     if (info.source === "frameio") {
       const l = fioLinks[m.media_key];
       const vid = info.kind === "video";
-      media[m.media_key] = { ...info, hasFull: vid, stream: vid ? "hls" : null, src: (vid ? l?.play : l?.play ?? l?.thumb) ?? null, thumb: l?.thumb ?? null, strip: null };
+      media[m.media_key] = { ...info, hasFull: vid, stream: vid ? "hls" : null, src: (vid ? l?.play : l?.play ?? l?.thumb) ?? null, thumb: l?.thumb ?? null, strip: null, scrub: l?.scrub ?? null };
       continue;
     }
     const f = m.files as Record<string, string>;

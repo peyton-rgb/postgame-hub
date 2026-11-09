@@ -13,7 +13,8 @@ import ClipPicker from './ClipPicker';
 import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselCanvas';
 import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
-import { H, SLIDE, W, insetOf, type Layer, type Layout } from '@/lib/carousel/layout';
+import ClipTimeline from './ClipTimeline';
+import { H, SLIDE, W, insetOf, vinOf, vlenOf, type Layer, type Layout } from '@/lib/carousel/layout';
 import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
 
@@ -566,6 +567,23 @@ export default function CarouselEditor({
               className="flex-1 accent-[#FAF8F5]" />
             <span className="w-[86px] text-right text-[12px] tabular-nums text-ink-3">{fmtT(time)} / 6.0s</span>
           </div>
+
+          {/* clip timeline: full width under the carousel while a video layer is selected */}
+          {selected && selected.type !== 'text' && (() => {
+            const m = media[selected.media];
+            if (!m || m.kind !== 'video' || !m.hasFull || !m.dur) return null;
+            return (
+              <section aria-label="Clip timeline" className="flex flex-col gap-2 rounded-2xl border border-hairline-soft bg-surface-card p-4">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h2 className="text-[15px] font-bold text-ink-1">Clip section</h2>
+                  <span className="min-w-0 truncate text-[13px] text-ink-3">{selected.name ?? m.label}</span>
+                  <button type="button" className={`${pill(false)} ml-auto`} onClick={() => patchLayer(selected.id, { vin: undefined, vlen: undefined }, true)}>Reset</button>
+                </div>
+                <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub}
+                  onChange={(s, c) => patchLayer(selected.id, s, c)} />
+              </section>
+            );
+          })()}
 
           {/* slide navigator */}
           {layout && (

@@ -40,9 +40,14 @@ type Asset = {
   parent_id?: string;
   view_url?: string;
   metadata?: MetaField[];
-  media_links?: Record<string, { url?: string | null; download_url?: string | null } | null>;
+  media_links?: Record<string, { url?: string | null; download_url?: string | null; metadata?: Record<string, number> | null } | null>;
   head_version?: Asset;
 };
+
+// Frame.io's frame grid for a video: one image holding `frames` thumbnails in
+// `tx` columns × `ty` rows, each `tw`×`th` with `pad` px between. The clip
+// timeline cuts frames out of it to show real frames along the bar.
+export type ScrubSheet = { url: string; frames: number; tx: number; ty: number; tw: number; th: number; pad: number };
 
 export type PickerClip = {
   id: string;
@@ -55,6 +60,7 @@ export type PickerClip = {
   height: number | null;
   thumb: string | null;
   play: string | null;
+  scrub: ScrubSheet | null;
   viewUrl: string | null;
   folder: string;
 };
@@ -85,7 +91,7 @@ export function isApproved(f: Asset): boolean {
   });
 }
 
-const INCLUDE = "metadata,media_links.thumbnail_high_quality,media_links.high_quality";
+const INCLUDE = "metadata,media_links.thumbnail_high_quality,media_links.high_quality,media_links.scrub_sheet";
 
 async function listChildren(token: string, accountId: string, folderId: string): Promise<Asset[]> {
   const out: Asset[] = [];
@@ -108,6 +114,11 @@ function toClip(f: Asset, source: PickerClip["source"], folder: string): PickerC
   const kind = mt.startsWith("video") ? "video" : mt.startsWith("image") ? "image" : null;
   if (!kind) return null;
   const link = (k: string) => file.media_links?.[k]?.url ?? file.media_links?.[k]?.download_url ?? null;
+  const sm = file.media_links?.scrub_sheet?.metadata;
+  const sUrl = link("scrub_sheet");
+  const scrub: ScrubSheet | null = kind === "video" && sUrl && sm?.frames && sm.tile_x && sm.thumb_width
+    ? { url: sUrl, frames: sm.frames, tx: sm.tile_x, ty: sm.tile_y ?? 1, tw: sm.thumb_width, th: sm.thumb_height ?? 90, pad: sm.padding ?? 0 }
+    : null;
   return {
     id: file.id,
     name: file.name,
@@ -119,6 +130,7 @@ function toClip(f: Asset, source: PickerClip["source"], folder: string): PickerC
     height: num(metaValue(file, "Resolution - Height")),
     thumb: link("thumbnail_high_quality"),
     play: link("high_quality"),
+    scrub,
     viewUrl: file.view_url ?? null,
     folder,
   };
@@ -174,5 +186,5 @@ export async function frameioFileLinks(token: string, accountId: string, fileId:
   if (!res.ok) throw new Error(`Frame.io file ${fileId} (${res.status})`);
   const body = (await res.json()) as { data?: Asset };
   const c = body.data ? toClip(body.data, "selected", "") : null;
-  return { play: c?.play ?? null, thumb: c?.thumb ?? null };
+  return { play: c?.play ?? null, thumb: c?.thumb ?? null, scrub: c?.scrub ?? null };
 }

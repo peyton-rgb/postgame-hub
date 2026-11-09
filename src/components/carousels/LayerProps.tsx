@@ -4,7 +4,6 @@
 // `onChange(patch, commit)`: commit=false while a slider moves, true on release.
 
 import { insetOf, vinOf, vlenOf, type Layer } from '@/lib/carousel/layout';
-import ClipTimeline from './ClipTimeline';
 import type { Action } from '@/lib/carousel/edit';
 import type { CanvasMedia } from './CarouselCanvas';
 
@@ -155,8 +154,9 @@ export default function LayerProps({
             <span className={label}>Clip section</span>
             <button type="button" className={btn} onClick={() => onChange({ vin: undefined, vlen: undefined }, true)}>Reset</button>
           </div>
-          <ClipTimeline dur={media.dur} vin={vinOf(L, media)} vlen={vlenOf(L, media)} strip={media.strip} thumb={media.thumb}
-            onChange={(s, c) => onChange(s, c)} />
+          <p className="text-[13px] text-ink-3">
+            Plays {vinOf(L, media).toFixed(1)}s → {(vinOf(L, media) + vlenOf(L, media)).toFixed(1)}s. Pick the moment on the timeline under the carousel.
+          </p>
         </div>
       ) : null}
 

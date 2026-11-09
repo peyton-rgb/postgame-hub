@@ -6,10 +6,11 @@
 // clock so the carousel loops as a whole. The editor passes `overlay` (handles,
 // snap lines, measurements) and pointer handlers; viewing needs neither.
 
+import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
 
-export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
+export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; scrub?: ScrubSheet | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
 
 // Frame.io streams video as HLS (a playlist of short chunks). Safari plays it
 // natively; Chrome needs hls.js. The shared clock still seeks/plays it.

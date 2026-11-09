@@ -18,6 +18,7 @@ export type PickerClip = {
   height: number | null;
   thumb: string | null;
   play: string | null;
+  scrub?: unknown;
   viewUrl: string | null;
   folder: string;
 };
