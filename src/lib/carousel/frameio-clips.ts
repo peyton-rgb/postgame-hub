@@ -4,7 +4,8 @@
 // Rule (Peyton, 2026-11-09): a clip can be added to an athlete's carousel
 // only if it sits in that athlete's SELECTED CLIPS folder, OR it is marked
 // Approved (the Frame.io "Status" field) anywhere inside the athlete's
-// Frame.io folder. Nothing is copied: we ask Frame.io each time and hand the
+// Frame.io folder. Photos (added 2026-11-09): every image in the athlete's
+// PHOTOS folder may be used too. Nothing is copied: we ask Frame.io each time and hand the
 // browser Frame.io's own short-lived play / thumbnail links.
 // ============================================================
 
@@ -19,7 +20,10 @@ const APPROVED_OPTION_ID = "b1caf85a-6387-4e93-b254-b72008058593";
 
 // Folders under an athlete that never hold carousel footage — skipped so a
 // walk stays fast (Frame.io allows ~100 calls a minute per user).
-const SKIP_FOLDERS = /^(photos?|stills|audio|music|vo|exports?|renders?)$/i;
+const SKIP_FOLDERS = /^(audio|music|vo|exports?|renders?)$/i;
+// The athlete's photo folder: every image in it (and its sub-folders, e.g.
+// Leica / Polaroid) is offered in the picker's Photos section.
+export const isPhotoFolder = (name: string) => /^(photos?|stills)$/i.test(name.trim());
 const MAX_DEPTH = 3;
 
 type MetaField = {
@@ -44,7 +48,7 @@ export type PickerClip = {
   id: string;
   name: string;
   kind: "video" | "image";
-  source: "selected" | "approved";
+  source: "selected" | "approved" | "photos";
   approved: boolean;
   duration: number | null;
   width: number | null;
@@ -127,10 +131,11 @@ export async function athletePickerClips(opts: {
   accountId: string;
   rootFolderId: string;
   selectedFolderId: string;
-}): Promise<{ selected: PickerClip[]; approvedElsewhere: PickerClip[] }> {
+}): Promise<{ selected: PickerClip[]; approvedElsewhere: PickerClip[]; photos: PickerClip[] }> {
   const { token, accountId, rootFolderId, selectedFolderId } = opts;
   const selected: PickerClip[] = [];
   const approvedElsewhere: PickerClip[] = [];
+  const photos: PickerClip[] = [];
   const seen = new Set<string>();
 
   for (const f of await listChildren(token, accountId, selectedFolderId)) {
@@ -139,21 +144,24 @@ export async function athletePickerClips(opts: {
     if (c && !seen.has(c.id)) { seen.add(c.id); selected.push(c); }
   }
 
-  const walk = async (folderId: string, path: string, depth: number) => {
+  // inPhotos: we're inside the PHOTOS folder, where every image counts.
+  const walk = async (folderId: string, path: string, depth: number, inPhotos: boolean) => {
     for (const f of await listChildren(token, accountId, folderId)) {
       if (f.type === "folder") {
         if (f.id === selectedFolderId || depth >= MAX_DEPTH || SKIP_FOLDERS.test(f.name.trim())) continue;
-        await walk(f.id, path ? `${path} › ${f.name}` : f.name, depth + 1);
+        await walk(f.id, path ? `${path} › ${f.name}` : f.name, depth + 1, inPhotos || isPhotoFolder(f.name));
         continue;
       }
       const c = toClip(f, "approved", path || "main folder");
-      if (c && c.approved && !seen.has(c.id)) { seen.add(c.id); approvedElsewhere.push(c); }
+      if (!c || seen.has(c.id)) continue;
+      if (inPhotos && c.kind === "image") { seen.add(c.id); photos.push({ ...c, source: "photos" }); }
+      else if (c.approved) { seen.add(c.id); approvedElsewhere.push(c); }
     }
   };
-  await walk(rootFolderId, "", 0);
+  await walk(rootFolderId, "", 0, false);
 
   const byName = (a: PickerClip, b: PickerClip) => a.name.localeCompare(b.name);
-  return { selected: selected.sort(byName), approvedElsewhere: approvedElsewhere.sort(byName) };
+  return { selected: selected.sort(byName), approvedElsewhere: approvedElsewhere.sort(byName), photos: photos.sort(byName) };
 }
 
 // One file's fresh play/thumbnail links (they expire, so they're fetched

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isApproved } from "./frameio-clips.ts";
+import { isApproved, isPhotoFolder } from "./frameio-clips.ts";
 
 const f = (value: unknown, by: "id" | "name" = "id") => ({
   id: "x", name: "clip.mp4", type: "file" as const,
@@ -20,4 +20,9 @@ test("other status is not approved", () => {
 });
 test("no status field is not approved", () => {
   assert.equal(isApproved({ id: "x", name: "a", type: "file", metadata: [] }), false);
+});
+
+test("PHOTOS folder names are recognised", () => {
+  for (const n of ["PHOTOS", "Photos", "photo", " STILLS "]) assert.equal(isPhotoFolder(n), true, n);
+  for (const n of ["SELECTED CLIPS", "CAMERA ORIGINALS", "Photo dump 2"]) assert.equal(isPhotoFolder(n), false, n);
 });

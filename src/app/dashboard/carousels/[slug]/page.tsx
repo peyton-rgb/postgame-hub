@@ -28,6 +28,7 @@ export default async function CarouselEditorPage({ params }: { params: { slug: s
   return (
     <CarouselEditor
       athlete={list[i]}
+      athletes={list.map((a) => ({ slug: a.slug, name: a.name }))}
       position={i + 1}
       total={list.length}
       prevSlug={list[(i - 1 + list.length) % list.length].slug}

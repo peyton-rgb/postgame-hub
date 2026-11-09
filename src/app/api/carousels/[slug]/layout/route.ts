@@ -76,7 +76,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     if (info.source === "frameio") {
       const l = fioLinks[m.media_key];
       const vid = info.kind === "video";
-      media[m.media_key] = { ...info, hasFull: vid, stream: vid ? "hls" : null, src: (vid ? l?.play : l?.thumb) ?? null, thumb: l?.thumb ?? null, strip: null };
+      media[m.media_key] = { ...info, hasFull: vid, stream: vid ? "hls" : null, src: (vid ? l?.play : l?.play ?? l?.thumb) ?? null, thumb: l?.thumb ?? null, strip: null };
       continue;
     }
     const f = m.files as Record<string, string>;

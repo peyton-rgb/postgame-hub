@@ -2,7 +2,8 @@
 
 // The content picker: only what Frame.io says this athlete may use —
 // everything in their SELECTED CLIPS folder, plus clips marked Approved
-// elsewhere in their folder. Data from /api/carousels/[slug]/clips.
+// elsewhere in their folder, plus every image in their PHOTOS folder.
+// Data from /api/carousels/[slug]/clips.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import HlsVideo from './HlsVideo';
@@ -11,7 +12,7 @@ export type PickerClip = {
   id: string;
   name: string;
   kind: 'video' | 'image';
-  source: 'selected' | 'approved';
+  source: 'selected' | 'approved' | 'photos';
   approved: boolean;
   duration: number | null;
   width: number | null;
@@ -22,7 +23,7 @@ export type PickerClip = {
   folder: string;
 };
 
-type Payload = { selected: PickerClip[]; approvedElsewhere: PickerClip[]; fetchedAt: string };
+type Payload = { selected: PickerClip[]; approvedElsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
 type Filter = 'all' | 'video' | 'image';
 
 const fmt = (s: number | null) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`);
@@ -72,12 +73,13 @@ export default function ClipPicker({
   const pass = (c: PickerClip) => filter === 'all' || c.kind === filter;
   const selected = useMemo(() => (data?.selected ?? []).filter(usable), [data]);
   const elsewhere = useMemo(() => (data?.approvedElsewhere ?? []).filter(usable), [data]);
-  const all = [...selected, ...elsewhere];
+  const photos = useMemo(() => (data?.photos ?? []).filter(usable), [data]);
+  const all = [...selected, ...elsewhere, ...photos];
   const count = (k: Filter) => all.filter((c) => k === 'all' || c.kind === k).length;
 
   const synced = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
 
-  const Card = (c: PickerClip) => (
+  const Card = (c: PickerClip, tall = false) => (
     <li key={c.id}>
       <button
         type="button"
@@ -90,7 +92,7 @@ export default function ClipPicker({
         disabled={!!busyId}
         className={`group flex w-full flex-col gap-1.5 text-left disabled:cursor-wait ${busyId === c.id ? 'opacity-50' : ''}`}
       >
-        <span className="relative block aspect-[16/10] overflow-hidden rounded-[10px] bg-surface-raised">
+        <span className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}>
           {hover === c.id && c.kind === 'video' ? (
             <HlsVideo src={c.play} poster={c.thumb} className="h-full w-full object-cover" />
           ) : c.thumb ? (
@@ -122,7 +124,7 @@ export default function ClipPicker({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <h2 className="text-[16px] font-bold text-ink-1">Add from Frame.io</h2>
         <p className="text-[13px] text-ink-4">
-          {firstName}&apos;s SELECTED CLIPS + Approved · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
+          {firstName}&apos;s SELECTED CLIPS, Approved + PHOTOS · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
           {!loading && <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
         </p>
         {onClose && <button type="button" onClick={onClose} className="ml-auto min-h-[32px] rounded-full border border-hairline-soft px-3 text-[11px] font-bold uppercase tracking-[.12em] text-ink-2 hover:text-ink-1">Close</button>}
@@ -160,22 +162,37 @@ export default function ClipPicker({
             <h3 className="mb-2 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
               Selected clips <span className="font-normal text-ink-4">{selected.filter(pass).length}</span>
             </h3>
-            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{selected.filter(pass).map(Card)}</ul>
+            <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{selected.filter(pass).map((c) => Card(c))}</ul>
 
             <h3 className="mb-2 mt-5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
               Approved in other folders <span className="font-normal text-ink-4">{elsewhere.filter(pass).length}</span>
             </h3>
             {elsewhere.filter(pass).length ? (
-              <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{elsewhere.filter(pass).map(Card)}</ul>
+              <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6">{elsewhere.filter(pass).map((c) => Card(c))}</ul>
             ) : (
               <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">
                 None right now. Mark a clip Approved anywhere in {firstName}&apos;s Frame.io folder and it shows up here.
               </p>
             )}
+
+            {filter !== 'video' && (
+              <>
+                <h3 className="mb-2 mt-5 flex items-baseline gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-ink-1">
+                  Photos <span className="font-normal text-ink-4">{photos.length}</span>
+                </h3>
+                {photos.length ? (
+                  <ul className="grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-8">{photos.map((c) => Card(c, true))}</ul>
+                ) : (
+                  <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">
+                    No photos yet. Put images in a PHOTOS folder inside {firstName}&apos;s Frame.io folder and they show up here.
+                  </p>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
-      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Only clips in SELECTED CLIPS or marked Approved in Frame.io can be added.</p>
+      <p className="text-[12px] text-ink-4">Click a clip to drop it on the slide you&apos;re viewing. Only files in SELECTED CLIPS or PHOTOS, or marked Approved in Frame.io, can be added.</p>
     </section>
   );
 }

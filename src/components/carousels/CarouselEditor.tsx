@@ -6,6 +6,8 @@
 // also kept as a version. Behaviour follows the old artifact (lib/carousel/edit).
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import AthleteSwitcher, { type AthleteOption } from './AthleteSwitcher';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ClipPicker from './ClipPicker';
 import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselCanvas';
@@ -21,10 +23,13 @@ type SaveState = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
 type Tab = 'layer' | 'layers' | 'add';
 
 export default function CarouselEditor({
-  athlete, position, total, prevSlug, nextSlug,
+  athlete, athletes, position, total, prevSlug, nextSlug,
 }: {
-  athlete: Athlete; position: number; total: number; prevSlug: string; nextSlug: string;
+  athlete: Athlete; athletes: AthleteOption[]; position: number; total: number; prevSlug: string; nextSlug: string;
 }) {
+  const router = useRouter();
+  // The change waiting on the 1.2s autosave timer, if any (see goTo).
+  const pending = useRef<Layout | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layout, setLayout] = useState<Layout | null>(null);
@@ -120,8 +125,17 @@ export default function CarouselEditor({
     bump((n) => n + 1);
     setSave((v) => (v.state === 'conflict' ? v : { ...v, state: 'unsaved' }));
     window.clearTimeout(saveTimer.current);
-    saveTimer.current = window.setTimeout(() => doSave(next), 1200);
+    pending.current = next;
+    saveTimer.current = window.setTimeout(() => { pending.current = null; doSave(next); }, 1200);
   }, [doSave]);
+
+  // Switch athlete — but save any change still waiting on the timer first, so
+  // it lands on this athlete's carousel and isn't lost.
+  const goTo = useCallback(async (slug: string) => {
+    const p = pending.current;
+    if (p) { window.clearTimeout(saveTimer.current); pending.current = null; await doSave(p); }
+    router.push(`/dashboard/carousels/${slug}`);
+  }, [doSave, router]);
 
   // Don't lose a pending save when leaving the page.
   useEffect(() => {
@@ -448,9 +462,9 @@ export default function CarouselEditor({
           {athlete.campaign ?? "Raising Cane's Basketball 2027"} · IG feed carousel
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <Link href={`/dashboard/carousels/${prevSlug}`} aria-label="Previous athlete" className={arrow}>‹</Link>
-          <h1 className="text-[28px] font-bold leading-tight text-ink-1 sm:text-[30px]">{athlete.name}</h1>
-          <Link href={`/dashboard/carousels/${nextSlug}`} aria-label="Next athlete" className={arrow}>›</Link>
+          <button type="button" onClick={() => goTo(prevSlug)} aria-label="Previous athlete" className={arrow}>‹</button>
+          <AthleteSwitcher current={athlete} athletes={athletes} onGo={goTo} />
+          <button type="button" onClick={() => goTo(nextSlug)} aria-label="Next athlete" className={arrow}>›</button>
           <span className="text-[14px] text-ink-3">{position} of {total}</span>
           <span role="status" className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[.14em] ${
             save.state === 'error' || save.state === 'conflict' ? 'border-status-bad/50 text-status-bad-ink' : 'border-hairline-soft text-ink-3'}`}>
