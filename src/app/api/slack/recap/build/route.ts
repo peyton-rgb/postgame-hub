@@ -30,7 +30,7 @@ import {
   writeRequestState,
 } from "@/lib/slack-recap/build";
 import { getCampaignForRequest } from "@/lib/slack-recap/data";
-import { displayName, failedBlocks, reviewBlocks } from "@/lib/slack-recap/views";
+import { displayName, failedBlocks, reviewBlocks, reviewPointerBlocks } from "@/lib/slack-recap/views";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -79,22 +79,30 @@ async function work(body: WorkerBody): Promise<void> {
       return;
     }
 
-    // Done — swap "Building…" for the review message.
+    // Done — post the full review (preview link + Publish / Request changes)
+    // in the channel thread under the request, and point the requester's DM at it.
     const summary = await summarize(body.recapId, extraWarnings);
     const next = await writeRequestState(body.recapId, { status: "review", summary });
     const blocks = reviewBlocks(body.recapId, name, editorUrl(body.recapId), summary);
     const text = `Ready for review: ${name}`;
-    if (next.dm_channel && next.dm_ts) {
-      await slack("chat.update", { channel: next.dm_channel, ts: next.dm_ts, text, blocks });
-    } else if (next.requested_by) {
-      await slack("chat.postMessage", { channel: next.requested_by, text, blocks, unfurl_links: false });
+
+    let threadUrl: string | undefined;
+    const review = await slack("chat.postMessage", {
+      channel: RECAP_CHANNEL_ID,
+      ...(next.channel_ts ? { thread_ts: next.channel_ts } : {}),
+      text: `<@${next.requested_by}> ${text}`,
+      blocks: [{ type: "section", text: { type: "mrkdwn", text: `<@${next.requested_by}> your draft is ready.` } }, ...blocks],
+      unfurl_links: false,
+    });
+    if (review.ok) {
+      const link = await slack("chat.getPermalink", { channel: RECAP_CHANNEL_ID, message_ts: review.ts });
+      if (link.ok) threadUrl = link.permalink;
     }
-    if (next.channel_ts) {
-      await slack("chat.postMessage", {
-        channel: RECAP_CHANNEL_ID,
-        thread_ts: next.channel_ts,
-        text: `Draft ready. Waiting on <@${next.requested_by}> to review and publish.`,
-      });
+    const pointer = reviewPointerBlocks(name, threadUrl);
+    if (next.dm_channel && next.dm_ts) {
+      await slack("chat.update", { channel: next.dm_channel, ts: next.dm_ts, text, blocks: pointer });
+    } else if (next.requested_by) {
+      await slack("chat.postMessage", { channel: next.requested_by, text, blocks: pointer, unfurl_links: false });
     }
   } catch (e: any) {
     const reason = String(e?.message || e);
