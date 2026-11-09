@@ -4,6 +4,7 @@
 -- carousel_layout_versions holds one row per save (the full layout as it was
 -- saved), so any earlier state of an athlete's carousel can be restored.
 -- Seeded with each layout as imported from the old artifact (migration 100).
+-- Applied to production 2026-11-09 (36 rows seeded, all matching).
 -- ============================================================
 
 create table if not exists public.carousel_layout_versions (
