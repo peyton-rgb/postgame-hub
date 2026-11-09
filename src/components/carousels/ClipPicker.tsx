@@ -110,7 +110,7 @@ export default function ClipPicker({
   );
 
   return (
-    <aside
+    <section
       aria-label="Content picker"
       className="flex w-full flex-col gap-4 rounded-2xl border border-hairline-soft bg-surface-card p-5 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)]"
     >
@@ -177,6 +177,6 @@ export default function ClipPicker({
       <p className="text-[13px] leading-relaxed text-ink-4">
         Only clips in SELECTED CLIPS or marked Approved in Frame.io can be added.
       </p>
-    </aside>
+    </section>
   );
 }
