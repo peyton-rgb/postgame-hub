@@ -365,6 +365,17 @@ export function pairOf(layout: Layout, id: string) {
   return [L.id, ...layout.layers.filter((o) => o.id !== L.id && o.x === L.x && o.y === L.y && o.w === L.w && o.h === L.h).map((o) => o.id)];
 }
 
+/** Move one layer to a new spot in the stack. `displayIndex` counts in the
+ *  Layers list's order — 0 is the front-most layer (the end of `layers`). */
+export function moveLayerTo(layout: Layout, id: string, displayIndex: number): Layout {
+  const shown = layout.layers.slice().reverse();
+  const from = shown.findIndex((l) => l.id === id);
+  if (from < 0) return layout;
+  const [L] = shown.splice(from, 1);
+  shown.splice(Math.max(0, Math.min(shown.length, displayIndex)), 0, L);
+  return { ...layout, layers: shown.reverse() };
+}
+
 /** Remove several layers at once. */
 export function removeLayers(layout: Layout, ids: string[]): Layout {
   return { ...layout, layers: layout.layers.filter((l) => !ids.includes(l.id)) };

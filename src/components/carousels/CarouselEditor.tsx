@@ -14,7 +14,7 @@ import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselC
 import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
 import { H, SLIDE, W, insetOf, type Layer, type Layout } from '@/lib/carousel/layout';
-import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, newCard, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
+import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
 
 type Athlete = { slug: string; name: string; campaign: string | null };
@@ -598,7 +598,8 @@ export default function CarouselEditor({
                   if (L && view !== 'all' && L.type !== 'text') setView(Math.max(0, Math.min(4, Math.floor((L.x + L.w / 2) / SLIDE))));
                 }}
                 onToggle={(id, k) => { const L = layout.layers.find((l) => l.id === id); if (L) patchLayer(id, { [k]: !L[k] }, true); }}
-                onMove={(id, dir) => runAct(dir, id)} />
+                onMove={(id, dir) => runAct(dir, id)}
+                onReorder={(id, to) => { if (!layout) return; const n = moveLayerTo(layout, id, to); setLayout(n); commit(n); }} />
             </div>
           )}
         </section>

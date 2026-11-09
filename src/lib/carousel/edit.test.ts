@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyDrag, startBodyDrag, act, isBg, margins } from './edit.ts';
+import { applyDrag, startBodyDrag, act, isBg, margins, moveLayerTo } from './edit.ts';
 import type { Layout } from './layout.ts';
 
 const media = {
@@ -104,4 +104,16 @@ test('guides snap to slide edges and centres; new text is centred on its slide',
   assert.equal(snapGuide(base(), 'v', 1700, 0.2), 1700);
   const t = newText(base(), 1);
   assert.equal(t.layout.layers.at(-1)!.x, 1620);
+});
+
+test('moveLayerTo: front-first index, everything else keeps its order', () => {
+  const L = (id: string) => ({ id, media: 'bg', x: 0, y: 0, w: 10, h: 10 });
+  const lay = { ...base(), layers: ['a', 'b', 'c', 'd'].map(L) } as Layout; // shown: d c b a
+  const ids = (l: Layout) => l.layers.map((x) => x.id).join('');
+  assert.equal(ids(moveLayerTo(lay, 'a', 0)), 'bcda');   // back-most to front
+  assert.equal(ids(moveLayerTo(lay, 'd', 3)), 'dabc');   // front to back
+  assert.equal(ids(moveLayerTo(lay, 'b', 1)), 'acbd');   // into second place
+  assert.equal(ids(moveLayerTo(lay, 'c', 99)), 'cabd');  // past the end clamps
+  assert.equal(moveLayerTo(lay, 'zz', 0), lay);          // unknown id: unchanged
+  assert.equal(lay.layers.length, 4);                    // original untouched
 });
