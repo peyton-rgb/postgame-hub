@@ -7,6 +7,7 @@
 -- athlete's main folder (the SELECTED folder's parent, looked up live unless
 -- frameio_root_folder_id is filled in). Staff-only, like frameio_connection.
 -- New table + seed rows only; nothing existing changes.
+-- Applied to production (xqaybwhpgxillpbbqtks) 2026-11-09.
 -- ============================================================
 
 create table if not exists public.carousel_athletes (
