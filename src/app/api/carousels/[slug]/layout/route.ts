@@ -38,6 +38,12 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     .select("media_key, info, files")
     .in("media_key", keys.length ? keys : ["-"]);
   if (mErr) return NextResponse.json({ error: mErr.message }, { status: 500 });
+  // Also load each photo's cutout (if one exists) so "Make cutout copy" can offer it.
+  const cutKeys = Array.from(new Set((mediaRows ?? []).map((m) => (m.info as { cutout?: string }).cutout).filter((k): k is string => !!k && !keys.includes(k))));
+  if (cutKeys.length) {
+    const { data: cuts } = await supabase.from("carousel_media").select("media_key, info, files").in("media_key", cutKeys);
+    mediaRows?.push(...(cuts ?? []));
+  }
 
   // One signing call for every file path the layout needs.
   const paths = Array.from(new Set((mediaRows ?? []).flatMap((m) => Object.values(m.files as Record<string, string>))));
