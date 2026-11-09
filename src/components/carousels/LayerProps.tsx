@@ -3,7 +3,8 @@
 // The selected layer's settings — same controls as the old artifact's panel.
 // `onChange(patch, commit)`: commit=false while a slider moves, true on release.
 
-import { insetOf, type Layer } from '@/lib/carousel/layout';
+import { insetOf, vinOf, vlenOf, type Layer } from '@/lib/carousel/layout';
+import ClipTimeline from './ClipTimeline';
 import type { Action } from '@/lib/carousel/edit';
 import type { CanvasMedia } from './CarouselCanvas';
 
@@ -76,6 +77,17 @@ export default function LayerProps({
           <button type="button" onClick={() => onChange({ cx: 0.5, cy: 0.5, zoom: 1 }, true)} className={btn}>Reset</button>
         </div>
       )}
+
+      {media.kind === 'video' && media.hasFull && media.dur ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-hairline-soft p-3">
+          <div className="flex items-center justify-between">
+            <span className={label}>Clip section</span>
+            <button type="button" className={btn} onClick={() => onChange({ vin: undefined, vlen: undefined }, true)}>Reset</button>
+          </div>
+          <ClipTimeline dur={media.dur} vin={vinOf(L, media)} vlen={vlenOf(L, media)} strip={media.strip} thumb={media.thumb}
+            onChange={(s, c) => onChange(s, c)} />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-2">
         {numField('x', 'X')}{numField('y', 'Y')}{numField('w', 'Width')}{numField('h', 'Height')}

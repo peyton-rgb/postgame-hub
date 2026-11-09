@@ -7,7 +7,7 @@ const media = {
   bg: { kind: 'image' as const, w: 3840, h: 2160 },
   card: { kind: 'image' as const, w: 1920, h: 1080, cutout: 'cut' },
   cut: { kind: 'cutout' as const, w: 1920, h: 1080 },
-  logo: { kind: 'logo' as const, w: 2078, h: 1027 },
+  logo_white: { kind: 'logo' as const, w: 2078, h: 1027 },
 };
 const base = (): Layout => ({
   canvas: { w: 5400, h: 1350, slides: 5, duration: 6 },
@@ -16,7 +16,7 @@ const base = (): Layout => ({
     { id: 'bg', media: 'bg', x: 0, y: 0, w: 1080, h: 1350, zoom: 1.5 },
     { id: 'card', media: 'card', x: 1200, y: 300, w: 600, h: 400 },
     { id: 'cut', media: 'cut', x: 2300, y: 300, w: 600, h: 400 },
-    { id: 'logo', media: 'logo', x: 4600, y: 547, w: 520, h: 257 },
+    { id: 'logo', media: 'logo_white', x: 4600, y: 547, w: 520, h: 257 },
   ],
 });
 
@@ -64,4 +64,19 @@ test('panel actions: fill slide, duplicate, delete', () => {
 test('equal-gap measurement turns on when both sides match', () => {
   assert.equal(margins({ x: 1180, y: 100, w: 880, h: 1150 }).hEq, true);
   assert.equal(margins({ x: 1180, y: 100, w: 800, h: 1150 }).hEq, false);
+});
+
+import { setSection, zoomRange, newCard } from './edit.ts';
+test('clip sections stay 1–6s, inside the clip, on whole frames', () => {
+  assert.deepEqual(setSection(174.125, 101.375, 9), { vin: 101.375, vlen: 6 });
+  assert.deepEqual(setSection(10, 9.5, 3), { vin: 7, vlen: 3 });
+  assert.deepEqual(setSection(10, -2, 0.2), { vin: 0, vlen: 1 });
+  assert.deepEqual(zoomRange(174.125, 101.375, 6), [92.375, 116.375]);
+});
+test('a new card lands centred on the chosen slide, under the logo', () => {
+  const L = base();
+  const r = newCard(L, 'fio_x', { kind: 'video', w: 1920, h: 1080 }, 'C001', 2);
+  const c = r.layout.layers.find((l) => l.id === r.id)!;
+  assert.deepEqual([c.x, c.w, c.h], [2160 + 540 - 340, 680, 383]);
+  assert.equal(r.layout.layers[r.layout.layers.length - 1].id, 'logo');
 });

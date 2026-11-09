@@ -13,6 +13,8 @@
 import { NextResponse } from "next/server";
 import { getHubStaff } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
+import { getFrameioAccessToken } from "@/lib/frameio";
+import { frameioFileLinks } from "@/lib/carousel/frameio-clips";
 
 export const dynamic = "force-dynamic";
 const LINK_SECONDS = 60 * 60 * 6; // links outlive a long editing session
@@ -46,8 +48,31 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     for (const u of urls ?? []) if (u.path && u.signedUrl) signed[u.path] = u.signedUrl;
   }
 
+  // Clips added from Frame.io aren't copied: fetch fresh links for them.
+  const fio = (mediaRows ?? []).filter((m) => (m.info as { source?: string }).source === "frameio");
+  const fioLinks: Record<string, { play: string | null; thumb: string | null }> = {};
+  if (fio.length) {
+    try {
+      const { data: conn } = await supabase.from("frameio_connection").select("account_id").eq("id", 1).maybeSingle();
+      const token = await getFrameioAccessToken(supabase);
+      await Promise.all(fio.map(async (m) => {
+        const id = (m.info as { fio_id: string }).fio_id;
+        try { fioLinks[m.media_key] = await frameioFileLinks(token, conn!.account_id, id); } catch { /* shown as missing */ }
+      }));
+    } catch (e) {
+      console.error("[carousel-layout] Frame.io links", e instanceof Error ? e.message : e);
+    }
+  }
+
   const media: Record<string, unknown> = {};
   for (const m of mediaRows ?? []) {
+    const info = m.info as { source?: string; kind?: string };
+    if (info.source === "frameio") {
+      const l = fioLinks[m.media_key];
+      const vid = info.kind === "video";
+      media[m.media_key] = { ...info, hasFull: vid, stream: vid ? "hls" : null, src: (vid ? l?.play : l?.thumb) ?? null, thumb: l?.thumb ?? null, strip: null };
+      continue;
+    }
     const f = m.files as Record<string, string>;
     const link = (k: string) => (f[k] ? signed[f[k]] ?? null : null);
     media[m.media_key] = { ...(m.info as object), hasFull: !!f.full, src: link("full") ?? link("proxy"), thumb: link("thumb"), strip: link("strip") };

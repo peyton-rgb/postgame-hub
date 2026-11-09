@@ -3,7 +3,7 @@
 // same. Pure functions: they take the layout + a drag's starting state and
 // return the updated layer. No "@/" imports so `node --test` can run them.
 
-import { H, SLIDE, W, insetOf, mediaBox, visRect, type Layer, type Layout, type MediaInfo } from './layout.ts';
+import { DUR, H, SLIDE, W, insetOf, mediaBox, visRect, type Layer, type Layout, type MediaInfo } from './layout.ts';
 
 export const N = 5; // slides
 export type Media = Record<string, MediaInfo>;
@@ -233,4 +233,38 @@ export function act(layout: Layout, id: string, a: Action): { layout: Layout; se
     arr[i] = a === 'fill' ? { ...L, x: k * SLIDE, w: SLIDE, y: 0, h: H } : { ...L, x: 0, w: W, y: 0, h: H };
   }
   return { layout: { ...layout, layers: arr }, select };
+}
+
+// ---- clip section (which part of a long clip plays in the 6s loop) ----
+
+/** Clamp a section to 1–6s inside the clip, snapped to 1/24s frames (as the artifact did). */
+export function setSection(dur: number, a: number, len: number) {
+  len = Math.max(1, Math.min(DUR, len, dur));
+  a = Math.max(0, Math.min(dur - len, a));
+  return { vin: Math.round(a * 24) / 24, vlen: Math.round(len * 24) / 24 };
+}
+/** The zoomed timeline shows 24s around the section. */
+export function zoomRange(dur: number, vin: number, vlen: number): [number, number] {
+  const span = Math.min(dur, 24), mid = vin + vlen / 2;
+  const a = Math.max(0, Math.min(dur - span, mid - span / 2));
+  return [a, a + span];
+}
+export const fmtT = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+
+// ---- adding a new card (from the picker) ----
+export function newCard(layout: Layout, key: string, m: MediaInfo, label: string, slide: number): { layout: Layout; id: string } {
+  const r = m.w / m.h;
+  let w: number, h: number;
+  if (r >= 1) { w = 680; h = Math.round(680 / r); } else { h = 820; w = Math.round(820 * r); }
+  const cx = slide * SLIDE + SLIDE / 2, cy = H / 2;
+  const id = `card_${rid()}`;
+  const L: Layer = {
+    id, name: label, media: key, x: Math.round(cx - w / 2), y: Math.round(Math.max(40, Math.min(H - h - 40, cy - h / 2))), w, h,
+    cx: 0.5, cy: 0.5, zoom: 1, bw: false, bright: 1, contrast: 1, sat: 1, blur: 0, shadow: true,
+  };
+  // in front of the cards, under logos
+  const arr = layout.layers.slice();
+  const top = arr.findIndex((o) => o.type === 'text' || o.media === 'logo_white' || o.media?.startsWith('logo'));
+  if (top < 0) arr.push(L); else arr.splice(top, 0, L);
+  return { layout: { ...layout, layers: arr }, id };
 }

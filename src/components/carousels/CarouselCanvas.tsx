@@ -9,7 +9,27 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
 
-export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; hasFull?: boolean };
+export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
+
+// Frame.io streams video as HLS (a playlist of short chunks). Safari plays it
+// natively; Chrome needs hls.js. The shared clock still seeks/plays it.
+function StreamVideo({ id, src, style }: { id: string; src: string | null; style: React.CSSProperties }) {
+  const v = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = v.current;
+    if (!el || !src) return;
+    let destroy: (() => void) | undefined;
+    if (el.canPlayType('application/vnd.apple.mpegurl')) el.src = src;
+    else import('hls.js').then(({ default: Hls }) => {
+      if (!Hls.isSupported()) return;
+      const hls = new Hls({ maxBufferLength: 12 });
+      hls.loadSource(src); hls.attachMedia(el);
+      destroy = () => hls.destroy();
+    });
+    return () => { destroy?.(); el.removeAttribute('src'); el.load(); };
+  }, [src]);
+  return <video ref={v} data-id={id} muted loop playsInline preload="auto" style={style} />;
+}
 export type CanvasHandle = { toStage: (clientX: number, clientY: number) => { x: number; y: number }; scale: number; el: HTMLDivElement | null };
 
 type Props = {
@@ -115,7 +135,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 cursor: onPointerDown ? (L.locked ? 'default' : 'move') : undefined,
               }}
             >
-              {m.kind === 'video' ? (
+              {m.kind === 'video' && m.stream === 'hls' ? (
+                <StreamVideo id={L.id} src={m.src} style={mediaStyle} />
+              ) : m.kind === 'video' ? (
                 <video data-id={L.id} src={m.src ?? undefined} muted loop playsInline preload="auto" style={mediaStyle} />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element

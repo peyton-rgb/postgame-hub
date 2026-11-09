@@ -11,8 +11,9 @@ import ClipPicker from './ClipPicker';
 import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselCanvas';
 import LayerProps from './LayerProps';
 import LayersList from './LayersList';
-import { H, W, insetOf, type Layer, type Layout } from '@/lib/carousel/layout';
-import { act, applyDrag, boxOf, guidesOf, margins, partnersOf, startBodyDrag, type Action, type Drag } from '@/lib/carousel/edit';
+import { H, SLIDE, W, insetOf, type Layer, type Layout } from '@/lib/carousel/layout';
+import { act, applyDrag, boxOf, guidesOf, margins, newCard, partnersOf, startBodyDrag, type Action, type Drag } from '@/lib/carousel/edit';
+import type { PickerClip } from './ClipPicker';
 
 type Athlete = { slug: string; name: string; campaign: string | null };
 type Loaded = { layout: Layout | null; media: Record<string, CanvasMedia>; savedAt?: string | null; updatedAt?: string | null };
@@ -137,6 +138,31 @@ export default function CarouselEditor({
     const r = act(layout, id, a);
     setLayout(r.layout); setSelId(r.select); commit(r.layout);
   }, [layout, selId, commit]);
+
+  // ---------- add a Frame.io clip from the picker ----------
+  const [adding, setAdding] = useState<string | null>(null);
+  const addClip = useCallback(async (c: PickerClip) => {
+    if (!layout || adding) return;
+    setAdding(c.id);
+    flash(`Adding ${c.name}…`);
+    try {
+      const res = await fetch(`/api/carousels/${athlete.slug}/media`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fioId: c.id }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
+      setLoaded((cur) => (cur ? { ...cur, media: { ...cur.media, [body.key]: body.media } } : cur));
+      const sel = layout.layers.find((l) => l.id === selId);
+      const slide = sel ? Math.max(0, Math.min(4, Math.floor((sel.x + sel.w / 2) / SLIDE))) : 2;
+      const r = newCard(layout, body.key, body.media, c.name.replace(/\.[^.]+$/, ''), slide);
+      setLayout(r.layout); setSelId(r.id); setTab('layer'); commit(r.layout);
+      flash(c.kind === 'video' ? `Added to slide ${slide + 1} — pick the moment in Clip section` : `Added to slide ${slide + 1}`);
+    } catch (e) {
+      flash(e instanceof Error ? e.message : 'Could not add that clip');
+    } finally {
+      setAdding(null);
+    }
+  }, [layout, selId, athlete.slug, adding, commit, flash]);
 
   // ---------- pointer: select / drag / handles ----------
   const onDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -335,7 +361,7 @@ export default function CarouselEditor({
           </div>
           <div className={tab === 'add' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
             <ClipPicker slug={athlete.slug} firstName={firstName}
-              onPick={(c) => flash(`Adding clips onto the canvas comes in the next batch — "${c.name}" is ready for it.`)} />
+              onPick={addClip} />
           </div>
         </section>
       </div>

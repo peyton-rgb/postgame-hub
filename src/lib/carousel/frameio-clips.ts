@@ -155,3 +155,14 @@ export async function athletePickerClips(opts: {
   const byName = (a: PickerClip, b: PickerClip) => a.name.localeCompare(b.name);
   return { selected: selected.sort(byName), approvedElsewhere: approvedElsewhere.sort(byName) };
 }
+
+// One file's fresh play/thumbnail links (they expire, so they're fetched
+// whenever a saved carousel that uses the file is opened).
+export async function frameioFileLinks(token: string, accountId: string, fileId: string) {
+  const url = `${FRAMEIO_API}/accounts/${accountId}/files/${fileId}?include=${encodeURIComponent(INCLUDE)}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!res.ok) throw new Error(`Frame.io file ${fileId} (${res.status})`);
+  const body = (await res.json()) as { data?: Asset };
+  const c = body.data ? toClip(body.data, "selected", "") : null;
+  return { play: c?.play ?? null, thumb: c?.thumb ?? null };
+}
