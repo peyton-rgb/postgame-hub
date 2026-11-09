@@ -246,6 +246,9 @@ export interface AthleteMetrics {
   campaign_tag?: string;
   headshot_url?: string;
   content_folder_url?: string;
+  // Staff-set: the athlete's post was paid-boosted. Shows a "Boosted" tag on
+  // their Top Performer card. Not in the tracker sheet — preserved on refresh.
+  boosted?: boolean;
 }
 
 export interface Athlete {
