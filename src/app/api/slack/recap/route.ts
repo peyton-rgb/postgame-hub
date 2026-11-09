@@ -83,6 +83,14 @@ export async function POST(req: Request) {
         return ok();
       case "view_submission":
         return await handleSubmission(payload);
+      // "Request a recap" global shortcut — lives in the message box's
+      // "+" / "/" menu so the form is reachable from any channel or DM,
+      // not just the pinned launcher post.
+      case "shortcut":
+        if (payload.callback_id === ACTIONS.openRequest) {
+          await slack("views.open", { trigger_id: payload.trigger_id, view: requestModal({}, null) });
+        }
+        return ok();
       default:
         return ok();
     }
