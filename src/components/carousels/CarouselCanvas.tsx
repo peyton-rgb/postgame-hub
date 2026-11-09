@@ -1,30 +1,47 @@
 'use client';
 
-// Draws a saved carousel exactly the way the old artifact did: a 5400×1350
-// strip (five 1080×1350 slides) scaled down to fit, every layer positioned by
-// the shared rules in lib/carousel/layout, and every clip locked to one
-// 6-second clock so the carousel loops as a whole.
+// Draws a carousel exactly the way the old artifact did: a 5400×1350 strip
+// (five 1080×1350 slides) scaled down to fit, every layer positioned by the
+// shared rules in lib/carousel/layout, and every clip locked to one 6-second
+// clock so the carousel loops as a whole. The editor passes `overlay` (handles,
+// snap lines, measurements) and pointer handlers; viewing needs neither.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
 
-export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; hasFull?: boolean };
+export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; hasFull?: boolean };
+export type CanvasHandle = { toStage: (clientX: number, clientY: number) => { x: number; y: number }; scale: number; el: HTMLDivElement | null };
 
-export default function CarouselCanvas({
-  layout,
-  media,
-  playing,
-  showSeams = true,
-}: {
+type Props = {
   layout: Layout;
   media: Record<string, CanvasMedia>;
   playing: boolean;
   showSeams?: boolean;
-}) {
+  overlay?: (scale: number) => React.ReactNode;
+  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp?: (e: React.PointerEvent<HTMLDivElement>) => void;
+};
+
+const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
+  { layout, media, playing, showSeams = true, overlay, onPointerDown, onPointerMove, onPointerUp },
+  ref,
+) {
   const wrap = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.15);
   const clock = useRef({ t0: performance.now(), pausedAt: 0 });
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
+
+  useImperativeHandle(ref, () => ({
+    toStage: (cx, cy) => {
+      const r = stage.current!.getBoundingClientRect();
+      return { x: (cx - r.left) / scale, y: (cy - r.top) / scale };
+    },
+    scale,
+    el: stage.current,
+  }), [scale]);
 
   // Fit the 5400px strip to whatever width the page gives us.
   useEffect(() => {
@@ -35,17 +52,22 @@ export default function CarouselCanvas({
     return () => ro.disconnect();
   }, []);
 
-  const now = () => (playing ? (performance.now() - clock.current.t0) / 1000 : clock.current.pausedAt);
+  // Only clip choices/sections should force a re-seek — not every drag of a box.
+  const clipKey = useMemo(
+    () => layout.layers.map((l) => `${l.id}:${l.media}:${l.vin ?? ''}:${l.vlen ?? ''}`).join('|'),
+    [layout],
+  );
 
   // Keep every clip on the shared clock (same 0.12s tolerance as the artifact).
   useEffect(() => {
     const c = clock.current;
+    const now = () => (playing ? (performance.now() - c.t0) / 1000 : c.pausedAt);
     if (playing) c.t0 = performance.now() - c.pausedAt * 1000;
     else c.pausedAt = (performance.now() - c.t0) / 1000;
     const sync = (force = false) => {
       const t = now() % DUR;
       stage.current?.querySelectorAll('video').forEach((v) => {
-        const L = layout.layers.find((l) => l.id === v.dataset.id);
+        const L = layoutRef.current.layers.find((l) => l.id === v.dataset.id);
         if (!L) return;
         const m = media[L.media];
         const target = clipTime(L, m, t, !!m?.hasFull, v.duration);
@@ -59,17 +81,20 @@ export default function CarouselCanvas({
     sync(true);
     const id = window.setInterval(() => sync(), 250);
     return () => window.clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, layout, media]);
+  }, [playing, media, clipKey]);
 
   const layers = useMemo(() => layout.layers.filter((l): l is Layer => l.type !== 'text'), [layout]);
 
   return (
-    <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: H * scale }}>
+    <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: H * scale, touchAction: onPointerDown ? 'none' : undefined }}>
       <div
         ref={stage}
-        className="absolute left-0 top-0 bg-black"
+        className="absolute left-0 top-0 select-none bg-black"
         style={{ width: W, height: H, transform: `scale(${scale})`, transformOrigin: '0 0' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         {layers.map((L) => {
           const m = media[L.media];
@@ -82,10 +107,12 @@ export default function CarouselCanvas({
           return (
             <div
               key={L.id}
+              data-layer={L.id}
               title={L.name}
               style={{
                 position: 'absolute', overflow: 'hidden', display: L.hidden ? 'none' : undefined,
                 ...p.frame, boxShadow: p.shadowBox ? '0 18px 60px rgba(0,0,0,.55)' : undefined,
+                cursor: onPointerDown ? (L.locked ? 'default' : 'move') : undefined,
               }}
             >
               {m.kind === 'video' ? (
@@ -99,9 +126,12 @@ export default function CarouselCanvas({
         })}
         {showSeams &&
           [1, 2, 3, 4].map((k) => (
-            <div key={k} className="pointer-events-none absolute top-0 bg-white/75" style={{ left: k * SLIDE - 2, width: 4, height: H }} />
+            <div key={k} className="pointer-events-none absolute top-0 bg-white/75" style={{ left: k * SLIDE - 1 / scale, width: 2 / scale, height: H }} />
           ))}
+        {overlay?.(scale)}
       </div>
     </div>
   );
-}
+});
+
+export default CarouselCanvas;

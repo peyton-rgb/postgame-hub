@@ -4,7 +4,10 @@
 // One athlete's saved carousel: the layout (as carried over from the old
 // artifact, migration 100) plus, for every media key it uses, the media's
 // size/kind and short-lived signed links into the private `carousels` bucket.
-// Read-only.
+//
+// PUT saves a new layout. The client sends the `updatedAt` it loaded; if
+// someone saved in between, the save is refused (409) rather than silently
+// overwriting their work. Every save is also kept in carousel_layout_versions.
 // ============================================================
 
 import { NextResponse } from "next/server";
@@ -50,4 +53,44 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
     media[m.media_key] = { ...(m.info as object), hasFull: !!f.full, src: link("full") ?? link("proxy"), thumb: link("thumb"), strip: link("strip") };
   }
   return NextResponse.json({ layout: row.layout, savedAt: row.saved_at, updatedAt: row.updated_at, media });
+}
+
+type LayerIn = { id?: unknown; media?: unknown; x?: unknown; y?: unknown; w?: unknown; h?: unknown };
+function validLayout(l: unknown): l is { layers: LayerIn[] } {
+  if (!l || typeof l !== "object" || !Array.isArray((l as { layers?: unknown }).layers)) return false;
+  return (l as { layers: LayerIn[] }).layers.every(
+    (o) => typeof o.id === "string" && ["x", "y", "w", "h"].every((k) => Number.isFinite(o[k as keyof LayerIn] as number)),
+  );
+}
+
+export async function PUT(req: Request, { params }: { params: { slug: string } }) {
+  const staff = await getHubStaff();
+  if (!staff.ok) return NextResponse.json({ error: "Staff only" }, { status: 401 });
+  const body = await req.json().catch(() => null);
+  if (!body || !validLayout(body.layout)) return NextResponse.json({ error: "Invalid layout" }, { status: 400 });
+
+  const supabase = createLiveServiceSupabase();
+  const { data: row, error } = await supabase
+    .from("carousel_layouts")
+    .select("updated_at")
+    .eq("slug", params.slug)
+    .maybeSingle();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (row && body.baseUpdatedAt && row.updated_at !== body.baseUpdatedAt) {
+    return NextResponse.json({ error: "This carousel was saved somewhere else since you opened it. Reload to get the latest.", updatedAt: row.updated_at }, { status: 409 });
+  }
+
+  const now = new Date().toISOString();
+  const { error: vErr } = await supabase
+    .from("carousel_layout_versions")
+    .insert({ slug: params.slug, layout: body.layout, saved_by: staff.id, saved_at: now });
+  if (vErr) return NextResponse.json({ error: vErr.message }, { status: 500 });
+
+  const { data: saved, error: uErr } = await supabase
+    .from("carousel_layouts")
+    .upsert({ slug: params.slug, layout: body.layout, device: "Hub", saved_at: now, updated_at: now }, { onConflict: "slug" })
+    .select("updated_at, saved_at")
+    .single();
+  if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
+  return NextResponse.json({ ok: true, updatedAt: saved.updated_at, savedAt: saved.saved_at });
 }
