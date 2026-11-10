@@ -11,10 +11,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { Look } from '@/lib/carousel/grade';
 
 const N = 33;
-const VERT = `
+export const VERT = `
 attribute vec2 p; varying vec2 uv;
 void main(){ uv = vec2(p.x * .5 + .5, .5 - p.y * .5); gl_Position = vec4(p, 0., 1.); }`;
-const FRAG = `
+export const FRAG = `
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
 #else
@@ -32,7 +32,7 @@ void main(){
 }`;
 
 const lutImages = new Map<Look, Promise<HTMLImageElement>>();
-function loadLut(look: Look) {
+export function loadLut(look: Look) {
   let p = lutImages.get(look);
   if (!p) {
     p = new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = `/luts/${look}.png`; });

@@ -9,7 +9,8 @@
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
-import { lookFor } from '@/lib/carousel/grade';
+import { lookFor, type Look } from '@/lib/carousel/grade';
+import { useGraded } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
 
 export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; scrub?: ScrubSheet | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
@@ -32,6 +33,12 @@ function StreamVideo({ id, src, style, cors }: { id: string; src: string | null;
     return () => { destroy?.(); el.removeAttribute('src'); el.load(); };
   }, [src]);
   return <video ref={v} data-id={id} crossOrigin={cors ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={style} />;
+}
+// A video drawn as its thumbnail (slide previews), through its grade.
+function StillThumb({ url, look, style }: { url: string; look: Look | null; style: React.CSSProperties }) {
+  const src = useGraded(url, look, 1024);
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src ?? url} alt="" draggable={false} style={style} />;
 }
 export type CanvasHandle = { toStage: (clientX: number, clientY: number) => { x: number; y: number }; scale: number; el: HTMLDivElement | null };
 
@@ -185,10 +192,8 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
               }}
             >
               {m.kind === 'video' && still ? (
-                m.thumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.thumb} alt="" draggable={false} style={mediaStyle} />
-                ) : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
+                m.thumb ? <StillThumb url={m.thumb} look={look} style={mediaStyle} />
+                : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
               ) : m.kind === 'video' && m.stream === 'hls' ? (
                 <StreamVideo id={L.id} src={m.src} style={mediaStyle} cors={!!look} />
               ) : m.kind === 'video' ? (

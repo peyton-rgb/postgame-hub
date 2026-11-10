@@ -15,6 +15,7 @@ import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
 import ClipTimeline from './ClipTimeline';
 import GuidesPanel from './GuidesPanel';
+import { lookFor } from '@/lib/carousel/grade';
 import { H, SLIDE, W, insetOf, vinOf, vlenOf, type Layer, type Layout } from '@/lib/carousel/layout';
 import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
@@ -580,7 +581,7 @@ export default function CarouselEditor({
                   <span className="min-w-0 truncate text-[13px] text-ink-3">{selected.name ?? m.label}</span>
                   <button type="button" className={`${pill(false)} ml-auto`} onClick={() => patchLayer(selected.id, { vin: undefined, vlen: undefined }, true)}>Reset</button>
                 </div>
-                <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub}
+                <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub} look={lookFor(selected, m)}
                   onChange={(s, c) => patchLayer(selected.id, s, c)} />
               </section>
             );

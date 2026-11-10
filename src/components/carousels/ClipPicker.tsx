@@ -4,6 +4,8 @@
 // one section per folder (Selected clips, Main folder, Camera originals,
 // Photos…). Data from /api/carousels/[slug]/clips.
 
+import { autoLook, type Look } from '@/lib/carousel/grade';
+import { useGraded } from './gradeImage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import HlsVideo from './HlsVideo';
 
@@ -22,6 +24,13 @@ export type PickerClip = {
   viewUrl: string | null;
   folder: string;
 };
+
+// A tile's picture, shown through the clip's Andres grade once it's ready.
+function GradedThumb({ url, look }: { url: string; look: Look | null }) {
+  const src = useGraded(url, look, 640);
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src ?? url} alt="" loading="lazy" className="h-full w-full object-cover" />;
+}
 
 type Payload = { selected: PickerClip[]; elsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
 type Filter = 'all' | 'video' | 'image';
@@ -118,7 +127,7 @@ export default function ClipPicker({
             <HlsVideo src={c.play} poster={c.thumb} className="h-full w-full object-cover" />
           ) : c.thumb ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={c.thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+            <GradedThumb url={c.thumb} look={c.kind === 'video' ? autoLook(c.name) : null} />
           ) : null}
           {c.duration != null && (
             <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">
