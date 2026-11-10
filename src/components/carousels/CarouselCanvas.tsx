@@ -178,6 +178,10 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           if (!m) return null;
           const p = placeLayer(L, m);
           const look = refineLook(lookFor(L, m), (L.grade ?? 'auto') === 'auto', m.thumb ? scenes[m.thumb] : false);
+          // Ask for readable pixels whenever the clip *might* be graded — Auto's
+          // green-screen check finishes after the video starts loading, and a
+          // video fetched without CORS can't be graded later.
+          const cors = !!look || !!lookFor(L, m);
           const mediaStyle: React.CSSProperties = {
             position: 'absolute', display: 'block', maxWidth: 'none', pointerEvents: 'none',
             ...p.media, filter: p.filter,
@@ -197,9 +201,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 m.thumb ? <StillThumb url={m.thumb} look={look} style={mediaStyle} />
                 : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
               ) : m.kind === 'video' && m.stream === 'hls' ? (
-                <StreamVideo id={L.id} src={m.src} style={mediaStyle} cors={!!look} />
+                <StreamVideo key={cors ? 'c' : 'p'} id={L.id} src={m.src} style={mediaStyle} cors={cors} />
               ) : m.kind === 'video' ? (
-                <video data-id={L.id} src={m.src ?? undefined} crossOrigin={look ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={mediaStyle} />
+                <video key={cors ? 'c' : 'p'} data-id={L.id} src={m.src ?? undefined} crossOrigin={cors ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={mediaStyle} />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.src ?? undefined} alt="" draggable={false} style={mediaStyle} />

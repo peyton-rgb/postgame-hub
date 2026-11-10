@@ -39,7 +39,7 @@ function HoverPreview({ c, look }: { c: PickerClip; look: Look | null }) {
   const cover: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
   return (
     <span className="absolute inset-0">
-      <HlsVideo src={c.play} poster={c.thumb} cors={!!look} className="h-full w-full object-cover" />
+      <HlsVideo src={c.play} poster={c.thumb} cors={!!look || !!autoLook(c.name)} className="h-full w-full object-cover" />
       {look && !failed && <GradeCanvas look={look} style={cover} onFail={() => setFailed(true)} />}
     </span>
   );
