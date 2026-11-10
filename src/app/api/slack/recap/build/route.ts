@@ -86,15 +86,19 @@ async function work(body: WorkerBody): Promise<void> {
       extraWarnings = data.warnings;
       await writeRequestState(body.recapId, {
         content_tried: [],
+        heartbeat_at: new Date().toISOString(),
         summary: { athletes: data.athletes, mediaImported: 0, missingContent: [], warnings: data.warnings },
       });
     }
 
     const { state } = await readRequestState(body.recapId);
     const content = await runContentPhase(body.recapId, state?.content_tried || [], deadline);
-    await writeRequestState(body.recapId, { content_tried: content.tried });
+    await writeRequestState(body.recapId, { content_tried: content.tried, heartbeat_at: new Date().toISOString() });
 
     if (!content.done) {
+      // Vercel blocks long self-call chains (508 "loop detected"). If this
+      // hand-off is refused, the resume sweeper (/api/slack/recap/resume,
+      // cron every 2 min) picks the build up from content_tried.
       await kickWorker({ recapId: body.recapId, phase: "content" });
       return;
     }
