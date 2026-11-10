@@ -987,6 +987,12 @@ function SpotlightCarousel({ photos, name, igHandle, igFollowers, school, sport 
   );
 }
 
+// campaign_recaps ids whose recap hides every per-athlete metric (see
+// `hideAthleteMetrics` below). Unsung — 2026 Fall Sports NIL.
+const HIDE_ATHLETE_METRICS_CAMPAIGN_IDS = new Set<string>([
+  "8a153630-3400-429b-a7f4-d4bb19ac4dde",
+]);
+
 export function CampaignRecap({
   campaign,
   athletes,
@@ -1033,6 +1039,11 @@ export function CampaignRecap({
   const isEvent = settings.campaign_type === "event";
   const hiddenCols = new Set(settings.hidden_columns || []);
   const showCol = (key: string) => !hiddenCols.has(key);
+  // One-off client request: Unsung "2026 Fall Sports NIL" shows NO per-athlete
+  // numbers anywhere (roster columns, collab number rows, Top Performers stats,
+  // the content pop-up's stat tiles and follower counts, the PPTX export).
+  // Campaign-level totals are unchanged. Hard-coded by campaign id on purpose.
+  const hideAthleteMetrics = HIDE_ATHLETE_METRICS_CAMPAIGN_IDS.has(campaign.id);
   const hiddenCards = new Set(settings.hidden_platform_cards || []);
   const showCard = (key: string) => !hiddenCards.has(key);
 
@@ -1081,7 +1092,7 @@ export function CampaignRecap({
     show("key_takeaways") && hasRichTextContent(settings.key_takeaways) && { key: "key_takeaways", label: "Takeaways" },
     show("kpi_targets") && hasKpi && { key: "kpi_targets", label: "KPIs" },
     show("metrics") && { key: "metrics", label: "Metrics" },
-    show("top_performers") && topPerformers.length > 0 && { key: "top_performers", label: "Top Performers" },
+    show("top_performers") && topPerformers.length > 0 && { key: "top_performers", label: hideAthleteMetrics ? "Featured Athletes" : "Top Performers" },
     show("content_gallery") && { key: "content_gallery", label: "Best In Class" },
     show("roster") && { key: "roster", label: "Roster" },
     { key: "timeline", label: "Timeline" },
@@ -1427,7 +1438,7 @@ export function CampaignRecap({
           <span className="hidden md:inline text-[10px] md:text-xs font-bold uppercase tracking-wider text-white/50">
             Campaign Recap
           </span>
-          <ExportPptxButton slug={campaign.slug} campaignName={campaign.name} />
+          {!hideAthleteMetrics && <ExportPptxButton slug={campaign.slug} campaignName={campaign.name} />}
         </div>
       </div>
 
@@ -1841,8 +1852,8 @@ export function CampaignRecap({
       {show("top_performers") && topPerformers.length > 0 && (
         <div ref={(el) => { sectionRefs.current["top_performers"] = el; }} data-section="top_performers" className="px-6 md:px-12 py-10 md:py-12 border-t border-white/[0.15]">
           <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-5 mb-8">
-            <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">Top Performers</h2>
-            <div className="flex gap-2">
+            <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide">{hideAthleteMetrics ? "Featured Athletes" : "Top Performers"}</h2>
+            {!hideAthleteMetrics && <div className="flex gap-2">
               {(["engagement", "impressions"] as const).map((mode) => (
                 <button
                   key={mode}
@@ -1854,7 +1865,7 @@ export function CampaignRecap({
                   {mode === "engagement" ? "Engagement Rate" : "Impressions"}
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
 
           {/* Desktop: all same size, #1 highlighted in orange */}
@@ -1871,13 +1882,15 @@ export function CampaignRecap({
                 const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
                 return (
                   <div key={`collab-${entry.id}`} className="flex-1 max-w-[280px]">
-                    <div className="text-center mb-2">
+                    {!hideAthleteMetrics && (
+                      <div className="text-center mb-2">
                       <div className="text-2xl font-black text-brand">{metricValue}</div>
                       <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
                       {topPerformerMode === "engagement" && entry.bestPlatform && (
                         <div className="text-[10px] text-white/40 font-medium mt-0.5">{entry.bestPlatform}</div>
                       )}
                     </div>
+                    )}
                     <div className="relative rounded-xl overflow-hidden h-[380px] border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]">
                       {items.length > 0 ? (
                         <TopPerformerMedia items={items} name={nameLabel} />
@@ -1886,16 +1899,16 @@ export function CampaignRecap({
                           <span className="text-xs text-white/35 font-bold uppercase">No content</span>
                         </div>
                       )}
-                      <div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
+                      {!hideAthleteMetrics && (<div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
                         {i + 1}
-                      </div>
+                      </div>)}
                     </div>
                     <div className="mt-3 px-1 text-center">
                       <div className="text-base font-black uppercase truncate">{nameLabel}</div>
                       <div className="mt-1">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
                       </div>
-                      <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>
+                      {!hideAthleteMetrics && <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>}
                       {entry.url && (
                         <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs text-white/50 hover:text-brand transition-colors">
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1916,13 +1929,15 @@ export function CampaignRecap({
               return (
                 <div key={a.id} className="flex-1 max-w-[280px]">
                   {/* Number above image */}
-                  <div className="text-center mb-2">
+                  {!hideAthleteMetrics && (
+                    <div className="text-center mb-2">
                     <div className="text-2xl font-black text-brand">{metricValue}</div>
                     <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
                     {topPerformerMode === "engagement" && a.bestPlatform && (
                       <div className="text-[10px] text-white/40 font-medium mt-0.5">{a.bestPlatform}</div>
                     )}
                   </div>
+                  )}
                   <div className="relative rounded-xl overflow-hidden h-[380px] border-2 border-brand shadow-[0_0_25px_rgba(215,63,9,0.3)]">
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
@@ -1932,9 +1947,9 @@ export function CampaignRecap({
                       </div>
                     )}
                     {/* Rank badge */}
-                    <div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
+                    {!hideAthleteMetrics && (<div className="absolute top-3 left-3 w-9 h-9 rounded-full text-white text-base font-black flex items-center justify-center z-10 bg-brand">
                       {i + 1}
-                    </div>
+                    </div>)}
                     {a.metrics?.boosted && (
                       <div className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-brand text-white text-[10px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
@@ -1972,13 +1987,15 @@ export function CampaignRecap({
                 const nameLabel = remaining > 0 ? `${primaryNames} + ${remaining} more` : primaryNames;
                 return (
                   <div key={`collab-${entry.id}`} className={isFirst ? "col-span-2" : ""}>
-                    <div className="text-center mb-1.5">
+                    {!hideAthleteMetrics && (
+                      <div className="text-center mb-1.5">
                       <div className={`${isFirst ? "text-xl" : "text-lg"} font-black text-brand`}>{metricValue}</div>
                       <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
                       {topPerformerMode === "engagement" && entry.bestPlatform && (
                         <div className="text-[10px] text-white/40 font-medium mt-0.5">{entry.bestPlatform}</div>
                       )}
                     </div>
+                    )}
                     <div className={`relative rounded-xl overflow-hidden border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)] ${isFirst ? "h-[280px]" : "h-[220px]"}`}>
                       {items.length > 0 ? (
                         <TopPerformerMedia items={items} name={nameLabel} />
@@ -1987,16 +2004,16 @@ export function CampaignRecap({
                           <span className="text-xs text-white/35 font-bold uppercase">No content</span>
                         </div>
                       )}
-                      <div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
+                      {!hideAthleteMetrics && (<div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
                         {i + 1}
-                      </div>
+                      </div>)}
                     </div>
                     <div className="mt-2.5 px-1 text-center">
                       <div className="text-sm font-black uppercase truncate">{nameLabel}</div>
                       <div className="mt-1">
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-brand text-white tracking-wider">Collab</span>
                       </div>
-                      <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>
+                      {!hideAthleteMetrics && <div className="text-xs text-white/70 mt-1">{fmt(entry.combinedFollowers)} combined followers</div>}
                       {entry.url && (
                         <a href={entry.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-[10px] text-white/50 hover:text-brand transition-colors">
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2017,13 +2034,15 @@ export function CampaignRecap({
               return (
                 <div key={a.id} className={isFirst ? "col-span-2" : ""}>
                   {/* Number above image */}
-                  <div className="text-center mb-1.5">
+                  {!hideAthleteMetrics && (
+                    <div className="text-center mb-1.5">
                     <div className={`${isFirst ? "text-xl" : "text-lg"} font-black text-brand`}>{metricValue}</div>
                     <div className="text-[10px] text-white/70 font-bold uppercase tracking-wider">{metricLabel}</div>
                     {topPerformerMode === "engagement" && a.bestPlatform && (
                       <div className="text-[10px] text-white/40 font-medium mt-0.5">{a.bestPlatform}</div>
                     )}
                   </div>
+                  )}
                   <div className={`relative rounded-xl overflow-hidden border-2 border-brand shadow-[0_0_20px_rgba(215,63,9,0.3)] ${isFirst ? "h-[280px]" : "h-[220px]"}`}>
                     {items.length > 0 ? (
                       <TopPerformerMedia items={items} name={a.name} />
@@ -2032,9 +2051,9 @@ export function CampaignRecap({
                         <span className="text-xs text-white/35 font-bold uppercase">No content</span>
                       </div>
                     )}
-                    <div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
+                    {!hideAthleteMetrics && (<div className="absolute top-2.5 left-2.5 w-8 h-8 rounded-full text-white text-sm font-black flex items-center justify-center z-10 bg-brand">
                       {i + 1}
-                    </div>
+                    </div>)}
                     {a.metrics?.boosted && (
                       <div className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-brand text-white text-[9px] font-bold uppercase tracking-wider shadow-[0_2px_8px_rgba(0,0,0,0.4)]">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
@@ -2214,16 +2233,18 @@ export function CampaignRecap({
           <h2 className="text-xl md:text-2xl font-black uppercase tracking-wide mb-8">Campaign Roster</h2>
 
           {(() => {
-            const hasAnyImpressions = fullRoster.some(a => getTotalImpressions(a) > 0);
-            const hasAnyEngagements = fullRoster.some(a => getTotalEngagements(a) > 0);
-            const hasAnyEngRate = fullRoster.some(a => getBestEngRate(a) > 0);
+            const hasAnyImpressions = !hideAthleteMetrics && fullRoster.some(a => getTotalImpressions(a) > 0);
+            const hasAnyEngagements = !hideAthleteMetrics && fullRoster.some(a => getTotalEngagements(a) > 0);
+            const hasAnyEngRate = !hideAthleteMetrics && fullRoster.some(a => getBestEngRate(a) > 0);
             const hasAnyFeedUrl = fullRoster.some(a => a.metrics?.ig_feed?.post_url);
             const hasAnyReelUrl = fullRoster.some(a => a.metrics?.ig_reel?.post_url);
-            const hasAnyFollowers = fullRoster.some(a => a.ig_followers && a.ig_followers > 0);
+            const hasAnyFollowers = !hideAthleteMetrics && fullRoster.some(a => a.ig_followers && a.ig_followers > 0);
             // Month is an always-on-campaign concept: only Hydro Flask "Always-On"
             // has athletes.month populated. showCol() is opt-out (hidden_columns),
             // so it returns true everywhere — hasAnyMonth is what keeps the column
             // structurally absent from the other recaps.
+            // Per-athlete click/order/sales columns are athlete metrics too.
+            const rosterHasClicks = stats.hasClicks && !hideAthleteMetrics;
             const hasAnyMonth = fullRoster.some(a => (a.month ?? "").trim() !== "");
             const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
@@ -2368,9 +2389,9 @@ export function CampaignRecap({
                 {showCol("ig_feed_impressions") && hasAnyImpressions && <col style={{ width: "7%" }} />}
                 {showCol("ig_feed_total") && hasAnyEngagements && <col style={{ width: "7%" }} />}
                 {showCol("ig_feed_rate") && hasAnyEngRate && <col style={{ width: "7%" }} />}
-                {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <col style={{ width: "6%" }} />}
-                {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <col style={{ width: "6%" }} />}
-                {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <col style={{ width: "6%" }} />}
+                {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <col style={{ width: "6%" }} />}
+                {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <col style={{ width: "6%" }} />}
+                {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <col style={{ width: "6%" }} />}
                 {showCol("month") && hasAnyMonth && <col style={{ width: "14%" }} />}
                 {hasAnyFeedUrl && <col style={{ width: "2.5%" }} />}
                 {hasAnyReelUrl && <col style={{ width: "2.5%" }} />}
@@ -2399,9 +2420,9 @@ export function CampaignRecap({
                         {showCol("ig_feed_impressions") && hasAnyImpressions && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Impressions</th>}
                         {showCol("ig_feed_total") && hasAnyEngagements && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Engagements</th>}
                         {showCol("ig_feed_rate") && hasAnyEngRate && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Eng. Rate</th>}
-                        {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
-                        {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
-                        {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
+                        {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Clicks</th>}
+                        {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Orders</th>}
+                        {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-right">Sales</th>}
                         {showCol("month") && hasAnyMonth && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50">Month</th>}
                         {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
                         {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
@@ -2427,9 +2448,9 @@ export function CampaignRecap({
                             {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
                             {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
                             {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={{ color: "rgba(215,63,9,0.7)", fontSize: 14, lineHeight: 1 }}>{"\u2193"}</td>}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-white/35 text-right">{"\u2014"}</td>}
                             {showCol("month") && hasAnyMonth && (
                               <td className="px-3 py-3">
                                 {a.month ? (
@@ -2464,7 +2485,7 @@ export function CampaignRecap({
                           </tr>
                         );
                       })}
-                      {group.sources.map((s, si) => {
+                      {!hideAthleteMetrics && group.sources.map((s, si) => {
                         const isFeed = s.platform === "ig_feed";
                         const totalVal = isFeed ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0);
                         const numStyle = { color: "#D73F09", fontWeight: 700, fontSize: 13, fontFamily: bebas } as const;
@@ -2484,9 +2505,9 @@ export function CampaignRecap({
                             {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(totalVal)}</td>}
                             {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-right" style={numStyle}>{fmt(s.metrics.totalEngagements ?? 0)}</td>}
                             {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-right" style={numStyle}>{formatEngagementRate(s.combinedEngagementRate)}</td>}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3" />}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3" />}
-                            {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3" />}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3" />}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3" />}
+                            {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3" />}
                             {showCol("month") && hasAnyMonth && <td className="px-3 py-3" />}
                             {hasAnyFeedUrl && (
                               <td className="px-3 py-3 text-center">
@@ -2542,11 +2563,11 @@ export function CampaignRecap({
                             <a href={`https://instagram.com/${a.ig_handle}`} target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-brand transition-colors" style={{ fontSize: 10 }}>@{a.ig_handle}</a>
                           )}
                         </div>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</span>
+                        {!hideAthleteMetrics && <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)" }}>{a.ig_followers ? fmt(a.ig_followers) : "\u2014"}</span>}
                       </div>
                     );
                   })}
-                  {group.sources.map((s, si) => {
+                  {!hideAthleteMetrics && group.sources.map((s, si) => {
                     const isFeed = s.platform === "ig_feed";
                     const totalVal = isFeed ? (s.metrics.impressions ?? 0) : (s.metrics.views ?? 0);
                     const totalLabel = isFeed ? "Impressions" : "Views";
@@ -2633,9 +2654,9 @@ export function CampaignRecap({
               ...(showCol("ig_feed_impressions") && hasAnyImpressions ? [{ col: "impressions" as const, label: "Impressions" }] : []),
               ...(showCol("ig_feed_total") && hasAnyEngagements ? [{ col: "engagements" as const, label: "Engagements" }] : []),
               ...(showCol("ig_feed_rate") && hasAnyEngRate ? [{ col: "eng_rate" as const, label: "Eng. Rate" }] : []),
-              ...(stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") ? [{ col: "clicks" as const, label: "Clicks" }] : []),
-              ...(stats.hasClicks && show("clicks") && showCol("clicks_orders") ? [{ col: "orders" as const, label: "Orders" }] : []),
-              ...(stats.hasClicks && show("clicks") && showCol("clicks_sales") ? [{ col: "sales" as const, label: "Sales" }] : []),
+              ...(rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") ? [{ col: "clicks" as const, label: "Clicks" }] : []),
+              ...(rosterHasClicks && show("clicks") && showCol("clicks_orders") ? [{ col: "orders" as const, label: "Orders" }] : []),
+              ...(rosterHasClicks && show("clicks") && showCol("clicks_sales") ? [{ col: "sales" as const, label: "Sales" }] : []),
               ...(showCol("month") && hasAnyMonth ? [{ col: "month" as const, label: "Month" }] : []),
             ];
 
@@ -2762,9 +2783,9 @@ export function CampaignRecap({
                     {showCol("ig_feed_impressions") && hasAnyImpressions && sortableTh("impressions", "Impressions", { align: "right" })}
                     {showCol("ig_feed_total") && hasAnyEngagements && sortableTh("engagements", "Engagements", { align: "right" })}
                     {showCol("ig_feed_rate") && hasAnyEngRate && sortableTh("eng_rate", "Eng. Rate", { align: "right" })}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && sortableTh("clicks", "Clicks", { align: "right" })}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_orders") && sortableTh("orders", "Orders", { align: "right" })}
-                    {stats.hasClicks && show("clicks") && showCol("clicks_sales") && sortableTh("sales", "Sales", { align: "right" })}
+                    {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && sortableTh("clicks", "Clicks", { align: "right" })}
+                    {rosterHasClicks && show("clicks") && showCol("clicks_orders") && sortableTh("orders", "Orders", { align: "right" })}
+                    {rosterHasClicks && show("clicks") && showCol("clicks_sales") && sortableTh("sales", "Sales", { align: "right" })}
                     {showCol("month") && hasAnyMonth && sortableTh("month", "Month", { filter: "month" })}
                     {hasAnyFeedUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Post</th>}
                     {hasAnyReelUrl && <th className="px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-white/50 text-center">Reel</th>}
@@ -2818,9 +2839,9 @@ export function CampaignRecap({
                       {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalImpressions(a))}</td>}
                       {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{fmt(getTotalEngagements(a))}</td>}
                       {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-3 text-sm font-bold text-brand text-right">{getBestEngRate(a) > 0 ? formatEngagementRate(getBestEngRate(a)) : "\u2014"}</td>}
-                      {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
-                      {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
-                      {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
+                      {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.link_clicks ? fmt(m.clicks.link_clicks) : "\u2014"}</td>}
+                      {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-3 text-sm font-bold text-white/70 text-right">{m.clicks?.orders ? fmt(m.clicks.orders) : "\u2014"}</td>}
+                      {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-3 text-sm font-bold text-emerald-400 text-right">{m.clicks?.sales ? dollar(m.clicks.sales) : "\u2014"}</td>}
                       {showCol("month") && hasAnyMonth && (
                         <td className="px-3 py-3">
                           {a.month ? (
@@ -2892,9 +2913,9 @@ export function CampaignRecap({
                           {showCol("ig_feed_impressions") && hasAnyImpressions && <td className="px-3 py-2 text-right text-sm text-white/90">{slot.impressions ? fmt(slot.impressions) : "\u2014"}</td>}
                           {showCol("ig_feed_total") && hasAnyEngagements && <td className="px-3 py-2 text-right text-sm text-white/90">{slot.engagements ? fmt(slot.engagements) : "\u2014"}</td>}
                           {showCol("ig_feed_rate") && hasAnyEngRate && <td className="px-3 py-2 text-right text-sm text-white/90">{er > 0 ? formatEngagementRate(er) : "\u2014"}</td>}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" />}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" />}
-                          {stats.hasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" />}
+                          {rosterHasClicks && show("clicks") && showCol("clicks_link_clicks") && <td className="px-3 py-2" />}
+                          {rosterHasClicks && show("clicks") && showCol("clicks_orders") && <td className="px-3 py-2" />}
+                          {rosterHasClicks && show("clicks") && showCol("clicks_sales") && <td className="px-3 py-2" />}
                           {showCol("month") && hasAnyMonth && <td className="px-3 py-2" />}
                           {hasAnyFeedUrl && (
                             <td className="px-3 py-2 text-center">
@@ -2990,7 +3011,7 @@ export function CampaignRecap({
                     {showCol("ig_feed_rate") && hasAnyEngRate && getBestEngRate(a) > 0 && (
                       <div className="text-xs font-bold text-brand">{formatEngagementRate(getBestEngRate(a))}</div>
                     )}
-                    {stats.hasClicks && show("clicks") && (
+                    {rosterHasClicks && show("clicks") && (
                       (showCol("clicks_link_clicks") && m.clicks?.link_clicks) ||
                       (showCol("clicks_orders") && m.clicks?.orders) ||
                       (showCol("clicks_sales") && m.clicks?.sales)
@@ -3086,7 +3107,8 @@ export function CampaignRecap({
           startIndex={0}
           startPostIndex={modalData.startPostIndex}
           onClose={() => setModalData(null)}
-          showToggleHint
+          showToggleHint={!hideAthleteMetrics}
+          hideMetrics={hideAthleteMetrics}
         />
       ) : null}
     </div>
