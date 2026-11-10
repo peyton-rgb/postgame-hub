@@ -21,6 +21,10 @@ import { workerAuthorized } from "@/lib/slack-recap/api";
 import { kickWorker } from "@/lib/slack-recap/worker";
 
 export const dynamic = "force-dynamic";
+// Never serve this route's database reads from Next's data cache: a cached
+// "still building" answer made the sweeper restart the same recap forever.
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
 
 /** A healthy chunk saves progress at least every ~4 minutes. */
 const STALE_MS = 6 * 60 * 1000;
@@ -44,6 +48,7 @@ export async function GET(req: Request) {
   const skipped: string[] = [];
   for (const row of (data as { id: string; name: string; settings: any }[]) || []) {
     const state = row.settings?.recap_request || {};
+    if (state.status !== "building") continue; // belt and braces on the query filter
     // The data phase (tracker import) hasn't finished yet — it runs in the
     // first chunk and is never handed off, so leave it alone.
     if (!Array.isArray(state.content_tried)) {
