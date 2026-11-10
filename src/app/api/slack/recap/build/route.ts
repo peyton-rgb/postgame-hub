@@ -83,6 +83,17 @@ async function work(body: WorkerBody): Promise<void> {
       return;
     }
   } else {
+    // A fresh start of the content phase (resume sweeper / manual resume) may
+    // only pick up a request that is genuinely still building. Without this
+    // the sweeper restarted finished, published and even deleted requests
+    // every 2 minutes, posting a new review each time.
+    if (body.phase === "content") {
+      const { state } = await readRequestState(body.recapId);
+      if (state?.status !== "building") {
+        console.log(`[slack-recap/build] ${body.recapId}: not building (status ${state?.status ?? "none"}), ignoring resume`);
+        return;
+      }
+    }
     runId = await claimRun(body.recapId);
   }
   const owner = runId;
