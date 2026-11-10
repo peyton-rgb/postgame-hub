@@ -118,6 +118,7 @@ export default function AssetModal({
   startPostIndex,
   onClose,
   showToggleHint = false,
+  hideMetrics = false,
 }: {
   athletes: PortalAthlete[];
   startIndex: number;
@@ -126,6 +127,11 @@ export default function AssetModal({
   // Recap-only: show a one-time tooltip nudging the user to try the Feed/Reel
   // toggle. Defaults false so the client portal shows NO new tooltip.
   showToggleHint?: boolean;
+  // Recap-only, per-campaign: hide every per-athlete number (stat tiles and
+  // follower counts). The freed space shows which post types the athlete
+  // delivered plus a strip of their other photos/videos. Defaults false so
+  // the client portal is unchanged.
+  hideMetrics?: boolean;
 }) {
   const [idx, setIdx] = useState(startIndex);
   const [postIdx, setPostIdx] = useState(startPostIndex);
@@ -390,7 +396,7 @@ export default function AssetModal({
 
           {/* Metrics */}
           <div className="mt-6">
-            {activeCollabs && activeCollabs.length > 0 ? (
+            {!hideMetrics && activeCollabs && activeCollabs.length > 0 ? (
               <div
                 className="mb-2.5 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[1.2px]"
                 style={{ color: ORANGE }}
@@ -404,6 +410,20 @@ export default function AssetModal({
                 Pooled — shared across all {activeCollabs.length} athletes
               </div>
             ) : null}
+            {hideMetrics ? (
+              <NoMetricsDetails
+                athleteName={athlete.name}
+                posts={posts}
+                activePostIdx={Math.min(postIdx, posts.length - 1)}
+                activeSlide={slide}
+                onPick={(pi, si) => {
+                  if (pi !== Math.min(postIdx, posts.length - 1)) setPostIdx(pi);
+                  // Switching posts resets the slide in an effect; apply ours after it.
+                  setTimeout(() => setSlide(si), 0);
+                }}
+              />
+            ) : (
+              <>
             {cards.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 {cards.map((c) => (
@@ -428,6 +448,8 @@ export default function AssetModal({
               <p className="text-[12px]" style={{ color: "rgba(255,255,255,0.4)" }}>
                 Metrics not available
               </p>
+            )}
+              </>
             )}
           </div>
 
@@ -462,7 +484,7 @@ export default function AssetModal({
                         </div>
                       ) : null}
                     </div>
-                    {c.igFollowers != null ? (
+                    {!hideMetrics && c.igFollowers != null ? (
                       <div className="text-right shrink-0">
                         <div className="leading-none" style={{ ...BEBAS, color: OFFWHITE, fontSize: 22 }}>
                           {formatCount(c.igFollowers)}
@@ -476,7 +498,7 @@ export default function AssetModal({
                 ))}
               </div>
             </div>
-          ) : athlete.igHandle || athlete.school || athlete.sport || athlete.igFollowers != null ? (
+          ) : athlete.igHandle || athlete.school || athlete.sport || (!hideMetrics && athlete.igFollowers != null) ? (
             <div
               className="mt-6 pt-6 flex items-end justify-between gap-4"
               style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
@@ -499,7 +521,7 @@ export default function AssetModal({
                   </div>
                 ) : null}
               </div>
-              {athlete.igFollowers != null ? (
+              {!hideMetrics && athlete.igFollowers != null ? (
                 <div className="text-right shrink-0">
                   <div className="leading-none" style={{ ...BEBAS, color: OFFWHITE, fontSize: 28 }}>
                     {formatCount(athlete.igFollowers)}
@@ -568,6 +590,105 @@ export default function AssetModal({
             next();
           }}
         />
+      ) : null}
+    </div>
+  );
+}
+
+// Shown in place of the stat tiles when `hideMetrics` is on: which post types
+// the athlete delivered (no numbers) and a strip of all their media across
+// posts. Clicking a thumbnail jumps the viewer to that post/slide.
+function NoMetricsDetails({
+  athleteName,
+  posts,
+  activePostIdx,
+  activeSlide,
+  onPick,
+}: {
+  athleteName: string;
+  posts: PortalPost[];
+  activePostIdx: number;
+  activeSlide: number;
+  onPick: (postIdx: number, slideIdx: number) => void;
+}) {
+  const delivered = Array.from(
+    new Set(posts.map((p) => (p.collaborators ? "Collab Reel" : p.kind === "reel" ? "IG Reel" : "IG Feed")))
+  );
+  const thumbs: { key: string; postIdx: number; slideIdx: number; src: string | null; isVideo: boolean }[] = [];
+  posts.forEach((p, pi) => {
+    if (p.kind === "feed") {
+      p.images.forEach((img, si) =>
+        thumbs.push({ key: `${p.key}-${si}`, postIdx: pi, slideIdx: si, src: img.thumb || img.fileUrl, isVideo: false })
+      );
+    } else if (p.video) {
+      thumbs.push({ key: `${p.key}-v`, postIdx: pi, slideIdx: 0, src: p.video.poster, isVideo: true });
+    }
+  });
+  const firstName = athleteName.split(/\s+/)[0] || athleteName;
+  const label = "text-[9px] font-bold uppercase tracking-[1.5px]";
+  return (
+    <div className="flex flex-col gap-5">
+      {delivered.length > 0 ? (
+        <div>
+          <div className={`${label} mb-2.5`} style={{ color: "rgba(255,255,255,0.5)" }}>
+            Delivered
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {delivered.map((d) => (
+              <span
+                key={d}
+                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold bg-status-ok/15 text-status-ok"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {d}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {thumbs.length > 1 ? (
+        <div>
+          <div className="flex items-baseline justify-between mb-2.5">
+            <div className={label} style={{ color: "rgba(255,255,255,0.5)" }}>
+              More from {firstName}
+            </div>
+            <div className="text-[11px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+              {thumbs.length} pieces
+            </div>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {thumbs.map((t) => {
+              const active = t.postIdx === activePostIdx && (t.isVideo || t.slideIdx === activeSlide);
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  aria-label={t.isVideo ? "Show reel" : `Show photo ${t.slideIdx + 1}`}
+                  onClick={() => onPick(t.postIdx, t.slideIdx)}
+                  className="relative shrink-0 w-[64px] h-[80px] rounded-[10px] overflow-hidden"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: active ? `2px solid ${ORANGE}` : "1px solid rgba(255,255,255,0.12)",
+                  }}
+                >
+                  {t.src ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={t.src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : null}
+                  {t.isVideo ? (
+                    <span className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.3)" }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={OFFWHITE} aria-hidden="true">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       ) : null}
     </div>
   );
