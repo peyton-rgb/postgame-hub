@@ -42,3 +42,22 @@ export function previewState(t: number, slides: number): PreviewState {
   }
   return { push, offset, shown: Math.min(n, Math.round(offset) + 1) };
 }
+
+/** When slide `k` (1-based) starts coming on screen: slide 1 with the push
+ *  (on the profile grid it is a still tile, as on Instagram), later slides
+ *  when their swipe begins. */
+export function slideStart(k: number) {
+  if (k <= 1) return PREVIEW.profile;
+  return PREVIEW.profile + PREVIEW.push + PREVIEW.first + (k - 2) * (PREVIEW.swipe + PREVIEW.hold);
+}
+
+/** Where a clip on slide `k` should be at preview time `t`. Like Instagram,
+ *  each slide's video starts from the top when it arrives — never on a shared
+ *  clock that loops mid-slide. Before arrival it waits on its first frame;
+ *  past its length it holds the last frame rather than jumping back. */
+export function clipAt(t: number, k: number, vlen: number) {
+  const local = t - slideStart(k);
+  if (local <= 0) return { at: 0, playing: false };
+  const end = Math.max(0, vlen - 1 / 30);
+  return local >= end ? { at: end, playing: false } : { at: local, playing: true };
+}

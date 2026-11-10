@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { placeLayer, vinOf, vlenOf, SLIDE, H as SLIDE_H, type Layer, type Layout } from '@/lib/carousel/layout';
 import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
-import { PREVIEW, previewLength, previewState } from '@/lib/carousel/preview';
+import { PREVIEW, previewLength, previewState, clipAt } from '@/lib/carousel/preview';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 import { loadImg, sceneIsGreen } from './gradeImage';
 import type { CanvasMedia } from './CarouselCanvas';
@@ -281,7 +281,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
           if (!alive) return;
         }
         const texts = layout.layers.filter((L) => L.type === 'text' && !L.hidden);
-        for (const it of items) if (it.el instanceof HTMLVideoElement) { it.el.currentTime = it.vin; it.el.play().catch(() => {}); }
+        for (const it of items) if (it.el instanceof HTMLVideoElement) it.el.currentTime = it.vin;
 
         const strip = document.createElement('canvas'); strip.width = SLIDE * slides; strip.height = SLIDE_H;
         const sx = strip.getContext('2d')!;
@@ -299,9 +299,13 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             const pl = placeLayer(L, m);
             let src: CanvasImageSource = el;
             if (el instanceof HTMLVideoElement) {
-              const want = it.vin + (t % it.vlen);
-              if (Math.abs(el.currentTime - want) > 0.3) el.currentTime = want;
-              if (el.paused) el.play().catch(() => {});
+              // Each slide's clips start from the top when the slide arrives (as on Instagram).
+              const k = Math.floor((L.x + L.w / 2) / SLIDE) + 1;
+              const c = clipAt(t, k, it.vlen);
+              const want = it.vin + c.at;
+              if (Math.abs(el.currentTime - want) > (c.playing ? 0.3 : 0.05)) el.currentTime = want;
+              if (c.playing && el.paused) el.play().catch(() => {});
+              if (!c.playing && !el.paused) el.pause();
               if (el.readyState < 2) continue;
               src = (it.grade && it.grade(el)) || el;
             }
