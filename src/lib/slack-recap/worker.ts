@@ -10,6 +10,8 @@ export interface WorkerBody {
   trackerUrl?: string;
   folderUrl?: string;
   takeaways?: string;
+  /** Set on hand-offs within one chain. Absent = a fresh start that claims the build. */
+  runId?: string;
 }
 
 export async function kickWorker(body: WorkerBody): Promise<boolean> {

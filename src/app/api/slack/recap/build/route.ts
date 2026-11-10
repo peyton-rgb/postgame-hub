@@ -28,6 +28,8 @@ import { kickWorker, type WorkerBody } from "@/lib/slack-recap/worker";
 import {
   readRequestState,
   runContentPhase,
+  claimRun,
+  ownsRun,
   runCoversPhase,
   runDataPhase,
   summarize,
@@ -72,6 +74,20 @@ async function work(body: WorkerBody): Promise<void> {
     return;
   }
 
+  // One worker at a time: a fresh start claims the build; a hand-off must
+  // still own it, otherwise a newer run has taken over and this one stops.
+  let runId = body.runId;
+  if (runId) {
+    if (!(await ownsRun(body.recapId, runId))) {
+      console.log(`[slack-recap/build] ${body.recapId}: run ${runId} superseded, stopping`);
+      return;
+    }
+  } else {
+    runId = await claimRun(body.recapId);
+  }
+  const owner = runId;
+  const stillOwner = () => ownsRun(body.recapId, owner);
+
   try {
     let extraWarnings: string[] = (await readRequestState(body.recapId)).state?.summary?.warnings || [];
 
@@ -92,14 +108,18 @@ async function work(body: WorkerBody): Promise<void> {
     }
 
     const { state } = await readRequestState(body.recapId);
-    const content = await runContentPhase(body.recapId, state?.content_tried || [], deadline);
+    const content = await runContentPhase(body.recapId, state?.content_tried || [], deadline, stillOwner);
+    if (content.stopped || !(await stillOwner())) {
+      console.log(`[slack-recap/build] ${body.recapId}: run ${owner} superseded, stopping`);
+      return;
+    }
     await writeRequestState(body.recapId, { content_tried: content.tried, heartbeat_at: new Date().toISOString() });
 
     if (!content.done) {
       // Vercel blocks long self-call chains (508 "loop detected"). If this
       // hand-off is refused, the resume sweeper (/api/slack/recap/resume,
       // cron every 2 min) picks the build up from content_tried.
-      await kickWorker({ recapId: body.recapId, phase: "content" });
+      await kickWorker({ recapId: body.recapId, phase: "content", runId: owner });
       return;
     }
 

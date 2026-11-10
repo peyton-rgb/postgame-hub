@@ -19,6 +19,7 @@
 // Never touches a campaign that already has athletes (already built).
 // ─────────────────────────────────────────────────────────────
 
+import crypto from "crypto";
 import { createServiceSupabase } from "@/lib/supabase";
 import { normLoose } from "@/lib/admin-campaigns";
 import {
@@ -63,6 +64,9 @@ export interface RecapRequestState {
   /** Last time a build chunk saved progress. The resume sweeper restarts a
    *  "building" request whose heartbeat has gone quiet. */
   heartbeat_at?: string;
+  /** Which worker run currently owns this build. Only the owner may import
+   *  content or post the review; any other run stops at its next check. */
+  run_id?: string;
   summary?: BuildSummary;
   published_by?: string;
   published_at?: string;
@@ -366,13 +370,42 @@ export interface ContentPhaseResult {
   done: boolean;
   imported: number;
   tried: string[];
+  /** True when this run lost ownership to a newer one and stopped early. */
+  stopped?: boolean;
+}
+
+// ── One worker at a time ──────────────────────────────────────────────────────
+// A build runs as a chain of ~3-minute chunks. A restart (resume sweeper or a
+// manual resume) can start a second chain while the first is still alive, and
+// both would import the same athletes. Each fresh chain claims the build with
+// a new run_id; chunks pass that id along; before every athlete (and before
+// posting the review) a run checks it still owns the build, and stops if a
+// newer run has taken over. Newest claim wins.
+
+export async function claimRun(recapId: string): Promise<string> {
+  const runId = crypto.randomUUID();
+  await writeRequestState(recapId, { run_id: runId, heartbeat_at: new Date().toISOString() });
+  return runId;
+}
+
+/** True if `runId` still owns the build; refreshes the heartbeat when it does. */
+export async function ownsRun(recapId: string, runId: string): Promise<boolean> {
+  const { state } = await readRequestState(recapId);
+  if (!state || state.run_id !== runId) return false;
+  await writeRequestState(recapId, { heartbeat_at: new Date().toISOString() });
+  return true;
 }
 
 /**
  * Import content for athletes that have none, until `deadline` (epoch ms).
  * `alreadyTried` athletes are skipped so repeated runs make progress.
  */
-export async function runContentPhase(recapId: string, alreadyTried: string[], deadline: number): Promise<ContentPhaseResult> {
+export async function runContentPhase(
+  recapId: string,
+  alreadyTried: string[],
+  deadline: number,
+  stillOwner?: () => Promise<boolean>,
+): Promise<ContentPhaseResult> {
   const supabase = createServiceSupabase();
   const tried = new Set(alreadyTried);
   let imported = 0;
@@ -394,7 +427,16 @@ export async function runContentPhase(recapId: string, alreadyTried: string[], d
 
   for (const athlete of todo) {
     if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried) };
+    if (stillOwner && !(await stillOwner())) return { done: false, imported, tried: Array.from(tried), stopped: true };
     tried.add(athlete.id);
+    // Belt and braces: never import for an athlete who already has content
+    // (another run may have done them since this chunk's list was made).
+    const { count: existing } = await supabase
+      .from("media")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", recapId)
+      .eq("athlete_id", athlete.id);
+    if ((existing || 0) > 0) continue;
     const folder = drive.athletes.find((f) => folderMatches(f.folderName, athlete.name));
     if (!folder) continue;
     imported += await importAthleteContent(supabase, recapId, brand, athlete, folder.files);
