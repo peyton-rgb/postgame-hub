@@ -9,12 +9,14 @@
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
+import { lookFor } from '@/lib/carousel/grade';
+import GradeCanvas from './GradeCanvas';
 
 export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; scrub?: ScrubSheet | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
 
 // Frame.io streams video as HLS (a playlist of short chunks). Safari plays it
 // natively; Chrome needs hls.js. The shared clock still seeks/plays it.
-function StreamVideo({ id, src, style }: { id: string; src: string | null; style: React.CSSProperties }) {
+function StreamVideo({ id, src, style, cors }: { id: string; src: string | null; style: React.CSSProperties; cors?: boolean }) {
   const v = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const el = v.current;
@@ -29,7 +31,7 @@ function StreamVideo({ id, src, style }: { id: string; src: string | null; style
     });
     return () => { destroy?.(); el.removeAttribute('src'); el.load(); };
   }, [src]);
-  return <video ref={v} data-id={id} muted loop playsInline preload="auto" style={style} />;
+  return <video ref={v} data-id={id} crossOrigin={cors ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={style} />;
 }
 export type CanvasHandle = { toStage: (clientX: number, clientY: number) => { x: number; y: number }; scale: number; el: HTMLDivElement | null };
 
@@ -58,6 +60,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
   ref,
 ) {
   const wrap = useRef<HTMLDivElement>(null);
+  const [gradeFailed, setGradeFailed] = useState<Set<string>>(new Set());
   const stage = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(800);
   // Zoomed view: the slide plus 260px of each neighbour, so seams still line up by eye.
@@ -165,6 +168,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           const m = media[L.media];
           if (!m) return null;
           const p = placeLayer(L, m);
+          const look = lookFor(L, m);
           const mediaStyle: React.CSSProperties = {
             position: 'absolute', display: 'block', maxWidth: 'none', pointerEvents: 'none',
             ...p.media, filter: p.filter,
@@ -186,12 +190,17 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                   <img src={m.thumb} alt="" draggable={false} style={mediaStyle} />
                 ) : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
               ) : m.kind === 'video' && m.stream === 'hls' ? (
-                <StreamVideo id={L.id} src={m.src} style={mediaStyle} />
+                <StreamVideo id={L.id} src={m.src} style={mediaStyle} cors={!!look} />
               ) : m.kind === 'video' ? (
-                <video data-id={L.id} src={m.src ?? undefined} muted loop playsInline preload="auto" style={mediaStyle} />
+                <video data-id={L.id} src={m.src ?? undefined} crossOrigin={look ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={mediaStyle} />
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.src ?? undefined} alt="" draggable={false} style={mediaStyle} />
+              )}
+              {/* Andres's grade, drawn live over the playing clip */}
+              {m.kind === 'video' && !still && look && !gradeFailed.has(`${L.id}:${look}`) && (
+                <GradeCanvas key={look} look={look} style={mediaStyle}
+                  onFail={() => setGradeFailed((s) => new Set(s).add(`${L.id}:${look}`))} />
               )}
             </div>
           );

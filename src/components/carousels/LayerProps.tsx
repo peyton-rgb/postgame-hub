@@ -6,6 +6,7 @@
 import { insetOf, vinOf, vlenOf, type Layer } from '@/lib/carousel/layout';
 import type { Action } from '@/lib/carousel/edit';
 import type { CanvasMedia } from './CarouselCanvas';
+import { LOOKS, LOOK_LABEL, autoLook, lookFor } from '@/lib/carousel/grade';
 
 type Patch = Partial<Layer>;
 
@@ -159,6 +160,25 @@ export default function LayerProps({
           </p>
         </div>
       ) : null}
+
+      {media?.kind === 'video' && (() => {
+        const auto = media.source === 'frameio' ? autoLook(media.label ?? '') : null;
+        const shown = lookFor(L, media);
+        return (
+          <label className="flex flex-col gap-1.5">
+            <span className={label}>Colour grade</span>
+            <select value={L.grade ?? 'auto'} onChange={(e) => onChange({ grade: e.target.value === 'auto' ? undefined : (e.target.value as Layer['grade']) }, true)}
+              className="min-h-[40px] rounded-lg border border-hairline-soft bg-surface-raised px-2.5 text-[14px] text-ink-1">
+              <option value="auto">Auto — {auto ? LOOK_LABEL[auto] : 'none for this clip'}</option>
+              <option value="off">Off (as shot)</option>
+              {LOOKS.map((k) => <option key={k} value={k}>{LOOK_LABEL[k]}</option>)}
+            </select>
+            <span className="text-[12px] text-ink-4">
+              {shown ? `Andres's ${LOOK_LABEL[shown]} look, live. The Frame.io file isn't changed.` : 'Showing the clip as shot.'}
+            </span>
+          </label>
+        );
+      })()}
 
       <span className={label}>Position &amp; size</span>
       <div className="-mt-2 grid grid-cols-2 gap-2">

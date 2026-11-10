@@ -11,6 +11,8 @@ export type Layer = {
   id: string;
   name?: string;
   type?: 'text';
+  /** Colour grade: 'auto' (default) picks Andres's look from the camera; 'off'; or a named look. */
+  grade?: 'auto' | 'off' | 'sonystudio' | 'blackmagic' | 'btscanon' | 'canoncourt' | 'canonstudio';
   media: string;
   x: number; y: number; w: number; h: number;
   cx?: number; cy?: number; zoom?: number;
