@@ -31,9 +31,20 @@ export async function handleRecapStep(event: any): Promise<() => Promise<void>> 
   const token: string | undefined = event?.bot_access_token;
   const pointer: string | undefined = event?.inputs?.interactivity?.interactivity_pointer;
 
-  const opened = pointer
-    ? await slack("views.open", { interactivity_pointer: pointer, view: requestModal({}, null) }, token)
-    : { ok: false, error: "no interactivity pointer — is the step's input wired to the workflow trigger?" };
+  // Open with the app's own bot token first. A view opened with the workflow
+  // (just-in-time) token becomes "function-scoped": Slack then routes its
+  // dropdown searches, picks and Submit as workflow events instead of to the
+  // Interactivity URL, so the brand/campaign search finds nothing. A bot-token
+  // view behaves exactly like the pinned launcher's form. The workflow token
+  // is only a fallback if Slack refuses the pointer for the bot token.
+  let opened: any = { ok: false, error: "no interactivity pointer — is the step's input wired to the workflow trigger?" };
+  if (pointer) {
+    opened = await slack("views.open", { interactivity_pointer: pointer, view: requestModal({}, null) });
+    if (!opened.ok && token) {
+      console.warn("[slack-recap] step: bot-token views.open failed, falling back to workflow token:", opened.error);
+      opened = await slack("views.open", { interactivity_pointer: pointer, view: requestModal({}, null) }, token);
+    }
+  }
 
   return async () => {
     if (!executionId) return;
