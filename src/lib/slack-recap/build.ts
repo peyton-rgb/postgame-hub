@@ -60,6 +60,9 @@ export interface RecapRequestState {
   covers_done?: string[];
   /** Athlete ids the content phase has already tried (imported OR no match). */
   content_tried?: string[];
+  /** Last time a build chunk saved progress. The resume sweeper restarts a
+   *  "building" request whose heartbeat has gone quiet. */
+  heartbeat_at?: string;
   summary?: BuildSummary;
   published_by?: string;
   published_at?: string;
