@@ -4,8 +4,9 @@
 // one section per folder (Selected clips, Main folder, Camera originals,
 // Photos…). Data from /api/carousels/[slug]/clips.
 
-import { autoLook, type Look } from '@/lib/carousel/grade';
-import { useGraded } from './gradeImage';
+import { autoLook, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { useGraded, useScenes } from './gradeImage';
+import GradeCanvas from './GradeCanvas';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import HlsVideo from './HlsVideo';
 
@@ -25,11 +26,23 @@ export type PickerClip = {
   folder: string;
 };
 
-// A tile's picture, shown through the clip's Andres grade once it's ready.
+// A tile's picture, shown through the clip's grade once it's ready.
 function GradedThumb({ url, look }: { url: string; look: Look | null }) {
   const src = useGraded(url, look, 640);
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src ?? url} alt="" loading="lazy" crossOrigin={look ? 'anonymous' : undefined} className="h-full w-full object-cover" />;
+}
+
+// The hover-play preview, drawn through the same grade as the canvas.
+function HoverPreview({ c, look }: { c: PickerClip; look: Look | null }) {
+  const [failed, setFailed] = useState(false);
+  const cover: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
+  return (
+    <span className="absolute inset-0">
+      <HlsVideo src={c.play} poster={c.thumb} cors={!!look} className="h-full w-full object-cover" />
+      {look && !failed && <GradeCanvas look={look} style={cover} onFail={() => setFailed(true)} />}
+    </span>
+  );
 }
 
 type Payload = { selected: PickerClip[]; elsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
@@ -107,6 +120,11 @@ export default function ClipPicker({
     ];
   }, [selected, elsewhere, photos, filter, firstName]);
 
+  // Each tile's grade; Canon clips wait for the green-screen check.
+  const ninjaThumbs = useMemo(() => [...selected, ...elsewhere].filter((c) => c.kind === 'video' && needsScene(autoLook(c.name))).map((c) => c.thumb), [selected, elsewhere]);
+  const scenes = useScenes(ninjaThumbs);
+  const tileLook = (c: PickerClip): Look | null => (c.kind === 'video' ? refineLook(autoLook(c.name), true, c.thumb ? scenes[c.thumb] : false) : null);
+
   const synced = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
 
   const Card = (c: PickerClip, tall = false) => (
@@ -124,10 +142,9 @@ export default function ClipPicker({
       >
         <span className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}>
           {hover === c.id && c.kind === 'video' ? (
-            <HlsVideo src={c.play} poster={c.thumb} className="h-full w-full object-cover" />
+            <HoverPreview c={c} look={tileLook(c)} />
           ) : c.thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <GradedThumb url={c.thumb} look={c.kind === 'video' ? autoLook(c.name) : null} />
+            <GradedThumb url={c.thumb} look={tileLook(c)} />
           ) : null}
           {c.duration != null && (
             <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">

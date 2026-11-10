@@ -13,9 +13,11 @@ type Props = {
   playing?: boolean;
   className?: string;
   loop?: boolean;
+  /** Ask for pixel access (needed when it's drawn through a grade). */
+  cors?: boolean;
 };
 
-export default function HlsVideo({ src, poster, playing = true, className, loop = true }: Props) {
+export default function HlsVideo({ src, poster, playing = true, className, loop = true, cors }: Props) {
   const ref = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function HlsVideo({ src, poster, playing = true, className, loop 
     <video
       ref={ref}
       poster={poster ?? undefined}
+      crossOrigin={cors ? 'anonymous' : undefined}
       muted
       playsInline
       loop={loop}

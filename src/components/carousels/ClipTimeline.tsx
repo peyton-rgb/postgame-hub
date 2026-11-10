@@ -13,7 +13,7 @@ import { useGraded } from './gradeImage';
 
 type Props = {
   dur: number; vin: number; vlen: number; strip?: string | null; thumb?: string | null; scrub?: ScrubSheet | null;
-  /** Andres look to show the frames through (null = as shot). */
+  /** Grade to show the frames through (null = as shot). */
   look?: Look | null;
   onChange: (s: { vin: number; vlen: number }, commit: boolean) => void;
 };

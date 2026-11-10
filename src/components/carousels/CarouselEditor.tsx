@@ -15,7 +15,8 @@ import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
 import ClipTimeline from './ClipTimeline';
 import GuidesPanel from './GuidesPanel';
-import { lookFor } from '@/lib/carousel/grade';
+import { lookFor, refineLook } from '@/lib/carousel/grade';
+import { useScenes } from './gradeImage';
 import { H, SLIDE, W, insetOf, vinOf, vlenOf, type Layer, type Layout } from '@/lib/carousel/layout';
 import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
@@ -165,6 +166,7 @@ export default function CarouselEditor({
 
   // ---------- layer edits ----------
   const selected = layout?.layers.find((l) => l.id === selId) ?? null;
+  const selScene = useScenes([selected && selected.type !== 'text' ? media[selected.media]?.thumb : null]);
   const patchLayer = useCallback((id: string, patch: Partial<Layer>, doCommit: boolean) => {
     setLayout((cur) => {
       if (!cur) return cur;
@@ -581,7 +583,7 @@ export default function CarouselEditor({
                   <span className="min-w-0 truncate text-[13px] text-ink-3">{selected.name ?? m.label}</span>
                   <button type="button" className={`${pill(false)} ml-auto`} onClick={() => patchLayer(selected.id, { vin: undefined, vlen: undefined }, true)}>Reset</button>
                 </div>
-                <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub} look={lookFor(selected, m)}
+                <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub} look={refineLook(lookFor(selected, m), (selected.grade ?? 'auto') === 'auto', m.thumb ? selScene[m.thumb] : false)}
                   onChange={(s, c) => patchLayer(selected.id, s, c)} />
               </section>
             );

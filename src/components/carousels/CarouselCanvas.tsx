@@ -9,8 +9,8 @@
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
-import { lookFor, type Look } from '@/lib/carousel/grade';
-import { useGraded } from './gradeImage';
+import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { useGraded, useScenes } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
 
 export type CanvasMedia = MediaInfo & { src: string | null; thumb: string | null; strip?: string | null; scrub?: ScrubSheet | null; hasFull?: boolean; stream?: 'hls' | null; source?: string };
@@ -68,6 +68,8 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
 ) {
   const wrap = useRef<HTMLDivElement>(null);
   const [gradeFailed, setGradeFailed] = useState<Set<string>>(new Set());
+  // Canon clips on Auto: green screen → as shot, anywhere else → brightened.
+  const scenes = useScenes(layout.layers.map((l) => { const m = media[l.media]; return m && (l.grade ?? 'auto') === 'auto' && needsScene(lookFor(l, m)) ? m.thumb : null; }));
   const stage = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(800);
   // Zoomed view: the slide plus 260px of each neighbour, so seams still line up by eye.
@@ -175,7 +177,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           const m = media[L.media];
           if (!m) return null;
           const p = placeLayer(L, m);
-          const look = lookFor(L, m);
+          const look = refineLook(lookFor(L, m), (L.grade ?? 'auto') === 'auto', m.thumb ? scenes[m.thumb] : false);
           const mediaStyle: React.CSSProperties = {
             position: 'absolute', display: 'block', maxWidth: 'none', pointerEvents: 'none',
             ...p.media, filter: p.filter,
@@ -202,7 +204,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.src ?? undefined} alt="" draggable={false} style={mediaStyle} />
               )}
-              {/* Andres's grade, drawn live over the playing clip */}
+              {/* The clip's grade, drawn live over the playing clip */}
               {m.kind === 'video' && !still && look && !gradeFailed.has(`${L.id}:${look}`) && (
                 <GradeCanvas key={look} look={look} style={mediaStyle}
                   onFail={() => setGradeFailed((s) => new Set(s).add(`${L.id}:${look}`))} />

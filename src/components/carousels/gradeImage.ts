@@ -6,7 +6,7 @@
 // image hosts allow this (CORS); anything that fails just keeps the original.
 
 import { useEffect, useState } from 'react';
-import type { Look } from '@/lib/carousel/grade';
+import { GREEN_SCREEN_SHARE, greenShare, type Look } from '@/lib/carousel/grade';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 
 type GL = { gl: WebGLRenderingContext; canvas: HTMLCanvasElement; vTex: WebGLTexture; lTex: WebGLTexture; lutOf: Look | null };
@@ -93,4 +93,36 @@ export function useGraded(url: string | null | undefined, look: Look | null, max
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!url) return null;
   return look && out?.key === key ? out.url : url;
+}
+
+// ---- Ninja scene check: is this clip's thumbnail mostly green screen? ----
+const scenes = new Map<string, Promise<boolean>>();
+const sceneDone = new Map<string, boolean>();
+export function sceneIsGreen(url: string): Promise<boolean> {
+  let p = scenes.get(url);
+  if (!p) {
+    p = loadImg(url).then((img) => {
+      const c = document.createElement('canvas'); c.width = 96; c.height = Math.max(1, Math.round(96 * img.naturalHeight / img.naturalWidth));
+      const x = c.getContext('2d')!; x.drawImage(img, 0, 0, c.width, c.height);
+      return greenShare(x.getImageData(0, 0, c.width, c.height).data) >= GREEN_SCREEN_SHARE;
+    }).catch(() => false);
+    p.then((g) => sceneDone.set(url, g));
+    scenes.set(url, p);
+  }
+  return p;
+}
+
+/** Green-screen result for each url (undefined while checking). */
+export function useScenes(urls: (string | null | undefined)[]): Record<string, boolean | undefined> {
+  const list = urls.filter((u): u is string => !!u);
+  const key = list.join('|');
+  const [, bump] = useState(0);
+  useEffect(() => {
+    let live = true;
+    for (const u of list) if (!sceneDone.has(u)) sceneIsGreen(u).then(() => { if (live) bump((n) => n + 1); });
+    return () => { live = false; };
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const out: Record<string, boolean | undefined> = {};
+  for (const u of list) out[u] = sceneDone.get(u);
+  return out;
 }
