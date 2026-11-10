@@ -17,6 +17,7 @@ import ClipTimeline from './ClipTimeline';
 import GuidesPanel from './GuidesPanel';
 import { lookFor, refineLook } from '@/lib/carousel/grade';
 import { useScenes } from './gradeImage';
+import PreviewExport from './PreviewExport';
 import { H, SLIDE, W, insetOf, vinOf, vlenOf, type Layer, type Layout } from '@/lib/carousel/layout';
 import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
@@ -45,7 +46,16 @@ export default function CarouselEditor({
     setSelSet((cur) => { const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]; setSelIdRaw(next.length ? next[next.length - 1] : null); return next; });
   }, []);
   const [playing, setPlaying] = useState(true);
-  const [seams, setSeams] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // Slide-edge markers: off by default (they read as white borders); the
+  // EDGES button turns them on, and the choice is remembered on this browser.
+  const [seams, setSeamsRaw] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem('carousel.edges') === '1') setSeamsRaw(true); } catch { /* storage unavailable */ }
+  }, []);
+  const setSeams = useCallback((f: (v: boolean) => boolean) => {
+    setSeamsRaw((v) => { const n = f(v); try { localStorage.setItem('carousel.edges', n ? '1' : '0'); } catch { /* ignore */ } return n; });
+  }, []);
   const [snap, setSnap] = useState(true);
   const [frameMode, setFrameMode] = useState(false);
   const [, setTab] = useState<Tab>('layer'); // kept so older calls stay harmless
@@ -525,6 +535,7 @@ export default function CarouselEditor({
           {G && G.v.length + G.h.length > 0 && !G.lock && <button type="button" className={seg(false)} onClick={() => updateGuides({ v: [], h: [] })}>Clear</button>}
         </div>
         <div className="flex-1" />
+        <button type="button" className={pill()} onClick={() => { setPlaying(false); setPreviewOpen(true); }} disabled={!layout}>Preview video</button>
         <button type="button" className={pill()} onClick={addText} disabled={!layout}>+ Text</button>
         <button type="button" onClick={() => { setSwapId(null); setDrawer((d) => !d || swapId !== null); }} aria-expanded={drawer && !swapId}
           className={`grid h-9 place-items-center rounded-full px-4 text-[11px] font-bold uppercase tracking-[.12em] text-white ${drawer ? 'bg-accent/70' : 'bg-accent'}`}>
@@ -659,6 +670,9 @@ export default function CarouselEditor({
           )}
         </section>
       </div>
+      {previewOpen && layout && (
+        <PreviewExport slug={athlete.slug} name={athlete.name} layout={layout} media={media} onClose={() => { setPreviewOpen(false); setPlaying(true); }} />
+      )}
     </div>
   );
 }

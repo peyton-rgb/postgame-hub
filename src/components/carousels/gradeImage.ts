@@ -42,7 +42,7 @@ const imgFrom = (src: string, cors: boolean) => new Promise<HTMLImageElement>((r
 });
 // If the browser already cached this picture from a plain <img> (no CORS), the
 // CORS load fails off that cached copy — so fetch a fresh one past the cache.
-async function loadImg(url: string) {
+export async function loadImg(url: string) {
   try { return await imgFrom(url, true); } catch {
     const blob = await (await fetch(url, { mode: 'cors', cache: 'reload' })).blob();
     const local = URL.createObjectURL(blob);
