@@ -344,6 +344,39 @@ export function swapMedia(layout: Layout, id: string, key: string, label: string
 export function setGuides(layout: Layout, patch: Partial<{ v: number[]; h: number[]; show: boolean; lock: boolean }>): Layout {
   return { ...layout, guides: { ...guidesOf(layout), ...patch } };
 }
+/** A grid of guides from Columns/Rows/Gutter/Margin, like the artifact's
+ *  "New guide layout": margins on every side, then column (and row) splits
+ *  with a gutter between. `slide` = 'all' or one slide index (0–4); rows and
+ *  top/bottom margins are always canvas-wide (horizontal guides span every
+ *  slide). With `replace` false the new guides are added to the existing ones. */
+export function gridGuides(
+  layout: Layout,
+  o: { cols: number; gut: number; rows: number; rgut: number; margin: number; slide: 'all' | number; replace: boolean },
+): { v: number[]; h: number[] } {
+  const G = guidesOf(layout);
+  const cols = Math.max(0, Math.floor(o.cols)), rows = Math.max(0, Math.floor(o.rows));
+  const gut = Math.max(0, o.gut), rgut = Math.max(0, o.rgut), m = Math.max(0, o.margin);
+  const keepV = o.replace
+    ? (o.slide === 'all' ? [] : G.v.filter((x) => x < (o.slide as number) * SLIDE || x > ((o.slide as number) + 1) * SLIDE))
+    : G.v;
+  const V = new Set(keepV), Hs = new Set(o.replace ? [] : G.h);
+  const slides = o.slide === 'all' ? Array.from({ length: N }, (_, k) => k) : [o.slide];
+  for (const k of slides) {
+    const a = k * SLIDE + m, b = (k + 1) * SLIDE - m;
+    if (m > 0) { V.add(Math.round(a)); V.add(Math.round(b)); }
+    if (cols > 1) {
+      const cw = (b - a - gut * (cols - 1)) / cols;
+      for (let c = 1; c < cols; c++) { const x = a + c * cw + (c - 1) * gut; V.add(Math.round(x)); if (gut) V.add(Math.round(x + gut)); }
+    }
+  }
+  if (m > 0) { Hs.add(m); Hs.add(H - m); }
+  if (rows > 1) {
+    const a = m, b = H - m, rh = (b - a - rgut * (rows - 1)) / rows;
+    for (let r = 1; r < rows; r++) { const y = a + r * rh + (r - 1) * rgut; Hs.add(Math.round(y)); if (rgut) Hs.add(Math.round(y + rgut)); }
+  }
+  return { v: Array.from(V).sort((x, y) => x - y), h: Array.from(Hs).sort((x, y) => x - y) };
+}
+
 /** A dragged guide snaps to slide edges/centres, the middle, and other layers' edges (hold ⇧ to place freely). */
 export function snapGuide(layout: Layout, axis: 'v' | 'h', pos: number, scale: number) {
   const ln = snapLines(layout, new Set());

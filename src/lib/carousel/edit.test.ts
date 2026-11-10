@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { applyDrag, startBodyDrag, act, isBg, margins, moveLayerTo, swapMedia } from './edit.ts';
+import { applyDrag, startBodyDrag, act, isBg, margins, moveLayerTo, swapMedia, gridGuides } from './edit.ts';
 import type { Layout } from './layout.ts';
 
 const media = {
@@ -132,4 +132,18 @@ test('swapMedia keeps frame, crop edges, zoom, look and order; resets focus and 
   assert.deepEqual(out.layers.map((l) => l.id), ['a', 'v', 't']);
   assert.equal(swapMedia(lay, 't', 'x', 'x').layers[2].media, '');   // text layers are left alone
   assert.equal(lay.layers[1].media, 'old');                           // original untouched
+});
+
+test('gridGuides: 2 columns + 60 margin on every slide; one-slide replace keeps the others', () => {
+  const lay = base() as Layout;
+  const all = gridGuides(lay, { cols: 2, gut: 0, rows: 0, rgut: 0, margin: 60, slide: 'all', replace: true });
+  assert.deepEqual(all.v.slice(0, 6), [60, 540, 1020, 1140, 1620, 2100]);
+  assert.equal(all.v.length, 15);
+  assert.deepEqual(all.h, [60, 1290]);
+  const g = gridGuides(lay, { cols: 3, gut: 20, rows: 2, rgut: 0, margin: 0, slide: 2, replace: true });
+  assert.deepEqual(g.v, [2160 + 347, 2160 + 367, 2160 + 713, 2160 + 733]);   // gutter edges inside slide 3 only
+  assert.deepEqual(g.h, [675]);
+  const withOld = { ...lay, guides: { v: [100, 2300, 4000], h: [10], show: true, lock: false } } as Layout;
+  const one = gridGuides(withOld, { cols: 2, gut: 0, rows: 0, rgut: 0, margin: 0, slide: 2, replace: true });
+  assert.deepEqual(one.v, [100, 2700, 4000]);   // slide 3's old guide replaced, others kept
 });

@@ -14,6 +14,7 @@ import CarouselCanvas, { type CanvasHandle, type CanvasMedia } from './CarouselC
 import LayerProps, { MultiProps } from './LayerProps';
 import LayersList from './LayersList';
 import ClipTimeline from './ClipTimeline';
+import GuidesPanel from './GuidesPanel';
 import { H, SLIDE, W, insetOf, vinOf, vlenOf, type Layer, type Layout } from '@/lib/carousel/layout';
 import { act, applyDrag, applyGroup, boxOf, guidesOf, makeCutout, margins, moveLayerTo, newCard, swapMedia, newText, pairOf, partnersOf, removeLayers, setGuides, snapGuide, startBodyDrag, startGroup, type Action, type Box, type Drag, type GroupDrag } from '@/lib/carousel/edit';
 import type { PickerClip } from './ClipPicker';
@@ -605,6 +606,11 @@ export default function CarouselEditor({
               replacing={swapId ? layout?.layers.find((l) => l.id === swapId)?.name ?? 'this layer' : null}
               onPick={async (c) => { if (swapId) await swapClip(swapId, c); else await addClip(c); setDrawer(false); setSwapId(null); }}
               onClose={() => { setDrawer(false); setSwapId(null); }} />
+          )}
+
+          {layout && (
+            <GuidesPanel layout={layout} guides={guidesOf(layout)} view={view} flash={flash}
+              onChange={(patch) => updateGuides(patch)} />
           )}
 
           <p className="text-[12px] leading-relaxed text-ink-4">
