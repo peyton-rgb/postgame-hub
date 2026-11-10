@@ -37,9 +37,18 @@ function setup(): GL | null {
   return (shared = { gl, canvas, vTex, lTex, lutOf: null });
 }
 
-const loadImg = (url: string) => new Promise<HTMLImageElement>((res, rej) => {
-  const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = url;
+const imgFrom = (src: string, cors: boolean) => new Promise<HTMLImageElement>((res, rej) => {
+  const i = new Image(); if (cors) i.crossOrigin = 'anonymous'; i.onload = () => res(i); i.onerror = rej; i.src = src;
 });
+// If the browser already cached this picture from a plain <img> (no CORS), the
+// CORS load fails off that cached copy — so fetch a fresh one past the cache.
+async function loadImg(url: string) {
+  try { return await imgFrom(url, true); } catch {
+    const blob = await (await fetch(url, { mode: 'cors', cache: 'reload' })).blob();
+    const local = URL.createObjectURL(blob);
+    try { return await imgFrom(local, false); } finally { setTimeout(() => URL.revokeObjectURL(local), 0); }
+  }
+}
 
 // One image at a time through the shared canvas.
 let queue: Promise<unknown> = Promise.resolve();

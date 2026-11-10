@@ -38,7 +38,7 @@ function StreamVideo({ id, src, style, cors }: { id: string; src: string | null;
 function StillThumb({ url, look, style }: { url: string; look: Look | null; style: React.CSSProperties }) {
   const src = useGraded(url, look, 1024);
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src ?? url} alt="" draggable={false} style={style} />;
+  return <img src={src ?? url} alt="" draggable={false} crossOrigin={look ? 'anonymous' : undefined} style={style} />;
 }
 export type CanvasHandle = { toStage: (clientX: number, clientY: number) => { x: number; y: number }; scale: number; el: HTMLDivElement | null };
 

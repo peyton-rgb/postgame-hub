@@ -29,7 +29,7 @@ export type PickerClip = {
 function GradedThumb({ url, look }: { url: string; look: Look | null }) {
   const src = useGraded(url, look, 640);
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src ?? url} alt="" loading="lazy" className="h-full w-full object-cover" />;
+  return <img src={src ?? url} alt="" loading="lazy" crossOrigin={look ? 'anonymous' : undefined} className="h-full w-full object-cover" />;
 }
 
 type Payload = { selected: PickerClip[]; elsewhere: PickerClip[]; photos?: PickerClip[]; fetchedAt: string };
