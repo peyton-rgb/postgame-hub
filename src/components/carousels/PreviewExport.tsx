@@ -7,10 +7,10 @@
 // as the editor) and recorded in the browser, so it keeps this tab busy for
 // the length of the video. Meant for brand review, not for posting.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeLayer, vinOf, vlenOf, SLIDE, H as SLIDE_H, type Layer, type Layout } from '@/lib/carousel/layout';
 import { lookFor, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
-import { PREVIEW, previewLength, previewState, clipAt } from '@/lib/carousel/preview';
+import { previewPlan, previewState, clipAt, slideClips, slideOf } from '@/lib/carousel/preview';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 import { filmAmount, filmFrame, filmGeo } from '@/lib/carousel/film';
 import { createFilmRenderer, type FilmRenderer } from './filmGL';
@@ -249,10 +249,11 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
 }) {
   const out = useRef<HTMLCanvasElement>(null);
   const opts = useRef<Opts>({ caption: '', partner: true });
-  const clock = useRef<{ t0: number; rec: boolean }>({ t0: performance.now(), rec: false });
+  const clock = useRef<{ t0: number; rec: boolean; wait?: boolean }>({ t0: performance.now(), rec: false });
   const [stage, setStage] = useState<'loading' | 'ready' | 'recording' | 'done' | 'error'>('loading');
   const [note, setNote] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [priming, setPriming] = useState(false);
   const [result, setResult] = useState<{ url: string; ext: string } | null>(null);
   const [caption, setCaption] = useState('');
   const [partner, setPartner] = useState(true);
@@ -261,7 +262,9 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
   opts.current = { caption, partner };
 
   const slides = layout.canvas?.slides ?? 5;
-  const len = previewLength(slides);
+  // Every slide stays until its longest clip has played through (lib/carousel/preview).
+  const plan = useMemo(() => previewPlan(slides, slideClips(layout.layers, media, slides)), [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+  const len = plan.len;
 
   useEffect(() => {
     let alive = true, timer = 0;
@@ -306,7 +309,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
         const ctx = out.current!.getContext('2d')!;
 
         const frame = () => {
-          if (!alive) return;
+          if (!alive || clock.current.wait) return;                 // paused while the clips finish downloading
           const now = performance.now();
           let t = (now - clock.current.t0) / 1000;
           if (!clock.current.rec) t %= len + 1;                     // live preview loops
@@ -318,8 +321,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             let src: CanvasImageSource = el;
             if (el instanceof HTMLVideoElement) {
               // Each slide's clips start from the top when the slide arrives (as on Instagram).
-              const k = Math.floor((L.x + L.w / 2) / SLIDE) + 1;
-              const c = clipAt(t, k, it.vlen);
+              const c = clipAt(t, slideOf(L, slides), it.vlen, plan);
               const want = it.vin + c.at;
               if (Math.abs(el.currentTime - want) > (c.playing ? 0.3 : 0.05)) el.currentTime = want;
               if (c.playing && el.paused) el.play().catch(() => {});
@@ -348,7 +350,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             sx.restore();
           }
           // the phone screen
-          const st = previewState(t, slides);
+          const st = previewState(t, plan);
           ctx.save(); ctx.setTransform(K, 0, 0, CH / LH, 0, 0);
           ctx.fillStyle = '#000'; ctx.fillRect(0, 0, LW, LH);
           if (st.push < 1) { ctx.save(); ctx.translate(-st.push * LW * 0.3, 0); drawProfile(ctx, prof, av, grid, strip); ctx.restore(); }
@@ -361,17 +363,34 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
 
         recordRef.current = async () => {
           const c = out.current!;
-          // Line every clip up on its first frame, then start clock and recorder together.
-          await Promise.all(items.map((it) => it.el instanceof HTMLVideoElement
-            ? new Promise<void>((res) => { const v = it.el as HTMLVideoElement; v.currentTime = it.vin; v.addEventListener('seeked', () => res(), { once: true }); window.setTimeout(res, 4000); })
-            : Promise.resolve()));
+          // Before the clock starts, download every clip's whole section and park it on its first
+          // frame. A clip that is still downloading mid-recording would stall or skip ahead, and the
+          // slide would move on without it having really played through.
+          clock.current = { ...clock.current, wait: true };
+          setPriming(true); setStage('recording'); setProgress(0);
+          const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
+          await Promise.all(items.map(async (it) => {
+            if (!(it.el instanceof HTMLVideoElement)) return;
+            const v = it.el, a = it.vin, b = Math.min(it.vin + it.vlen, v.duration || Infinity) - 0.15;
+            const have = () => { for (let i = 0; i < v.buffered.length; i++) if (v.buffered.start(i) <= a + 0.1 && v.buffered.end(i) >= b) return true; return false; };
+            v.pause(); v.currentTime = a;
+            const t0 = performance.now();
+            while (alive && !have() && performance.now() - t0 < 20000) {
+              if (v.paused && performance.now() - t0 > 1200) v.play().catch(() => {});   // playing keeps the browser downloading
+              if (!v.paused && v.currentTime >= b) { v.pause(); v.currentTime = a; }
+              await sleep(150);
+            }
+            v.pause();
+            await new Promise<void>((res) => { v.addEventListener('seeked', () => res(), { once: true }); v.currentTime = a; window.setTimeout(res, 4000); });
+          }));
+          if (!alive) return;
+          setPriming(false);
           const types = ['video/mp4;codecs=avc1.640033', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
           const mime = types.find((t) => MediaRecorder.isTypeSupported(t)) ?? '';
           const rec = new MediaRecorder(c.captureStream(30), { mimeType: mime || undefined, videoBitsPerSecond: 16_000_000 });
           const chunks: Blob[] = [];
           rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
           clock.current = { t0: performance.now(), rec: true };
-          setStage('recording'); setProgress(0);
           rec.start(500);
           await new Promise((r) => window.setTimeout(r, len * 1000 + 200));
           rec.stop();
@@ -406,7 +425,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
           <div>
             <h2 className="font-display text-[28px] leading-none text-ink-1">Preview video</h2>
             <p className="mt-2 text-[13px] text-ink-3">
-              {name}&apos;s profile, the post opening, then a swipe through all {slides} slides — {Math.round(len)} seconds, phone size.
+              {name}&apos;s profile, the post opening, then a swipe through all {slides} slides, each one staying until its clips have played all the way through — {Math.round(len)} seconds, phone size.
               For brand review only: it shows the athlete&apos;s own Instagram posts.
             </p>
           </div>
@@ -426,7 +445,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
           {stage === 'recording' && (
             <div className="flex flex-col gap-2">
               <div className="h-1.5 overflow-hidden rounded-full bg-surface-raised"><div className="h-full bg-accent" style={{ width: `${progress * 100}%` }} /></div>
-              <p className="text-[13px] text-ink-3">Recording… keep this tab open and in front until it finishes.</p>
+              <p className="text-[13px] text-ink-3">{priming ? 'Getting every clip fully loaded first…' : 'Recording… keep this tab open and in front until it finishes.'}</p>
             </div>
           )}
           <div className="mt-auto flex flex-wrap gap-2">
