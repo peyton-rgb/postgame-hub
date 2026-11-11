@@ -9,7 +9,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { placeLayer, vinOf, vlenOf, SLIDE, H as SLIDE_H, type Layer, type Layout } from '@/lib/carousel/layout';
-import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { lookFor, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
 import { PREVIEW, previewLength, previewState, clipAt } from '@/lib/carousel/preview';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 import { filmAmount, filmFrame, filmGeo } from '@/lib/carousel/film';
@@ -34,21 +34,21 @@ type Item = {
   L: Layer; m: CanvasMedia; el: HTMLVideoElement | HTMLImageElement; vin: number; vlen: number;
   grade: ((src: HTMLVideoElement) => HTMLCanvasElement | null) | null;
   /** Super 8 film look: strength (0 = off), its own drawing surface, and the last film picture drawn. */
-  film?: { amt: number; canvas: HTMLCanvasElement; r: FilmRenderer; n: number };
+  film?: { amt: number; canvas: HTMLCanvasElement; r: FilmRenderer; n: number; pre: Pre | null };
 };
 // A layer's Super 8 drawing surface (the grade, if any, is drawn underneath by the same pass).
-function makeFilm(L: Layer, kind: string, look: Look | null, cleanup: (() => void)[]): Item['film'] {
+function makeFilm(L: Layer, kind: string, look: Look | null, pre: Pre | null, cleanup: (() => void)[]): Item['film'] {
   const amt = filmAmount(L, kind);
   if (!amt) return undefined;
   const canvas = document.createElement('canvas');
   const r = createFilmRenderer(canvas, look, true);
   if (!r) return undefined;
   cleanup.push(() => r.dispose());
-  return { amt, canvas, r, n: -1 };
+  return { amt, canvas, r, n: -1, pre };
 }
 
 // ---------------------------------------------------------------- grading
-function makeGrader(look: Look) {
+function makeGrader(look: Look, pre: Pre | null) {
   const c = document.createElement('canvas');
   const gl = c.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: true });
   if (!gl) return null;
@@ -68,6 +68,7 @@ function makeGrader(look: Look) {
   };
   const vTex = tex(0), lTex = tex(1);
   gl.uniform1i(gl.getUniformLocation(prog, 'img'), 0); gl.uniform1i(gl.getUniformLocation(prog, 'lut'), 1);
+  gl.uniform3f(gl.getUniformLocation(prog, 'pre'), pre ? pre[0] : 1, pre ? pre[1] : 1, pre ? pre[2] : 1);
   let ready = false;
   loadLut(look).then((img) => {
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, lTex);
@@ -285,13 +286,15 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
           if (m.kind === 'video') {
             if (!m.src) continue;
             const el = await loadVideo(m.src, cleanup);
-            let look = lookFor(L, m);
-            if ((L.grade ?? 'auto') === 'auto') look = refineLook(look, true, needsScene(look) && m.thumb ? await sceneOf(m.thumb) : false);
-            const film = makeFilm(L, m.kind, look, cleanup);
-            items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look && !film ? makeGrader(look) : null, film });
+            const base = lookFor(L, m), auto = (L.grade ?? 'auto') === 'auto';
+            const scene = auto && needsScene(base) && m.thumb ? await sceneOf(m.thumb) : false;
+            const look = refineLook(base, auto, scene);
+            const pre = look ? preFor(base, auto, scene) : null;
+            const film = makeFilm(L, m.kind, look, pre, cleanup);
+            items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look && !film ? makeGrader(look, pre) : null, film });
           } else {
             const el = await img((m.src ?? m.thumb)!);
-            if (el) items.push({ L, m, el, vin: 0, vlen: 0, grade: null, film: makeFilm(L, m.kind, null, cleanup) });
+            if (el) items.push({ L, m, el, vin: 0, vlen: 0, grade: null, film: makeFilm(L, m.kind, null, null, cleanup) });
           }
           if (!alive) return;
         }
@@ -328,7 +331,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
               // Super 8: a clip takes a new frame only when the film steps on (18 a second); a photo is sent once.
               const f = it.film, n = filmFrame(t).n, vid = el instanceof HTMLVideoElement;
               const sw = vid ? el.videoWidth : el.naturalWidth, sh = vid ? el.videoHeight : el.naturalHeight;
-              if (f.r.draw(el, sw, sh, filmGeo(pl), f.amt, t, vid ? n !== f.n : f.n < 0)) { src = f.canvas; f.n = n; }
+              if (f.r.draw(el, sw, sh, filmGeo(pl), f.amt, t, vid ? n !== f.n : f.n < 0, f.pre)) { src = f.canvas; f.n = n; }
             }
             sx.save();
             sx.beginPath(); sx.rect(pl.frame.left, pl.frame.top, pl.frame.width, pl.frame.height); sx.clip();

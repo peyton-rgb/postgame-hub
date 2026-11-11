@@ -62,8 +62,14 @@ export function lookFor(L: { grade?: Layer['grade']; media?: string }, m: (Media
 
 /** What a clip's thumbnail shows: green screen, a dark set, or anything else. */
 export type Scene = 'green' | 'dark' | 'plain';
-/** Does Auto need to look at the picture before it can choose? Only Canon CK files do: their look depends on the set. */
-export const needsScene = (look: Look | null) => look === 'btscanon';
+/** A per-clip correction applied before the look: how much to multiply red, green and blue by. */
+export type Pre = [number, number, number];
+/** What the editor learns from a clip's thumbnail: the set, and the exposure / white-balance correction it would need. */
+export type SceneInfo = { kind: Scene; pre: Pre | null };
+type SceneArg = SceneInfo | Scene | boolean | undefined;
+const kindOf = (s: SceneArg): Scene | boolean | undefined => (s && typeof s === 'object' ? s.kind : s);
+/** Does Auto need to look at the picture before it can choose? Canon footage does: its treatment depends on the set. */
+export const needsScene = (look: Look | null) => look === 'btscanon' || look === 'canonstudio';
 
 /** What Auto actually shows. Peyton's call (Nov 11 2026): every clip is coloured with
  *  Andres's template for the camera it was shot on — the camera_to_lut table in
@@ -73,10 +79,23 @@ export const needsScene = (look: Look | null) => look === 'btscanon';
  *  never reach here — autoLook leaves them alone. "As shot, brightened" stays one pick
  *  away in each layer's dropdown.
  *  `scene` undefined = not checked yet → as shot for a moment; false = no thumbnail to check. */
-export function refineLook(look: Look | null, auto: boolean, scene: Scene | boolean | undefined): Look | null {
+export function refineLook(look: Look | null, auto: boolean, scene: SceneArg): Look | null {
   if (!auto || !needsScene(look)) return look;
-  if (scene === undefined) return null;
-  return scene === 'dark' ? 'canoncourt' : 'btscanon';
+  const kind = kindOf(scene);
+  if (kind === undefined) return null;
+  if (look === 'canonstudio') return look;
+  return kind === 'dark' ? 'canoncourt' : 'btscanon';
+}
+
+/** The correction Auto adds under the look. Andres built his Canon studio look on the bright
+ *  green-screen set; in the dim warm white-wall room the same look leaves faces dark and the
+ *  frame orange (Peyton, Nov 11 2026). So Canon-via-Ninja clips away from the green screen are
+ *  first brightened and white-balanced to their own wall — the way a colourist would set
+ *  exposure before applying a look — and then get Andres's look. Picked by hand, a look is
+ *  applied exactly as Andres made it. */
+export function preFor(look: Look | null, auto: boolean, scene: SceneArg): Pre | null {
+  if (!auto || look !== 'canonstudio' || !scene || typeof scene !== 'object' || scene.kind === 'green') return null;
+  return scene.pre;
 }
 
 /** Share of a picture that is green-screen green, ignoring black side bars.
@@ -110,4 +129,35 @@ export function sceneKind(rgba: Uint8ClampedArray | number[]): Scene {
     sum += l; n++;
   }
   return n && sum / n < DARK_SCENE_LUMA ? 'dark' : 'plain';
+}
+
+/** Where the wall should land before the look (0–1): Andres's Canon look turns this into a bright off-white. */
+export const BALANCE_TARGET = 0.6;
+/** Exposure + white balance for a clip, read off its thumbnail (0–255 rgba): find the wall
+ *  (the brightest, least colourful third of the picture), then the red/green/blue multipliers
+ *  that bring it to a bright near-neutral — keeping about a third of its warmth so it doesn't go
+ *  clinical. Multiplying (rather than adding) keeps blacks black. With no wall to read, it
+ *  only brightens. Null = nothing to measure. */
+export function balanceGains(rgba: Uint8ClampedArray | number[]): Pre | null {
+  const px: [number, number, number, number, number][] = [];   // luma, r, g, b, colourfulness
+  for (let k = 0; k < rgba.length; k += 4) {
+    const r = rgba[k] / 255, g = rgba[k + 1] / 255, b = rgba[k + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    if (mx < 0.06) continue;                       // pillarbox / pure black
+    px.push([0.2126 * r + 0.7152 * g + 0.0722 * b, r, g, b, (mx - mn) / mx]);
+  }
+  if (px.length < 50) return null;
+  px.sort((a, b) => b[0] - a[0]);
+  const clamp = (v: number) => Math.min(2, Math.max(0.85, v));
+  const round = (v: number) => Math.round(v * 1000) / 1000;
+  const wall = px.slice(0, Math.floor(px.length * 0.3)).filter((p) => p[4] < 0.3);
+  if (wall.length < px.length * 0.08) {
+    const top = px[Math.floor(px.length * 0.05)][0];           // no wall: lift the brightest part to the target
+    const g = round(clamp(BALANCE_TARGET / Math.max(top, 0.05)));
+    return [g, g, g];
+  }
+  const med = (i: 1 | 2 | 3) => { const v = wall.map((p) => p[i]).sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  const w = [med(1), med(2), med(3)];
+  const wl = 0.2126 * w[0] + 0.7152 * w[1] + 0.0722 * w[2];
+  return w.map((c) => round(clamp((BALANCE_TARGET * (wl + (c - wl) * 0.3)) / wl / Math.max(c, 0.02)))) as Pre;
 }

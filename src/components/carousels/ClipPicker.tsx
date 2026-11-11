@@ -10,7 +10,7 @@
 //  - each tile is memoised and keeps its own hover state;
 //  - a tile only loads / grades its picture once it scrolls near the panel.
 
-import { autoLook, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { autoLook, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
 import { useGraded, useScenes } from './gradeImage';
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import GradeCanvas from './GradeCanvas';
@@ -34,20 +34,20 @@ export type PickerClip = {
 };
 
 // A tile's picture, shown through the clip's grade once it's ready.
-function GradedThumb({ url, look }: { url: string; look: Look | null }) {
-  const src = useGraded(url, look, 400);
+function GradedThumb({ url, look, pre }: { url: string; look: Look | null; pre: Pre | null }) {
+  const src = useGraded(url, look, 400, pre);
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src ?? url} alt="" loading="lazy" crossOrigin={look ? 'anonymous' : undefined} className="h-full w-full object-cover" />;
 }
 
 // The hover-play preview, drawn through the same grade as the canvas.
-function HoverPreview({ c, look }: { c: PickerClip; look: Look | null }) {
+function HoverPreview({ c, look, pre }: { c: PickerClip; look: Look | null; pre: Pre | null }) {
   const [failed, setFailed] = useState(false);
   const cover: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
   return (
     <span className="absolute inset-0">
       <HlsVideo src={c.play} poster={c.thumb} cors={!!look || !!autoLook(c.name)} className="h-full w-full object-cover" />
-      {look && !failed && <GradeCanvas look={look} style={cover} onFail={() => setFailed(true)} />}
+      {look && !failed && <GradeCanvas look={look} pre={pre} style={cover} onFail={() => setFailed(true)} />}
     </span>
   );
 }
@@ -55,8 +55,8 @@ function HoverPreview({ c, look }: { c: PickerClip; look: Look | null }) {
 // Hover scrub: slide the mouse across a tile to run through the clip. The frames come from
 // Frame.io's scrub sheet (one picture holding ~100 small frames of the clip), drawn through the
 // clip's grade; a red line and the time mark where you are.
-function ScrubPreview({ sheet, look, at, w, h, dur }: { sheet: ScrubSheet; look: Look | null; at: number; w: number; h: number; dur: number | null }) {
-  const url = useGraded(sheet.url, look, 2600) ?? sheet.url;
+function ScrubPreview({ sheet, look, pre, at, w, h, dur }: { sheet: ScrubSheet; look: Look | null; pre: Pre | null; at: number; w: number; h: number; dur: number | null }) {
+  const url = useGraded(sheet.url, look, 2600, pre) ?? sheet.url;
   const f = Math.min(sheet.frames - 1, Math.max(0, Math.floor(at * sheet.frames)));
   const col = f % sheet.tx, row = Math.floor(f / sheet.tx);
   const k = Math.max(w / sheet.tw, h / sheet.th);                       // cover the tile, like the thumbnail does
@@ -122,7 +122,9 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
   // The tile's grade; Canon clips wait for the green-screen check (only once seen).
   const base = c.kind === 'video' ? autoLook(c.name) : null;
   const scenes = useScenes(seen && needsScene(base) ? [c.thumb] : []);
-  const look: Look | null = seen && c.kind === 'video' ? refineLook(base, true, c.thumb ? scenes[c.thumb] : false) : null;
+  const scene = c.thumb ? scenes[c.thumb] : false;
+  const look: Look | null = seen && c.kind === 'video' ? refineLook(base, true, scene) : null;
+  const pre = look ? preFor(base, true, scene) : null;
 
   return (
     <li ref={ref}>
@@ -145,12 +147,12 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
           } : undefined}
         >
           {!seen ? null : hover && c.kind === 'video' && !c.scrub ? (
-            <HoverPreview c={c} look={look} />
+            <HoverPreview c={c} look={look} pre={pre} />
           ) : c.thumb ? (
-            <GradedThumb url={c.thumb} look={look} />
+            <GradedThumb url={c.thumb} look={look} pre={pre} />
           ) : null}
           {seen && hover && c.kind === 'video' && c.scrub && scrubAt && (
-            <ScrubPreview sheet={c.scrub} look={look} at={scrubAt.at} w={scrubAt.w} h={scrubAt.h} dur={c.duration} />
+            <ScrubPreview sheet={c.scrub} look={look} pre={pre} at={scrubAt.at} w={scrubAt.w} h={scrubAt.h} dur={c.duration} />
           )}
           {c.duration != null && (
             <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">

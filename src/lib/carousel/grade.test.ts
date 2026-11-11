@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { autoLook, cameraLook, greenShare, lookFor, needsScene, refineLook, sceneKind } from './grade.ts';
+import { autoLook, balanceGains, cameraLook, greenShare, lookFor, needsScene, preFor, refineLook, sceneKind } from './grade.ts';
 
 test('autoLook: camera → look, per the grade README', () => {
   const cases: [string, string | null][] = [
@@ -46,7 +46,7 @@ test('cameraLook: artifact clips read their camera from the label, source or key
 test("refineLook + scenes: Auto colours each clip with Andres's look for its camera", () => {
   assert.equal(refineLook('canonstudio', true, 'green'), 'canonstudio');   // Canon via Ninja: its look on any set
   assert.equal(refineLook('canonstudio', true, 'plain'), 'canonstudio');
-  assert.equal(refineLook('canonstudio', true, undefined), 'canonstudio'); // no scene check needed
+  assert.equal(refineLook('canonstudio', true, undefined), null);          // not checked yet: as shot for a moment
   assert.equal(refineLook('sonystudio', true, false), 'sonystudio');       // Sony
   assert.equal(refineLook('blackmagic', true, false), 'blackmagic');       // Blackmagic
   assert.equal(refineLook('btscanon', true, 'plain'), 'btscanon');         // Canon CK, bright interior
@@ -58,7 +58,8 @@ test("refineLook + scenes: Auto colours each clip with Andres's look for its cam
   assert.equal(refineLook('btscanon', false, 'dark'), 'btscanon');         // picked by hand: kept
   assert.equal(refineLook('lift', false, 'green'), 'lift');
   assert.equal(needsScene('btscanon'), true);
-  assert.equal(needsScene('canonstudio'), false);
+  assert.equal(needsScene('canonstudio'), true);
+  assert.equal(needsScene('sonystudio'), false);
   const px = (r: number, g: number, b: number, n: number) => Array.from({ length: n }, () => [r, g, b, 255]).flat();
   const screen = [...px(90, 170, 110, 40), ...px(200, 60, 60, 20), ...px(0, 0, 0, 40)];   // 2/3 of non-black is green
   assert.ok(greenShare(screen) > 0.6);
@@ -67,4 +68,25 @@ test("refineLook + scenes: Auto colours each clip with Andres's look for its cam
   assert.equal(sceneKind(screen), 'green');
   assert.equal(sceneKind(room), 'plain');
   assert.equal(sceneKind([...px(60, 52, 48, 60), ...px(0, 0, 0, 30)]), 'dark');   // dim court, black bars ignored
+});
+
+test('Canon-via-Ninja clips off the green screen are brightened and white-balanced to their wall first', () => {
+  const px = (r: number, g: number, b: number, n: number) => Array.from({ length: n }, () => [r, g, b, 255]).flat();
+  // dim warm room: cream wall (119/110/94), dark face, red shirt, black side bars
+  const room = [...px(119, 110, 94, 40), ...px(45, 32, 28, 20), ...px(110, 35, 35, 25), ...px(0, 0, 0, 15)];
+  const g = balanceGains(room)!;
+  assert.ok(g[0] > 1.15 && g[0] < g[1] && g[1] < g[2] && g[2] <= 2, `gains ${g}`);   // brighter, and blue lifted most (less warm)
+  const wall = [119 / 255 * g[0], 110 / 255 * g[1], 94 / 255 * g[2]];
+  assert.ok(Math.abs(wall[0] - wall[2]) < 0.05 && wall[1] > 0.55 && wall[1] < 0.65, `wall ${wall}`);   // near-neutral, near the target
+  assert.deepEqual(balanceGains(px(0, 0, 0, 100)), null);                                // nothing to measure
+  const noWall = balanceGains([...px(120, 30, 30, 60), ...px(60, 40, 30, 40)])!;         // no wall: brighten only, no colour shift
+  assert.ok(noWall[0] === noWall[1] && noWall[1] === noWall[2] && noWall[0] > 1);
+  const info = { kind: 'plain' as const, pre: g };
+  assert.deepEqual(preFor('canonstudio', true, info), g);
+  assert.equal(preFor('canonstudio', true, { kind: 'green', pre: g }), null);            // green screen: Andres's look as he made it
+  assert.equal(preFor('canonstudio', false, info), null);                                // picked by hand: as he made it
+  assert.equal(preFor('btscanon', true, info), null);
+  assert.equal(preFor('canonstudio', true, undefined), null);
+  assert.equal(refineLook('canonstudio', true, info), 'canonstudio');
+  assert.equal(refineLook('btscanon', true, { kind: 'dark', pre: null }), 'canoncourt');
 });

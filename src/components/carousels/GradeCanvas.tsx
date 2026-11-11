@@ -12,7 +12,7 @@
 // carousel plays and holding still while it is paused.
 
 import { useEffect, useRef, useState } from 'react';
-import type { Look } from '@/lib/carousel/grade';
+import type { Look, Pre } from '@/lib/carousel/grade';
 import { FILM_FPS, type FilmGeo } from '@/lib/carousel/film';
 import { createFilmRenderer } from './filmGL';
 import { loadImg } from './gradeImage';
@@ -27,10 +27,11 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-uniform sampler2D img; uniform sampler2D lut; varying vec2 uv;
+uniform sampler2D img; uniform sampler2D lut; uniform vec3 pre; varying vec2 uv;
 const float N = ${N}.0;
 void main(){
-  vec3 c = clamp(texture2D(img, uv).rgb, 0., 1.);
+  // pre = the clip's exposure / white-balance correction (grade.ts balanceGains); unset means none
+  vec3 c = clamp(texture2D(img, uv).rgb * (pre.r + pre.g + pre.b > 0. ? pre : vec3(1.)), 0., 1.);
   float b = c.b * (N - 1.), b0 = floor(b), b1 = min(b0 + 1., N - 1.);
   float x = c.r * (N - 1.) + .5, y = (c.g * (N - 1.) + .5) / N;
   vec3 s0 = texture2D(lut, vec2((b0 * N + x) / (N * N), y)).rgb;
@@ -48,8 +49,10 @@ export function loadLut(look: Look) {
   return p;
 }
 
-export default function GradeCanvas({ look, style, onFail, film = 0, geo, animate = true, imageSrc }: {
+export default function GradeCanvas({ look, style, onFail, film = 0, geo, animate = true, imageSrc, pre = null }: {
   look: Look | null; style: React.CSSProperties; onFail: () => void;
+  /** Exposure / white-balance correction applied before the look (red, green, blue multipliers). */
+  pre?: Pre | null;
   /** Super 8 strength, 0 = off. */
   film?: number;
   /** Where the film frame sits on the picture (filmGeo of the placed layer). */
@@ -62,8 +65,8 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
   const ref = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const filmOn = film > 0;
-  const live = useRef({ film, geo, animate });
-  live.current = { film, geo, animate };
+  const live = useRef({ film, geo, animate, pre });
+  live.current = { film, geo, animate, pre };
 
   // ---- Super 8 film look (with the grade underneath, if there is one)
   useEffect(() => {
@@ -80,7 +83,7 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
     const tick = () => {
       if (stop) return;
       raf = requestAnimationFrame(tick);
-      const { film: amt, geo: g, animate: anim } = live.current;
+      const { film: amt, geo: g, animate: anim, pre: pr } = live.current;
       if (!g || !r.ready()) return;
       const src = video ?? photo;
       if (!src) return;
@@ -89,13 +92,13 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
       if (anim) held = performance.now() / 1000;
       const n = Math.floor(held * FILM_FPS);
       const t = video ? video.currentTime : 0;
-      const key = `${amt}|${g.vis.join(',')}|${g.asp}|${g.pxu.join(',')}`;
+      const key = `${amt}|${g.vis.join(',')}|${g.asp}|${g.pxu.join(',')}|${pr ? pr.join(',') : ''}`;
       const stepped = n !== lastN, moved = !anim && t !== lastT;
       if (shown && !stepped && !moved && key === lastKey) return;
       // A clip only takes a new frame when the film steps (or when it is scrubbed while paused).
       const upload = video ? stepped || moved || !shown : !photoSent;
       const sw = video ? video.videoWidth : photo!.naturalWidth, sh = video ? video.videoHeight : photo!.naturalHeight;
-      if (!r.draw(src, sw, sh, g, amt, held, upload)) { stop = true; onFail(); return; }   // pixels not readable (no CORS)
+      if (!r.draw(src, sw, sh, g, amt, held, upload, pr)) { stop = true; onFail(); return; }   // pixels not readable (no CORS)
       photoSent = true; lastN = n; lastT = t; lastKey = key;
       if (!shown) { shown = true; setReady(true); }
     };
@@ -130,6 +133,8 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
     };
     const vTex = tex(0), lTex = tex(1);
     gl.uniform1i(gl.getUniformLocation(prog, 'img'), 0); gl.uniform1i(gl.getUniformLocation(prog, 'lut'), 1);
+    const preLoc = gl.getUniformLocation(prog, 'pre');
+    let lastPre = 'x';
 
     loadLut(look).then((img) => {
       if (stop) return;
@@ -140,8 +145,10 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
         raf = requestAnimationFrame(draw);
         if (video.readyState < 2 || !video.videoWidth) return;
         const t = video.currentTime;
-        if (t === last && video.paused) return;
+        const pr = live.current.pre, prKey = pr ? pr.join(',') : '';
+        if (t === last && video.paused && prKey === lastPre) return;
         last = t;
+        if (prKey !== lastPre) { lastPre = prKey; gl.uniform3f(preLoc, pr ? pr[0] : 1, pr ? pr[1] : 1, pr ? pr[2] : 1); }
         const k = Math.min(1, 1920 / Math.max(video.videoWidth, video.videoHeight));
         const w = Math.round(video.videoWidth * k), h = Math.round(video.videoHeight * k);
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }

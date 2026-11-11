@@ -9,7 +9,7 @@
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
-import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { lookFor, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
 import { filmAmount, filmGeo } from '@/lib/carousel/film';
 import { useGraded, useScenes } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
@@ -36,8 +36,8 @@ function StreamVideo({ id, src, style, cors }: { id: string; src: string | null;
   return <video ref={v} data-id={id} crossOrigin={cors ? 'anonymous' : undefined} muted loop playsInline preload="auto" style={style} />;
 }
 // A video drawn as its thumbnail (slide previews), through its grade.
-function StillThumb({ url, look, style }: { url: string; look: Look | null; style: React.CSSProperties }) {
-  const src = useGraded(url, look, 1024);
+function StillThumb({ url, look, pre, style }: { url: string; look: Look | null; pre: Pre | null; style: React.CSSProperties }) {
+  const src = useGraded(url, look, 1024, pre);
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src ?? url} alt="" draggable={false} crossOrigin={look ? 'anonymous' : undefined} style={style} />;
 }
@@ -185,7 +185,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           const m = media[L.media];
           if (!m) return null;
           const p = placeLayer(L, m);
-          const look = refineLook(lookFor(L, m), (L.grade ?? 'auto') === 'auto', m.thumb ? scenes[m.thumb] : false);
+          const auto = (L.grade ?? 'auto') === 'auto', scene = m.thumb ? scenes[m.thumb] : false;
+          const look = refineLook(lookFor(L, m), auto, scene);
+          const pre = look ? preFor(lookFor(L, m), auto, scene) : null;
           // Ask for readable pixels whenever the clip *might* be graded — Auto's
           // green-screen check finishes after the video starts loading, and a
           // video fetched without CORS can't be graded later.
@@ -208,7 +210,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
               }}
             >
               {m.kind === 'video' && still ? (
-                m.thumb ? <StillThumb url={m.thumb} look={look} style={mediaStyle} />
+                m.thumb ? <StillThumb url={m.thumb} look={look} pre={pre} style={mediaStyle} />
                 : <div style={{ ...mediaStyle, background: '#1c1c1c' }} />
               ) : m.kind === 'video' && m.stream === 'hls' ? (
                 <StreamVideo key={cors ? 'c' : 'p'} id={L.id} src={m.src} style={mediaStyle} cors={cors} />
@@ -226,7 +228,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 if (gradeFailed.has(fk)) return null;
                 return (
                   <GradeCanvas key={`${lk}:${film > 0 ? 'film' : ''}`} look={lk} style={mediaStyle}
-                    film={film} geo={film > 0 ? filmGeo(p) : undefined} animate={playing}
+                    film={film} geo={film > 0 ? filmGeo(p) : undefined} animate={playing} pre={lk ? pre : null}
                     imageSrc={m.kind === 'image' ? m.src : undefined}
                     onFail={() => setGradeFailed((s) => new Set(s).add(fk))} />
                 );

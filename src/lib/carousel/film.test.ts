@@ -45,5 +45,5 @@ test('off unless switched on, and only for clips and photos', () => {
 });
 
 test('the shader carries every setting the renderer sends', () => {
-  for (const u of ['img', 'lut', 'useLut', 'amt', 'seed', 'flick', 'asp', 'vis', 'pxu', 'weave']) assert.match(FRAG_FILM, new RegExp(`\\b${u}\\b`));
+  for (const u of ['img', 'lut', 'useLut', 'amt', 'seed', 'flick', 'asp', 'vis', 'pxu', 'weave', 'pre']) assert.match(FRAG_FILM, new RegExp(`\\b${u}\\b`));
 });

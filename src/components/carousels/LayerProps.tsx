@@ -6,7 +6,7 @@
 import { insetOf, vinOf, vlenOf, type Layer } from '@/lib/carousel/layout';
 import type { Action } from '@/lib/carousel/edit';
 import type { CanvasMedia } from './CarouselCanvas';
-import { LOOKS, LOOK_LABEL, cameraLook, lookFor, refineLook } from '@/lib/carousel/grade';
+import { LOOKS, LOOK_LABEL, cameraLook, lookFor, preFor, refineLook } from '@/lib/carousel/grade';
 import { useScenes } from './gradeImage';
 
 type Patch = Partial<Layer>;
@@ -176,7 +176,7 @@ export default function LayerProps({
               {LOOKS.map((k) => <option key={k} value={k}>{LOOK_LABEL[k]}</option>)}
             </select>
             <span className="text-[12px] text-ink-4">
-              {shown === 'lift' ? 'As shot, brightened, live. The Frame.io file isn\'t changed.' : shown ? `Andres's ${LOOK_LABEL[shown]} look, live. The Frame.io file isn't changed.` : 'Showing the clip as shot.'}
+              {shown === 'lift' ? 'As shot, brightened, live. The Frame.io file isn\'t changed.' : shown ? `Andres's ${LOOK_LABEL[shown]} look${preFor(lookFor(L, media), (L.grade ?? 'auto') === 'auto', media.thumb ? scene[media.thumb] : false) ? ', brightened and white-balanced to the wall first' : ''}, live. The Frame.io file isn't changed.` : 'Showing the clip as shot.'}
             </span>
           </label>
         );

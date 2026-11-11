@@ -8,13 +8,15 @@ import { useEffect, useRef, useState } from 'react';
 import { DUR } from '@/lib/carousel/layout';
 import { fmtT, setSection, zoomRange } from '@/lib/carousel/edit';
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
-import type { Look } from '@/lib/carousel/grade';
+import type { Look, Pre } from '@/lib/carousel/grade';
 import { useGraded } from './gradeImage';
 
 type Props = {
   dur: number; vin: number; vlen: number; strip?: string | null; thumb?: string | null; scrub?: ScrubSheet | null;
   /** Grade to show the frames through (null = as shot). */
   look?: Look | null;
+  /** The clip's exposure / white-balance correction, drawn under the look. */
+  pre?: Pre | null;
   onChange: (s: { vin: number; vlen: number }, commit: boolean) => void;
 };
 
@@ -51,10 +53,10 @@ function Frames({ sheet, dur, range, height }: { sheet: ScrubSheet; dur: number;
   );
 }
 
-function Bar({ range, dur, vin, vlen, strip: strip0, thumb: thumb0, scrub: scrub0, look = null, onChange, trim }: Props & { range: [number, number]; trim: boolean }) {
-  const sheetUrl = useGraded(scrub0?.url, look, 2600);
-  const strip = useGraded(strip0, look, 4096);
-  const thumb = useGraded(thumb0, look, 640);
+function Bar({ range, dur, vin, vlen, strip: strip0, thumb: thumb0, scrub: scrub0, look = null, pre = null, onChange, trim }: Props & { range: [number, number]; trim: boolean }) {
+  const sheetUrl = useGraded(scrub0?.url, look, 2600, pre);
+  const strip = useGraded(strip0, look, 4096, pre);
+  const thumb = useGraded(thumb0, look, 640, pre);
   const scrub = scrub0 && sheetUrl ? { ...scrub0, url: sheetUrl } : scrub0;
   const ref = useRef<HTMLDivElement>(null);
   const [r0, r1] = range, span = r1 - r0;

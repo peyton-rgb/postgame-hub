@@ -5,7 +5,7 @@
 // (WebGL). Used live in the editor (GradeCanvas) and frame by frame when a
 // preview video is recorded (PreviewExport), so both look the same.
 
-import type { Look } from '@/lib/carousel/grade';
+import type { Look, Pre } from '@/lib/carousel/grade';
 import { FRAG_FILM, filmFrame, type FilmGeo } from '@/lib/carousel/film';
 import { VERT, loadLut } from './GradeCanvas';
 
@@ -20,7 +20,7 @@ export type FilmRenderer = {
    * already on the chip (a still, or a clip holding its frame between film pictures).
    * Returns false if the browser won't let us read the pixels (no CORS).
    */
-  draw: (src: TexImageSource, sw: number, sh: number, geo: FilmGeo, amt: number, seconds: number, upload?: boolean) => boolean;
+  draw: (src: TexImageSource, sw: number, sh: number, geo: FilmGeo, amt: number, seconds: number, upload?: boolean, pre?: Pre | null) => boolean;
   dispose: () => void;
 };
 
@@ -47,7 +47,7 @@ export function createFilmRenderer(canvas: HTMLCanvasElement, look: Look | null,
   gl.uniform1i(U('img'), 0); gl.uniform1i(U('lut'), 1);
   // Take pixels as stored — no colour-profile "correction" — so stills and video match.
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-  const u = { useLut: U('useLut'), amt: U('amt'), seed: U('seed'), flick: U('flick'), asp: U('asp'), vis: U('vis'), pxu: U('pxu'), weave: U('weave') };
+  const u = { useLut: U('useLut'), amt: U('amt'), seed: U('seed'), flick: U('flick'), asp: U('asp'), vis: U('vis'), pxu: U('pxu'), weave: U('weave'), pre: U('pre') };
   // The LUT sampler needs something bound even when there is no grade.
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, lTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0]));
@@ -61,7 +61,7 @@ export function createFilmRenderer(canvas: HTMLCanvasElement, look: Look | null,
 
   return {
     ready: () => lutReady,
-    draw(src, sw, shh, geo, amt, seconds, upload = true) {
+    draw(src, sw, shh, geo, amt, seconds, upload = true, pre = null) {
       if (dead || !sw || !shh) return true;
       const k = Math.min(1, FILM_MAX_SIDE / Math.max(sw, shh));
       const w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(shh * k));
@@ -75,6 +75,7 @@ export function createFilmRenderer(canvas: HTMLCanvasElement, look: Look | null,
       }
       const fr = filmFrame(seconds);
       gl.uniform1f(u.useLut, look && lutReady ? 1 : 0);
+      gl.uniform3f(u.pre, pre ? pre[0] : 1, pre ? pre[1] : 1, pre ? pre[2] : 1);
       gl.uniform1f(u.amt, amt); gl.uniform1f(u.seed, fr.seed); gl.uniform1f(u.flick, fr.flick); gl.uniform1f(u.asp, geo.asp);
       gl.uniform4f(u.vis, geo.vis[0], geo.vis[1], geo.vis[2], geo.vis[3]);
       gl.uniform2f(u.pxu, geo.pxu[0], geo.pxu[1]); gl.uniform2f(u.weave, fr.weave[0], fr.weave[1]);

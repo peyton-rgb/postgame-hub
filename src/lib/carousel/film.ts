@@ -68,12 +68,13 @@ precision mediump float;
 #endif
 uniform sampler2D img; uniform sampler2D lut;
 uniform float useLut, amt, seed, flick, asp;
-uniform vec4 vis; uniform vec2 pxu; uniform vec2 weave;
+uniform vec4 vis; uniform vec2 pxu; uniform vec2 weave; uniform vec3 pre;
 varying vec2 uv;
 const float N = 33.0;
 vec3 grade(vec3 c){
   c = clamp(c, 0., 1.);
   if (useLut < .5) return c;
+  c = clamp(c * (pre.r + pre.g + pre.b > 0. ? pre : vec3(1.)), 0., 1.);   // the clip's exposure / white-balance correction
   float b = c.b * (N - 1.), b0 = floor(b), b1 = min(b0 + 1., N - 1.);
   float x = c.r * (N - 1.) + .5, y = (c.g * (N - 1.) + .5) / N;
   vec3 s0 = texture2D(lut, vec2((b0 * N + x) / (N * N), y)).rgb;
