@@ -12,7 +12,7 @@ export type Layer = {
   name?: string;
   type?: 'text';
   /** Colour grade: 'auto' (default: as shot, dim Canon footage brightened); 'off'; or a named look. */
-  grade?: 'auto' | 'off' | 'lift' | 'sonystudio' | 'blackmagic' | 'btscanon' | 'canoncourt' | 'canonstudio';
+  grade?: 'auto' | 'off' | 'lift' | 'sonystudio' | 'blackmagic' | 'blackmagicflat' | 'btscanon' | 'canoncourt' | 'canonstudio';
   media: string;
   x: number; y: number; w: number; h: number;
   cx?: number; cy?: number; zoom?: number;

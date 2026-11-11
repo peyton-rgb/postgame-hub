@@ -46,7 +46,7 @@ function HoverPreview({ c, look, pre }: { c: PickerClip; look: Look | null; pre:
   const cover: React.CSSProperties = { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' };
   return (
     <span className="absolute inset-0">
-      <HlsVideo src={c.play} poster={c.thumb} cors={!!look || !!autoLook(c.name)} className="h-full w-full object-cover" />
+      <HlsVideo src={c.play} poster={c.thumb} cors={!!look || !!autoLook(c.name, c.width)} className="h-full w-full object-cover" />
       {look && !failed && <GradeCanvas look={look} pre={pre} style={cover} onFail={() => setFailed(true)} />}
     </span>
   );
@@ -120,7 +120,7 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
   }, [seen, root]);
 
   // The tile's grade; Canon clips wait for the green-screen check (only once seen).
-  const base = c.kind === 'video' ? autoLook(c.name) : null;
+  const base = c.kind === 'video' ? autoLook(c.name, c.width) : null;
   const scenes = useScenes(seen && needsScene(base) ? [c.thumb] : []);
   const scene = c.thumb ? scenes[c.thumb] : false;
   const look: Look | null = seen && c.kind === 'video' ? refineLook(base, true, scene) : null;

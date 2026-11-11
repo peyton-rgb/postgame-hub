@@ -13,6 +13,11 @@ test('autoLook: camera → look, per the grade README', () => {
     ['LWFX6_SRPOC_0255_GRADED_1080.mp4', null], ['hannah-hidalgo-signature-animation.mp4', null], ['L1580872.jpg', null],
   ];
   for (const [n, want] of cases) assert.equal(autoLook(n), want, n);
+  // Blackmagic A-cam: same file name, three different files — the width tells them apart
+  assert.equal(autoLook('A009_06301006_C815.mp4', 1280), 'blackmagicflat'); // flat proxy in the athlete folder
+  assert.equal(autoLook('A009_06301006_C815.mp4', 4096), null);             // Andres's graded 4K export
+  assert.equal(autoLook('A009_06301006_C815.mp4'), 'blackmagic');           // size unknown: as before
+  assert.equal(autoLook('A009_06301006_C815_BRAW-PREVIEW.mp4', 1280), 'blackmagic');
 });
 
 test('lookFor: only Frame.io videos on auto; overrides win', () => {
@@ -25,7 +30,7 @@ test('lookFor: only Frame.io videos on auto; overrides win', () => {
 });
 
 test('cameraLook: artifact clips read their camera from the label, source or key', () => {
-  const v = (label: string, source?: string) => ({ kind: 'video' as const, w: 1, h: 1, label, source });
+  const v = (label: string, source?: string, w = 1920) => ({ kind: 'video' as const, w, h: 1, label, source });
   const cases: [ReturnType<typeof v>, string, string | null][] = [
     [v('✨ s2 · A009_06290921_C704_BRAW-PREVIEW.mp4'), 'c3_x', 'blackmagic'],
     [v('✨ s3_bot · NINJAV_S001_S001_T112.MOV'), 'c3_x', 'canonstudio'],
@@ -35,8 +40,12 @@ test('cameraLook: artifact clips read their camera from the label, source or key
     [v('✨ s5 · LWFX6_SRPOC_0261.MXF'), 'c3_x', 'sonystudio'],
     [v('✨ s5 · A004_07021015_C001.mp4'), 'c3_x', 'blackmagic'],
     [v('✨ s3_bot · shared'), 'c3_mackenzie_mgbako_s3_bot_food_C9927', 'sonystudio'],
-    [v('4K · C036 (0:59)', '/home/claude/fio/ath/amari_C036.mp4'), 'g_amari_C036', 'blackmagic'],
-    [v('4K · Dribbling (standing)', '/home/claude/fio/C012.mp4'), 'fv_dribble', 'blackmagic'],
+    // Andres's graded 4K exports are finished: no look on top (they share file names with the flat proxies)
+    [v('4K · C036 (0:59)', '/home/claude/fio/ath/amari_C036.mp4', 4096), 'g_amari_C036', null],
+    [v('4K · Dribbling (standing)', '/home/claude/fio/C012.mp4', 3072), 'fv_dribble', null],
+    [v('A009_06290905_C698.mp4', 'frameio', 4096), 'fio_14159aac-e9b6-4cfb-99bb-7b63d7fbd41f', null],
+    // the flat 720p A-cam proxy from the athlete folder gets the flat-file look
+    [v('A009_06301006_C815.mp4', 'frameio', 1280), 'fio_d399ac90-f73c-40bd-a472-57253b08139d', 'blackmagicflat'],
     [v('✅ A004_07021042_C003_BRAW-PREVIEW (1:14)'), 'pk_x', 'blackmagic'],
     [v('✅ Ian_Jackson_SUPER8_026 (0:03)'), 'pk_ian_jackson_Ian_Jackson_SUPER8_026', null],
   ];
