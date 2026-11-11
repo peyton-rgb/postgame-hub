@@ -78,6 +78,7 @@ test('a new card lands centred on the chosen slide, under the logo', () => {
   const r = newCard(L, 'fio_x', { kind: 'video', w: 1920, h: 1080 }, 'C001', 2);
   const c = r.layout.layers.find((l) => l.id === r.id)!;
   assert.deepEqual([c.x, c.w, c.h], [2160 + 540 - 340, 680, 383]);
+  assert.equal(c.shadow, false);                                     // no automatic drop shadow
   assert.equal(r.layout.layers[r.layout.layers.length - 1].id, 'logo');
 });
 

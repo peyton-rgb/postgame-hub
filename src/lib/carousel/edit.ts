@@ -315,7 +315,9 @@ export function newCard(layout: Layout, key: string, m: MediaInfo, label: string
   const id = `card_${rid()}`;
   const L: Layer = {
     id, name: label, media: key, x: Math.round(cx - w / 2), y: Math.round(Math.max(40, Math.min(H - h - 40, cy - h / 2))), w, h,
-    cx: 0.5, cy: 0.5, zoom: 1, bw: false, bright: 1, contrast: 1, sat: 1, blur: 0, shadow: true,
+    // No drop shadow unless it's switched on in the layer's settings (Peyton, Nov 2026): on a file
+    // dragged out to fill a slide the automatic shadow spilled a dark edge onto its neighbours.
+    cx: 0.5, cy: 0.5, zoom: 1, bw: false, bright: 1, contrast: 1, sat: 1, blur: 0, shadow: false,
   };
   // in front of the cards, under logos
   const arr = layout.layers.slice();
