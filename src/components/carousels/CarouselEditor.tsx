@@ -616,7 +616,7 @@ export default function CarouselEditor({
                   <button type="button" className={`${pill(false)} ml-auto`} onClick={() => patchLayer(selected.id, { vin: undefined, vlen: undefined }, true)}>Reset</button>
                 </div>
                 <ClipTimeline dur={m.dur} vin={vinOf(selected, m)} vlen={vlenOf(selected, m)} strip={m.strip} thumb={m.thumb} scrub={m.scrub} look={refineLook(lookFor(selected, m), (selected.grade ?? 'auto') === 'auto', m.thumb ? selScene[m.thumb] : false)}
-                  pre={preFor(lookFor(selected, m), (selected.grade ?? 'auto') === 'auto', m.thumb ? selScene[m.thumb] : false)}
+                  pre={preFor(lookFor(selected, m), (selected.grade ?? 'auto') === 'auto', m.thumb ? selScene[m.thumb] : false, selected.evenGreen !== false)}
                   onChange={(s, c) => patchLayer(selected.id, s, c)} />
               </section>
             );

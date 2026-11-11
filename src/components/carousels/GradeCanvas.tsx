@@ -12,7 +12,7 @@
 // carousel plays and holding still while it is paused.
 
 import { useEffect, useRef, useState } from 'react';
-import type { Look, Pre } from '@/lib/carousel/grade';
+import { EVEN_GLSL, type Look, type Pre } from '@/lib/carousel/grade';
 import { FILM_FPS, type FilmGeo } from '@/lib/carousel/film';
 import { createFilmRenderer } from './filmGL';
 import { loadImg } from './gradeImage';
@@ -27,11 +27,12 @@ precision highp float;
 #else
 precision mediump float;
 #endif
-uniform sampler2D img; uniform sampler2D lut; uniform vec3 pre; varying vec2 uv;
-const float N = ${N}.0;
+uniform sampler2D img; uniform sampler2D lut; uniform vec3 pre; uniform vec3 scr; varying vec2 uv;
+const float N = ${N}.0;${EVEN_GLSL}
 void main(){
   // pre = the clip's exposure / white-balance correction (grade.ts balanceGains); unset means none
-  vec3 c = clamp(texture2D(img, uv).rgb * (pre.r + pre.g + pre.b > 0. ? pre : vec3(1.)), 0., 1.);
+  // scr = the green screen's colour when the clip has one: the backdrop is evened out first (grade.ts)
+  vec3 c = clamp(evenGreen(texture2D(img, uv).rgb, scr) * (pre.r + pre.g + pre.b > 0. ? pre : vec3(1.)), 0., 1.);
   float b = c.b * (N - 1.), b0 = floor(b), b1 = min(b0 + 1., N - 1.);
   float x = c.r * (N - 1.) + .5, y = (c.g * (N - 1.) + .5) / N;
   vec3 s0 = texture2D(lut, vec2((b0 * N + x) / (N * N), y)).rgb;
@@ -133,7 +134,7 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
     };
     const vTex = tex(0), lTex = tex(1);
     gl.uniform1i(gl.getUniformLocation(prog, 'img'), 0); gl.uniform1i(gl.getUniformLocation(prog, 'lut'), 1);
-    const preLoc = gl.getUniformLocation(prog, 'pre');
+    const preLoc = gl.getUniformLocation(prog, 'pre'), scrLoc = gl.getUniformLocation(prog, 'scr');
     let lastPre = 'x';
 
     loadLut(look).then((img) => {
@@ -148,7 +149,7 @@ export default function GradeCanvas({ look, style, onFail, film = 0, geo, animat
         const pr = live.current.pre, prKey = pr ? pr.join(',') : '';
         if (t === last && video.paused && prKey === lastPre) return;
         last = t;
-        if (prKey !== lastPre) { lastPre = prKey; gl.uniform3f(preLoc, pr ? pr[0] : 1, pr ? pr[1] : 1, pr ? pr[2] : 1); }
+        if (prKey !== lastPre) { lastPre = prKey; gl.uniform3f(preLoc, pr ? pr[0] : 1, pr ? pr[1] : 1, pr ? pr[2] : 1); gl.uniform3f(scrLoc, pr?.[3] ?? 0, pr?.[4] ?? 0, pr?.[5] ?? 0); }
         const k = Math.min(1, 1920 / Math.max(video.videoWidth, video.videoHeight));
         const w = Math.round(video.videoWidth * k), h = Math.round(video.videoHeight * k);
         if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }

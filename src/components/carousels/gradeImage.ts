@@ -6,10 +6,10 @@
 // image hosts allow this (CORS); anything that fails just keeps the original.
 
 import { useEffect, useState } from 'react';
-import { balanceGains, sceneKind, type Look, type Pre, type SceneInfo } from '@/lib/carousel/grade';
+import { balanceGains, sceneKind, screenColour, type Look, type Pre, type SceneInfo } from '@/lib/carousel/grade';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 
-type GL = { gl: WebGLRenderingContext; canvas: HTMLCanvasElement; vTex: WebGLTexture; lTex: WebGLTexture; lutOf: Look | null; pre: WebGLUniformLocation | null };
+type GL = { gl: WebGLRenderingContext; canvas: HTMLCanvasElement; vTex: WebGLTexture; lTex: WebGLTexture; lutOf: Look | null; pre: WebGLUniformLocation | null; scr: WebGLUniformLocation | null };
 let shared: GL | null | undefined;
 
 function setup(): GL | null {
@@ -34,7 +34,7 @@ function setup(): GL | null {
   gl.uniform1i(gl.getUniformLocation(prog, 'img'), 0); gl.uniform1i(gl.getUniformLocation(prog, 'lut'), 1);
   // Take pixels as stored — no colour-profile/gamma "correction" — so stills grade like video does.
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-  return (shared = { gl, canvas, vTex, lTex, lutOf: null, pre: gl.getUniformLocation(prog, 'pre') });
+  return (shared = { gl, canvas, vTex, lTex, lutOf: null, pre: gl.getUniformLocation(prog, 'pre'), scr: gl.getUniformLocation(prog, 'scr') });
 }
 
 const imgFrom = (src: string, cors: boolean) => new Promise<HTMLImageElement>((res, rej) => {
@@ -71,6 +71,7 @@ export function gradeImage(url: string, look: Look, maxSide = 1024, pre: Pre | n
       canvas.width = Math.max(1, Math.round(img.naturalWidth * k)); canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
       gl.viewport(0, 0, canvas.width, canvas.height);
       gl.uniform3f(g.pre, pre ? pre[0] : 1, pre ? pre[1] : 1, pre ? pre[2] : 1);
+      gl.uniform3f(g.scr, pre?.[3] ?? 0, pre?.[4] ?? 0, pre?.[5] ?? 0);
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, g.vTex);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, img);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -106,7 +107,7 @@ export function sceneOf(url: string): Promise<SceneInfo> {
       const c = document.createElement('canvas'); c.width = 96; c.height = Math.max(1, Math.round(96 * img.naturalHeight / img.naturalWidth));
       const x = c.getContext('2d')!; x.drawImage(img, 0, 0, c.width, c.height);
       const d = x.getImageData(0, 0, c.width, c.height).data;
-      return { kind: sceneKind(d), pre: balanceGains(d) };
+      return { kind: sceneKind(d), pre: balanceGains(d), screen: screenColour(d) };
     }).catch((): SceneInfo => ({ kind: 'plain', pre: null }));
     p.then((g) => sceneDone.set(url, g));
     scenes.set(url, p);

@@ -99,3 +99,39 @@ test('Canon-via-Ninja clips off the green screen are brightened and white-balanc
   assert.equal(refineLook('canonstudio', true, info), 'canonstudio');
   assert.equal(refineLook('btscanon', true, { kind: 'dark', pre: null }), 'canoncourt');
 });
+
+test('green screen: colours near the screen are pulled to it, everything else is left alone', async () => {
+  const { EVEN, evenGreen, evenWeight, screenColour, preEvens, preBalances, wantsScene, evensGreen } = await import('./grade.ts');
+  // the screen in Jordana's Ninja clip (flat Canon Log), a lighter and a darker patch of it
+  const scr: [number, number, number] = [0.341, 0.392, 0.318];
+  const light: [number, number, number] = [0.37, 0.425, 0.345], dark: [number, number, number] = [0.31, 0.36, 0.29];
+  const spread = (a: number[], b: number[]) => Math.abs(a[1] - b[1]);
+  assert.ok(spread(evenGreen(light, scr), evenGreen(dark, scr)) < spread(light, dark) * 0.25, 'patches end up at least 4x closer');
+  assert.ok(Math.abs(evenWeight(scr, scr) - EVEN.strength) < 1e-9);
+  // skin, a red shirt, the white wall, and a dark teal-green shirt barely move
+  for (const c of [[0.55, 0.42, 0.36], [0.5, 0.2, 0.18], [0.6, 0.6, 0.58], [0.153, 0.31, 0.267]] as [number, number, number][])
+    assert.ok(evenWeight(c, scr) < 0.06, `left alone: ${c}`);
+  // no screen colour → untouched
+  assert.deepEqual(evenGreen([0.3, 0.5, 0.2], [0, 0, 0]), [0.3, 0.5, 0.2]);
+
+  // reading the screen colour off a thumbnail: 60% screen (with patches), 25% wall, 15% red shirt
+  const px: number[] = [];
+  const put = (n: number, c: number[]) => { for (let i = 0; i < n; i++) px.push(Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255), 255); };
+  put(300, scr); put(150, light); put(150, dark); put(250, [0.6, 0.6, 0.58]); put(150, [0.5, 0.2, 0.18]);
+  const got = screenColour(px)!;
+  assert.ok(got && Math.abs(got[0] - scr[0]) < 0.01 && Math.abs(got[1] - scr[1]) < 0.01 && Math.abs(got[2] - scr[2]) < 0.01, `screen colour ${got}`);
+  const none: number[] = []; for (let i = 0; i < 900; i++) none.push(150, 150, 146, 255); for (let i = 0; i < 100; i++) none.push(87, 100, 81, 255);
+  assert.equal(screenColour(none), null);                                  // only 10% green: not a green-screen shot
+
+  // Auto carries the screen colour for the green-screen cameras only, and the per-layer switch turns it off
+  const scene = { kind: 'green' as const, pre: null, screen: got };
+  assert.deepEqual(preFor('canonstudio', true, scene), [1, 1, 1, ...got]);
+  assert.deepEqual(preFor('sonystudio', true, scene), [1, 1, 1, ...got]);
+  assert.equal(preFor('blackmagic', true, scene), null);                    // the green-lit room is a set, not a screen
+  assert.equal(preFor('canonstudio', true, scene, false), null);            // switched off on this layer
+  assert.equal(preFor('canonstudio', false, scene), null);                  // a look picked by hand is applied as Andres made it
+  assert.ok(preEvens(preFor('canonstudio', true, scene)) && !preBalances(preFor('canonstudio', true, scene)));
+  const wall = { kind: 'plain' as const, pre: [1.4, 1.3, 1.5] as [number, number, number], screen: null };
+  assert.deepEqual(preFor('canonstudio', true, wall), [1.4, 1.3, 1.5]);     // white-wall clips: unchanged behaviour
+  assert.ok(wantsScene('sonystudio') && !needsScene('sonystudio') && evensGreen('sonystudio') && !evensGreen('btscanon'));
+});

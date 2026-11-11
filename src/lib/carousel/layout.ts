@@ -22,6 +22,8 @@ export type Layer = {
   shadow?: boolean; hidden?: boolean; locked?: boolean; pop?: boolean;
   /** Super 8 film look (lib/carousel/film): off unless switched on; filmAmt 0.1–1 is how strong (default 1). */
   film?: boolean; filmAmt?: number;
+  /** Green screen clips on Auto get their backdrop evened out (lib/carousel/grade); false switches that off for this layer. */
+  evenGreen?: boolean;
   vin?: number; vlen?: number;
   // text layers
   text?: string; size?: number; weight?: number; align?: 'left' | 'center' | 'right'; color?: string; opacity?: number; font?: string;

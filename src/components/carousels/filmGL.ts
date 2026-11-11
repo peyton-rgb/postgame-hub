@@ -47,7 +47,7 @@ export function createFilmRenderer(canvas: HTMLCanvasElement, look: Look | null,
   gl.uniform1i(U('img'), 0); gl.uniform1i(U('lut'), 1);
   // Take pixels as stored — no colour-profile "correction" — so stills and video match.
   gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
-  const u = { useLut: U('useLut'), amt: U('amt'), seed: U('seed'), flick: U('flick'), asp: U('asp'), vis: U('vis'), pxu: U('pxu'), weave: U('weave'), pre: U('pre') };
+  const u = { useLut: U('useLut'), amt: U('amt'), seed: U('seed'), flick: U('flick'), asp: U('asp'), vis: U('vis'), pxu: U('pxu'), weave: U('weave'), pre: U('pre'), scr: U('scr') };
   // The LUT sampler needs something bound even when there is no grade.
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, lTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 1, 0, gl.RGB, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0]));
@@ -76,6 +76,7 @@ export function createFilmRenderer(canvas: HTMLCanvasElement, look: Look | null,
       const fr = filmFrame(seconds);
       gl.uniform1f(u.useLut, look && lutReady ? 1 : 0);
       gl.uniform3f(u.pre, pre ? pre[0] : 1, pre ? pre[1] : 1, pre ? pre[2] : 1);
+      gl.uniform3f(u.scr, pre?.[3] ?? 0, pre?.[4] ?? 0, pre?.[5] ?? 0);
       gl.uniform1f(u.amt, amt); gl.uniform1f(u.seed, fr.seed); gl.uniform1f(u.flick, fr.flick); gl.uniform1f(u.asp, geo.asp);
       gl.uniform4f(u.vis, geo.vis[0], geo.vis[1], geo.vis[2], geo.vis[3]);
       gl.uniform2f(u.pxu, geo.pxu[0], geo.pxu[1]); gl.uniform2f(u.weave, fr.weave[0], fr.weave[1]);

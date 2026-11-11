@@ -7,6 +7,8 @@
 // graphics chip (see filmGL.ts) and again when a preview video is recorded.
 // No "@/" imports: `node --test` runs this file directly.
 
+import { EVEN_GLSL } from './grade.ts';
+
 /** Super 8 runs at 18 pictures a second. */
 export const FILM_FPS = 18;
 /** One "film pixel", in slide pixels: a Super 8 frame holds roughly 680 pixels of real detail across a 1080 slide. */
@@ -68,12 +70,14 @@ precision mediump float;
 #endif
 uniform sampler2D img; uniform sampler2D lut;
 uniform float useLut, amt, seed, flick, asp;
-uniform vec4 vis; uniform vec2 pxu; uniform vec2 weave; uniform vec3 pre;
+uniform vec4 vis; uniform vec2 pxu; uniform vec2 weave; uniform vec3 pre; uniform vec3 scr;
+${EVEN_GLSL}
 varying vec2 uv;
 const float N = 33.0;
 vec3 grade(vec3 c){
   c = clamp(c, 0., 1.);
   if (useLut < .5) return c;
+  c = evenGreen(c, scr);                                                  // green screen: even out the backdrop
   c = clamp(c * (pre.r + pre.g + pre.b > 0. ? pre : vec3(1.)), 0., 1.);   // the clip's exposure / white-balance correction
   float b = c.b * (N - 1.), b0 = floor(b), b1 = min(b0 + 1., N - 1.);
   float x = c.r * (N - 1.) + .5, y = (c.g * (N - 1.) + .5) / N;

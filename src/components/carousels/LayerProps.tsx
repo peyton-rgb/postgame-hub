@@ -6,7 +6,7 @@
 import { insetOf, vinOf, vlenOf, type Layer } from '@/lib/carousel/layout';
 import type { Action } from '@/lib/carousel/edit';
 import type { CanvasMedia } from './CarouselCanvas';
-import { LOOKS, LOOK_LABEL, cameraLook, lookFor, preFor, refineLook } from '@/lib/carousel/grade';
+import { LOOKS, LOOK_LABEL, cameraLook, evensGreen, lookFor, preBalances, preFor, refineLook } from '@/lib/carousel/grade';
 import { useScenes } from './gradeImage';
 
 type Patch = Partial<Layer>;
@@ -176,11 +176,22 @@ export default function LayerProps({
               {LOOKS.map((k) => <option key={k} value={k}>{LOOK_LABEL[k]}</option>)}
             </select>
             <span className="text-[12px] text-ink-4">
-              {shown === 'lift' ? 'As shot, brightened, live. The Frame.io file isn\'t changed.' : shown ? `Andres's ${LOOK_LABEL[shown]} look${preFor(lookFor(L, media), (L.grade ?? 'auto') === 'auto', media.thumb ? scene[media.thumb] : false) ? ', brightened and white-balanced to the wall first' : ''}, live. The Frame.io file isn't changed.` : 'Showing the clip as shot.'}
+              {shown === 'lift' ? 'As shot, brightened, live. The Frame.io file isn\'t changed.' : shown ? `Andres's ${LOOK_LABEL[shown]} look${preBalances(preFor(lookFor(L, media), (L.grade ?? 'auto') === 'auto', media.thumb ? scene[media.thumb] : false)) ? ', brightened and white-balanced to the wall first' : ''}, live. The Frame.io file isn't changed.` : 'Showing the clip as shot.'}
             </span>
           </label>
         );
       })()}
+
+      {media?.kind === 'video' && (L.grade ?? 'auto') === 'auto' && evensGreen(lookFor(L, media)) && media.thumb && scene[media.thumb]?.screen ? (
+        <div className="flex flex-col gap-1.5 rounded-xl border border-hairline-soft p-3">
+          <label className="flex min-h-[28px] cursor-pointer items-center justify-between gap-3">
+            <span className={label}>Even out green screen</span>
+            <input type="checkbox" role="switch" aria-checked={L.evenGreen !== false} checked={L.evenGreen !== false} className="h-5 w-5 accent-[var(--accent,#D73F09)]"
+              onChange={(e) => onChange({ evenGreen: e.target.checked ? undefined : false }, true)} />
+          </label>
+          <span className="text-[12px] text-ink-4">{L.evenGreen !== false ? 'On. Light and dark patches in the green are smoothed out; the athlete is left alone.' : 'Off. The green screen shows as the look leaves it.'}</span>
+        </div>
+      ) : null}
 
       {(media.kind === 'video' || media.kind === 'image') && (
         <div className="flex flex-col gap-2 rounded-xl border border-hairline-soft p-3">

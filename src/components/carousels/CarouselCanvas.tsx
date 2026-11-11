@@ -9,7 +9,7 @@
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
-import { lookFor, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
+import { lookFor, preFor, refineLook, wantsScene, type Look, type Pre } from '@/lib/carousel/grade';
 import { filmAmount, filmGeo } from '@/lib/carousel/film';
 import { useGraded, useScenes } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
@@ -76,7 +76,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
   const wrap = useRef<HTMLDivElement>(null);
   const [gradeFailed, setGradeFailed] = useState<Set<string>>(new Set());
   // Canon clips on Auto: green screen → as shot, anywhere else → brightened.
-  const scenes = useScenes(layout.layers.map((l) => { const m = media[l.media]; return m && (l.grade ?? 'auto') === 'auto' && needsScene(lookFor(l, m)) ? m.thumb : null; }));
+  const scenes = useScenes(layout.layers.map((l) => { const m = media[l.media]; return m && (l.grade ?? 'auto') === 'auto' && wantsScene(lookFor(l, m)) ? m.thumb : null; }));
   const stage = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(800);
   // Zoomed view: the slide plus 260px of each neighbour, so seams still line up by eye.
@@ -189,7 +189,7 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           const p = placeLayer(L, m);
           const auto = (L.grade ?? 'auto') === 'auto', scene = m.thumb ? scenes[m.thumb] : false;
           const look = refineLook(lookFor(L, m), auto, scene);
-          const pre = look ? preFor(lookFor(L, m), auto, scene) : null;
+          const pre = look ? preFor(lookFor(L, m), auto, scene, L.evenGreen !== false) : null;
           // Ask for readable pixels whenever the clip *might* be graded — Auto's
           // green-screen check finishes after the video starts loading, and a
           // video fetched without CORS can't be graded later.

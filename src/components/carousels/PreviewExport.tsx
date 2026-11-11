@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeLayer, vinOf, vlenOf, SLIDE, H as SLIDE_H, type Layer, type Layout } from '@/lib/carousel/layout';
-import { lookFor, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
+import { lookFor, preFor, refineLook, wantsScene, type Look, type Pre } from '@/lib/carousel/grade';
 import { previewPlan, previewState, clipAt, slideClips, slideOf } from '@/lib/carousel/preview';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 import { filmAmount, filmFrame, filmGeo } from '@/lib/carousel/film';
@@ -69,6 +69,7 @@ function makeGrader(look: Look, pre: Pre | null) {
   const vTex = tex(0), lTex = tex(1);
   gl.uniform1i(gl.getUniformLocation(prog, 'img'), 0); gl.uniform1i(gl.getUniformLocation(prog, 'lut'), 1);
   gl.uniform3f(gl.getUniformLocation(prog, 'pre'), pre ? pre[0] : 1, pre ? pre[1] : 1, pre ? pre[2] : 1);
+  gl.uniform3f(gl.getUniformLocation(prog, 'scr'), pre?.[3] ?? 0, pre?.[4] ?? 0, pre?.[5] ?? 0);
   let ready = false;
   loadLut(look).then((img) => {
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, lTex);
@@ -290,9 +291,9 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             if (!m.src) continue;
             const el = await loadVideo(m.src, cleanup);
             const base = lookFor(L, m), auto = (L.grade ?? 'auto') === 'auto';
-            const scene = auto && needsScene(base) && m.thumb ? await sceneOf(m.thumb) : false;
+            const scene = auto && wantsScene(base) && m.thumb ? await sceneOf(m.thumb) : false;
             const look = refineLook(base, auto, scene);
-            const pre = look ? preFor(base, auto, scene) : null;
+            const pre = look ? preFor(base, auto, scene, L.evenGreen !== false) : null;
             const film = makeFilm(L, m.kind, look, pre, cleanup);
             items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look && !film ? makeGrader(look, pre) : null, film });
           } else {

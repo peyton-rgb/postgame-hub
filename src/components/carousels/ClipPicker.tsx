@@ -10,7 +10,7 @@
 //  - each tile is memoised and keeps its own hover state;
 //  - a tile only loads / grades its picture once it scrolls near the panel.
 
-import { autoLook, needsScene, preFor, refineLook, type Look, type Pre } from '@/lib/carousel/grade';
+import { autoLook, preFor, refineLook, wantsScene, type Look, type Pre } from '@/lib/carousel/grade';
 import { useGraded, useScenes } from './gradeImage';
 import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import GradeCanvas from './GradeCanvas';
@@ -121,7 +121,7 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
 
   // The tile's grade; Canon clips wait for the green-screen check (only once seen).
   const base = c.kind === 'video' ? autoLook(c.name, c.width) : null;
-  const scenes = useScenes(seen && needsScene(base) ? [c.thumb] : []);
+  const scenes = useScenes(seen && wantsScene(base) ? [c.thumb] : []);
   const scene = c.thumb ? scenes[c.thumb] : false;
   const look: Look | null = seen && c.kind === 'video' ? refineLook(base, true, scene) : null;
   const pre = look ? preFor(base, true, scene) : null;
