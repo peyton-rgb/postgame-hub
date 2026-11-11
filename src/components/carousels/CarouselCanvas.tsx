@@ -84,7 +84,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
   // With a pasteboard the view may run past the strip's ends (and above/below it) by `bleed`.
   const x0 = view === 'all' ? -bleed : Math.max(-bleed, view * SLIDE - PAD);
   const x1 = view === 'all' ? W + bleed : Math.min(W + bleed, (view + 1) * SLIDE + PAD);
-  const scale = Math.min(boxW / (x1 - x0), maxHeight ? maxHeight / H : Infinity);
+  // In a single-slide view the height budget covers the slide plus any working room beyond the
+  // first 160px (what the view always had), so asking for more room zooms out instead of growing off screen.
+  const scale = Math.min(boxW / (x1 - x0), maxHeight ? maxHeight / (H + 2 * Math.max(0, bleed - 160)) : Infinity);
   const clock = useRef({ t0: performance.now(), pausedAt: 0 });
   const layoutRef = useRef(layout);
   layoutRef.current = layout;

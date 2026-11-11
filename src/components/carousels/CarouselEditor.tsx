@@ -27,6 +27,10 @@ type Loaded = { layout: Layout | null; media: Record<string, CanvasMedia>; saved
 type SaveState = 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict';
 type Tab = 'layer' | 'layers' | 'add';
 
+/** Working-room sizes (carousel pixels on every side). S is the old fixed amount. */
+const ROOMS = [{ px: 160, label: 'S', name: 'Small' }, { px: 500, label: 'M', name: 'Medium' }, { px: 1000, label: 'L', name: 'Large' }] as const;
+const ROOM_DEFAULT = 500;
+
 export default function CarouselEditor({
   athlete, athletes, position, total, prevSlug, nextSlug,
 }: {
@@ -70,6 +74,13 @@ export default function CarouselEditor({
   const [time, setTime] = useState(0);
   const [seek, setSeek] = useState<{ t: number; n: number } | undefined>();
   const [maxH, setMaxH] = useState(720);
+  // Working room around the carousel, in carousel pixels: how far past a slide a clip can be
+  // dragged or scaled with its corner handles still on screen. More room = the carousel is drawn smaller.
+  const [room, setRoomRaw] = useState<number>(ROOM_DEFAULT);
+  useEffect(() => {
+    try { const v = Number(localStorage.getItem('carousel.room')); if (ROOMS.some((r) => r.px === v)) setRoomRaw(v); } catch { /* storage unavailable */ }
+  }, []);
+  const setRoom = (px: number) => { setRoomRaw(px); try { localStorage.setItem('carousel.room', String(px)); } catch { /* ignore */ } };
   useEffect(() => {
     const f = () => setMaxH(Math.max(320, window.innerHeight - 300));
     f(); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f);
@@ -530,6 +541,12 @@ export default function CarouselEditor({
             <button key={k} type="button" className={seg(view === k)} onClick={() => setView(k)} aria-label={`Slide ${k + 1}`}>{k + 1}</button>
           ))}
         </div>
+        <div className={group} role="group" aria-label="Room around the carousel" title="Room around the carousel for dragging and scaling clips past a slide. More room draws the carousel smaller.">
+          <span className="pl-3 pr-1 text-[11px] font-bold uppercase tracking-[.1em] text-ink-3">Room</span>
+          {ROOMS.map((r) => (
+            <button key={r.px} type="button" aria-pressed={room === r.px} className={seg(room === r.px)} onClick={() => setRoom(r.px)} aria-label={`${r.name} room`}>{r.label}</button>
+          ))}
+        </div>
         <div className={group} role="group" aria-label="Display">
           <button type="button" aria-pressed={snap} className={seg(snap)} onClick={() => setSnap((v) => !v)}>Snap</button>
           <button type="button" aria-pressed={seams} className={seg(seams)} onClick={() => setSeams((v) => !v)}>Edges</button>
@@ -563,7 +580,7 @@ export default function CarouselEditor({
                 <div title="Drag right from here for a vertical guide" className="cursor-e-resize touch-none rounded-l bg-surface-raised"
                   onPointerDown={(e) => startGuide('v', e)} onPointerMove={moveGuide} onPointerUp={onUp} onPointerCancel={onUp} />
                 <CarouselCanvas ref={canvas} layout={layout} media={media} playing={playing} showSeams={seams}
-                  view={view} maxHeight={view === 'all' ? undefined : maxH} seek={seek} onTick={setTime} bleed={160}
+                  view={view} maxHeight={view === 'all' ? undefined : maxH} seek={seek} onTick={setTime} bleed={room}
                   overlay={overlay} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
               </div>
             )}
