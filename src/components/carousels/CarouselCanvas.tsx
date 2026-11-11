@@ -56,6 +56,12 @@ type Props = {
   onTick?: (t: number) => void;
   /** Draw videos as their thumbnail picture — for small previews that shouldn't decode video. */
   still?: boolean;
+  /**
+   * Pasteboard: this many strip pixels of working room around the canvas (editor only).
+   * A layer dragged or resized past the canvas edge stays visible (dimmed) out there, and
+   * its handles stay grabbable, so it can be made bigger than a slide and then cropped in.
+   */
+  bleed?: number;
   overlay?: (scale: number) => React.ReactNode;
   onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onPointerMove?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -63,7 +69,7 @@ type Props = {
 };
 
 const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
-  { layout, media, playing, showSeams = true, overlay, onPointerDown, onPointerMove, onPointerUp, view = 'all', maxHeight, seek, onTick, still },
+  { layout, media, playing, showSeams = true, overlay, onPointerDown, onPointerMove, onPointerUp, view = 'all', maxHeight, seek, onTick, still, bleed = 0 },
   ref,
 ) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -74,8 +80,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
   const [boxW, setBoxW] = useState(800);
   // Zoomed view: the slide plus 260px of each neighbour, so seams still line up by eye.
   const PAD = 260;
-  const x0 = view === 'all' ? 0 : Math.max(0, view * SLIDE - PAD);
-  const x1 = view === 'all' ? W : Math.min(W, (view + 1) * SLIDE + PAD);
+  // With a pasteboard the view may run past the strip's ends (and above/below it) by `bleed`.
+  const x0 = view === 'all' ? -bleed : Math.max(-bleed, view * SLIDE - PAD);
+  const x1 = view === 'all' ? W + bleed : Math.min(W + bleed, (view + 1) * SLIDE + PAD);
   const scale = Math.min(boxW / (x1 - x0), maxHeight ? maxHeight / H : Infinity);
   const clock = useRef({ t0: performance.now(), pausedAt: 0 });
   const layoutRef = useRef(layout);
@@ -145,11 +152,11 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
 
 
   return (
-    <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: H * scale, touchAction: onPointerDown ? 'none' : undefined }}>
+    <div ref={wrap} className="relative w-full overflow-hidden bg-[#0b0b0c]" style={{ height: (H + 2 * bleed) * scale, touchAction: onPointerDown ? 'none' : undefined }}>
       <div
         ref={stage}
-        className="absolute top-0 select-none bg-black"
-        style={{ width: W, height: H, left: ((boxW - (x1 - x0) * scale) / 2) - x0 * scale, transform: `scale(${scale})`, transformOrigin: '0 0' }}
+        className="absolute select-none bg-black"
+        style={{ width: W, height: H, top: bleed * scale, left: ((boxW - (x1 - x0) * scale) / 2) - x0 * scale, transform: `scale(${scale})`, transformOrigin: '0 0' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -224,6 +231,15 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           <>
             <div className="pointer-events-none absolute top-0 left-0" style={{ width: view * SLIDE, height: H, background: 'rgba(7,7,10,.66)' }} />
             <div className="pointer-events-none absolute top-0" style={{ left: (view + 1) * SLIDE, width: W - (view + 1) * SLIDE, height: H, background: 'rgba(7,7,10,.66)' }} />
+          </>
+        )}
+        {/* Pasteboard: anything hanging off the canvas shows dimmed, under the handles */}
+        {bleed > 0 && (
+          <>
+            <div className="pointer-events-none absolute" style={{ left: -bleed, top: -bleed, width: W + 2 * bleed, height: bleed, background: 'rgba(11,11,12,.8)' }} />
+            <div className="pointer-events-none absolute" style={{ left: -bleed, top: H, width: W + 2 * bleed, height: bleed, background: 'rgba(11,11,12,.8)' }} />
+            <div className="pointer-events-none absolute" style={{ left: -bleed, top: 0, width: bleed, height: H, background: 'rgba(11,11,12,.8)' }} />
+            <div className="pointer-events-none absolute" style={{ left: W, top: 0, width: bleed, height: H, background: 'rgba(11,11,12,.8)' }} />
           </>
         )}
         {overlay?.(scale)}

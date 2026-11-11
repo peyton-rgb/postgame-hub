@@ -3,11 +3,17 @@
 // The content picker: every clip and photo in the athlete's Frame.io folder,
 // one section per folder (Selected clips, Main folder, Camera originals,
 // Photos…). Data from /api/carousels/[slug]/clips.
+//
+// It lives in the editor's side panel, so it is built to stay cheap while the
+// editor re-renders around it (the playback clock ticks 4x a second):
+//  - the folder listing is fetched once per athlete per visit (Refresh re-reads it);
+//  - each tile is memoised and keeps its own hover state;
+//  - a tile only loads / grades its picture once it scrolls near the panel.
 
 import { autoLook, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
 import { useGraded, useScenes } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import HlsVideo from './HlsVideo';
 
 export type PickerClip = {
@@ -28,7 +34,7 @@ export type PickerClip = {
 
 // A tile's picture, shown through the clip's grade once it's ready.
 function GradedThumb({ url, look }: { url: string; look: Look | null }) {
-  const src = useGraded(url, look, 640);
+  const src = useGraded(url, look, 400);
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={src ?? url} alt="" loading="lazy" crossOrigin={look ? 'anonymous' : undefined} className="h-full w-full object-cover" />;
 }
@@ -51,6 +57,81 @@ type Filter = 'all' | 'video' | 'image';
 const fmt = (s: number | null) => (s == null ? '' : `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`);
 const short = (name: string) => name.replace(/\.[^.]+$/, '');
 
+// The folder listing per athlete, kept for the visit so reopening the panel is instant.
+const listCache = new Map<string, Payload>();
+
+type TileProps = {
+  c: PickerClip;
+  tall: boolean;
+  /** The panel's scroller: tiles wake up when they come within reach of it. */
+  root: RefObject<HTMLDivElement>;
+  disabled: boolean;
+  busy: boolean;
+  swapping: boolean;
+  onPick: (clip: PickerClip) => void;
+};
+
+// One clip or photo. Memoised: with stable props it sits out the editor's re-renders.
+const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPick }: TileProps) {
+  const ref = useRef<HTMLLIElement>(null);
+  const [seen, setSeen] = useState(false);
+  const [hover, setHover] = useState(false);
+
+  // Nothing is fetched or graded for a tile until it is near the visible part of the panel.
+  useEffect(() => {
+    if (seen) return;
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') { setSeen(true); return; }
+    const io = new IntersectionObserver(
+      (entries) => { if (entries.some((e) => e.isIntersecting)) { setSeen(true); io.disconnect(); } },
+      { root: root.current, rootMargin: '500px 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen, root]);
+
+  // The tile's grade; Canon clips wait for the green-screen check (only once seen).
+  const base = c.kind === 'video' ? autoLook(c.name) : null;
+  const scenes = useScenes(seen && needsScene(base) ? [c.thumb] : []);
+  const look: Look | null = seen && c.kind === 'video' ? refineLook(base, true, c.thumb ? scenes[c.thumb] : false) : null;
+
+  return (
+    <li ref={ref}>
+      <button
+        type="button"
+        onClick={() => onPick(c)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        onFocus={() => setHover(true)}
+        onBlur={() => setHover(false)}
+        aria-label={swapping ? `Swap in ${short(c.name)}` : `Add ${short(c.name)} to the selected slide`}
+        disabled={disabled}
+        className={`group flex w-full flex-col gap-1 text-left disabled:cursor-wait ${busy ? 'opacity-50' : ''}`}
+      >
+        <span className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}>
+          {!seen ? null : hover && c.kind === 'video' ? (
+            <HoverPreview c={c} look={look} />
+          ) : c.thumb ? (
+            <GradedThumb url={c.thumb} look={look} />
+          ) : null}
+          {c.duration != null && (
+            <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">
+              ▶ {fmt(c.duration)}
+            </span>
+          )}
+          {c.approved && (
+            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-status-ok">
+              ✓ Approved
+            </span>
+          )}
+        </span>
+        <span className="truncate text-[12px] leading-snug text-ink-1 group-hover:text-accent">{short(c.name)}</span>
+      </button>
+    </li>
+  );
+});
+
 export default function ClipPicker({
   slug,
   firstName,
@@ -71,15 +152,25 @@ export default function ClipPicker({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>('all');
-  const [hover, setHover] = useState<string | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
 
-  const load = useCallback(async () => {
+  // The editor hands us a new onPick every render; tiles get one that never changes.
+  const pickRef = useRef(onPick);
+  pickRef.current = onPick;
+  const pick = useCallback((c: PickerClip) => pickRef.current(c), []);
+
+  // `fresh` re-reads Frame.io (the Refresh link); otherwise a listing already
+  // fetched for this athlete during the visit is shown straight away.
+  const load = useCallback(async (fresh = false) => {
+    const cached = fresh ? undefined : listCache.get(slug);
+    if (cached) { setData(cached); setError(null); setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/carousels/${slug}/clips`, { cache: 'no-store' });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? `Failed (${res.status})`);
+      listCache.set(slug, body);
       setData(body);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load clips');
@@ -120,61 +211,22 @@ export default function ClipPicker({
     ];
   }, [selected, elsewhere, photos, filter, firstName]);
 
-  // Each tile's grade; Canon clips wait for the green-screen check.
-  const ninjaThumbs = useMemo(() => [...selected, ...elsewhere].filter((c) => c.kind === 'video' && needsScene(autoLook(c.name))).map((c) => c.thumb), [selected, elsewhere]);
-  const scenes = useScenes(ninjaThumbs);
-  const tileLook = (c: PickerClip): Look | null => (c.kind === 'video' ? refineLook(autoLook(c.name), true, c.thumb ? scenes[c.thumb] : false) : null);
-
   const synced = data ? new Date(data.fetchedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : null;
-
-  const Card = (c: PickerClip, tall = false) => (
-    <li key={c.id}>
-      <button
-        type="button"
-        onClick={() => onPick(c)}
-        onMouseEnter={() => setHover(c.id)}
-        onMouseLeave={() => setHover(null)}
-        onFocus={() => setHover(c.id)}
-        onBlur={() => setHover(null)}
-        aria-label={replacing ? `Swap in ${short(c.name)}` : `Add ${short(c.name)} to the selected slide`}
-        disabled={!!busyId}
-        className={`group flex w-full flex-col gap-1.5 text-left disabled:cursor-wait ${busyId === c.id ? 'opacity-50' : ''}`}
-      >
-        <span className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}>
-          {hover === c.id && c.kind === 'video' ? (
-            <HoverPreview c={c} look={tileLook(c)} />
-          ) : c.thumb ? (
-            <GradedThumb url={c.thumb} look={tileLook(c)} />
-          ) : null}
-          {c.duration != null && (
-            <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">
-              ▶ {fmt(c.duration)}
-            </span>
-          )}
-          {c.approved && (
-            <span className="absolute bottom-1.5 left-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-status-ok">
-              ✓ Approved
-            </span>
-          )}
-        </span>
-        <span className="truncate text-[13px] leading-snug text-ink-1 group-hover:text-accent">{short(c.name)}</span>
-        <span className="truncate text-[12px] text-ink-4">{c.folder}</span>
-      </button>
-    </li>
-  );
 
   return (
     <section
       aria-label="Content picker"
-      className="flex w-full flex-col gap-3 rounded-2xl border border-hairline-soft bg-surface-card p-4"
+      className="flex min-h-0 w-full flex-1 flex-col gap-3 rounded-2xl border border-hairline-soft bg-surface-card p-4"
     >
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 className="text-[16px] font-bold text-ink-1">{replacing ? <>Replace <span className="text-accent">{replacing}</span></> : 'Add from Frame.io'}</h2>
-        <p className="text-[13px] text-ink-4">
-          Everything in {firstName}&apos;s Frame.io folder · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
-          {!loading && <button type="button" onClick={load} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
-        </p>
-        {onClose && <button type="button" onClick={onClose} className="ml-auto min-h-[32px] rounded-full border border-hairline-soft px-3 text-[11px] font-bold uppercase tracking-[.12em] text-ink-2 hover:text-ink-1">Close</button>}
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-[16px] font-bold text-ink-1">{replacing ? <>Replace <span className="text-accent">{replacing}</span></> : 'Add from Frame.io'}</h2>
+          <p className="text-[12px] text-ink-4">
+            {firstName}&apos;s Frame.io folder · {loading ? 'syncing…' : synced ? `synced ${synced}` : ''}{' '}
+            {!loading && <button type="button" onClick={() => load(true)} className="text-accent underline-offset-2 hover:underline">Refresh</button>}
+          </p>
+        </div>
+        {onClose && <button type="button" onClick={onClose} className="min-h-[32px] shrink-0 rounded-full border border-hairline-soft px-3 text-[11px] font-bold uppercase tracking-[.12em] text-ink-2 hover:text-ink-1">Close</button>}
       </div>
 
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter">
@@ -193,12 +245,12 @@ export default function ClipPicker({
         ))}
       </div>
 
-      <div className="-mr-2 max-h-[460px] overflow-y-auto pr-2">
+      <div ref={scroller} className="-mr-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
         {error && (
           <p className="rounded-xl border border-status-bad/40 bg-status-bad/10 p-3 text-[14px] text-status-bad-ink">{error}</p>
         )}
         {loading && !data && (
-          <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6" aria-hidden>
+          <ul className="grid grid-cols-2 gap-2.5" aria-hidden>
             {Array.from({ length: 8 }).map((_, i) => (
               <li key={i} className="aspect-[16/10] animate-pulse rounded-[10px] bg-surface-raised" />
             ))}
@@ -218,8 +270,10 @@ export default function ClipPicker({
                     {sec.title} <span className="font-normal text-ink-4">{items.length}</span>
                   </button>
                   {shut ? null : items.length ? (
-                    <ul className={sec.tall ? 'grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-8' : 'grid grid-cols-3 gap-2.5 sm:grid-cols-4 lg:grid-cols-6'}>
-                      {items.map((c) => Card(c, sec.tall))}
+                    <ul className={sec.tall ? 'grid grid-cols-3 gap-2.5' : 'grid grid-cols-2 gap-2.5'}>
+                      {items.map((c) => (
+                        <Tile key={c.id} c={c} tall={!!sec.tall} root={scroller} disabled={!!busyId} busy={busyId === c.id} swapping={!!replacing} onPick={pick} />
+                      ))}
                     </ul>
                   ) : (
                     <p className="rounded-xl border border-dashed border-hairline p-3.5 text-[14px] text-ink-4">{sec.empty}</p>

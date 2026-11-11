@@ -63,6 +63,10 @@ export default function CarouselEditor({
   const [drawer, setDrawer] = useState(false);
   // When set, the drawer is in "Replace" mode for this layer (Swap button).
   const [swapId, setSwapId] = useState<string | null>(null);
+  // The picker lives in the side panel. Once opened it stays mounted (hidden when
+  // closed) so its scroll position and folded folders are still there next time.
+  const [pickerMounted, setPickerMounted] = useState(false);
+  useEffect(() => { if (drawer) setPickerMounted(true); }, [drawer]);
   const [time, setTime] = useState(0);
   const [seek, setSeek] = useState<{ t: number; n: number } | undefined>();
   const [maxH, setMaxH] = useState(720);
@@ -543,7 +547,7 @@ export default function CarouselEditor({
         </button>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className={`grid gap-4 ${drawer ? 'xl:grid-cols-[minmax(0,1fr)_440px]' : 'xl:grid-cols-[minmax(0,1fr)_340px]'}`}>
         {/* canvas column */}
         <section aria-label="Carousel canvas" className="flex min-w-0 flex-col gap-3">
           <div className="relative overflow-hidden rounded-2xl border border-hairline-soft bg-surface-card p-2"
@@ -559,7 +563,7 @@ export default function CarouselEditor({
                 <div title="Drag right from here for a vertical guide" className="cursor-e-resize touch-none rounded-l bg-surface-raised"
                   onPointerDown={(e) => startGuide('v', e)} onPointerMove={moveGuide} onPointerUp={onUp} onPointerCancel={onUp} />
                 <CarouselCanvas ref={canvas} layout={layout} media={media} playing={playing} showSeams={seams}
-                  view={view} maxHeight={view === 'all' ? undefined : maxH} seek={seek} onTick={setTime}
+                  view={view} maxHeight={view === 'all' ? undefined : maxH} seek={seek} onTick={setTime} bleed={160}
                   overlay={overlay} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} />
               </div>
             )}
@@ -615,13 +619,6 @@ export default function CarouselEditor({
             </div>
           )}
 
-          {drawer && (
-            <ClipPicker slug={athlete.slug} firstName={firstName} busyId={adding}
-              replacing={swapId ? layout?.layers.find((l) => l.id === swapId)?.name ?? 'this layer' : null}
-              onPick={async (c) => { if (swapId) await swapClip(swapId, c); else await addClip(c); setDrawer(false); setSwapId(null); }}
-              onClose={() => { setDrawer(false); setSwapId(null); }} />
-          )}
-
           {layout && (
             <GuidesPanel layout={layout} guides={guidesOf(layout)} view={view} flash={flash}
               onChange={(patch) => updateGuides(patch)} />
@@ -633,8 +630,20 @@ export default function CarouselEditor({
           {toast && <p role="status" className="text-[13px] text-ink-2">{toast}</p>}
         </section>
 
-        {/* right column: settings, then layers — both always visible */}
-        <section aria-label="Editor panels" className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)]">
+        {/* right column: settings, then layers. While the content picker is open it takes
+            this panel instead, so the carousel stays in view the whole time you browse.
+            Below the xl breakpoint the panel slides over the page from the right. */}
+        <section aria-label="Editor panels"
+          className={`flex min-w-0 flex-col gap-4 xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)] ${drawer ? 'max-xl:fixed max-xl:inset-y-0 max-xl:right-0 max-xl:z-40 max-xl:w-[min(440px,100vw)] max-xl:border-l max-xl:border-hairline-soft max-xl:bg-ground max-xl:p-3' : ''}`}>
+          {pickerMounted && (
+            <div className={drawer ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}>
+              <ClipPicker slug={athlete.slug} firstName={firstName} busyId={adding}
+                replacing={swapId ? layout?.layers.find((l) => l.id === swapId)?.name ?? 'this layer' : null}
+                onPick={async (c) => { if (swapId) await swapClip(swapId, c); else await addClip(c); setDrawer(false); setSwapId(null); }}
+                onClose={() => { setDrawer(false); setSwapId(null); }} />
+            </div>
+          )}
+          <div className={drawer ? 'hidden' : 'contents'}>
           <div className="max-h-[56vh] overflow-y-auto rounded-2xl border border-hairline-soft bg-surface-card p-4">
             <h2 className="mb-3 text-[16px] font-bold text-ink-1">{multi ? 'Selected' : selected ? 'Selected' : 'Nothing selected'}</h2>
             {multi && layout ? (
@@ -668,6 +677,7 @@ export default function CarouselEditor({
                 onReorder={(id, to) => { if (!layout) return; const n = moveLayerTo(layout, id, to); setLayout(n); commit(n); }} />
             </div>
           )}
+          </div>
         </section>
       </div>
       {previewOpen && layout && (
