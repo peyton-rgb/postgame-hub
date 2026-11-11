@@ -111,7 +111,8 @@ async function listChildren(token: string, accountId: string, folderId: string):
 function toClip(f: Asset, source: PickerClip["source"], folder: string): PickerClip | null {
   const file = f.type === "version_stack" && f.head_version ? f.head_version : f;
   const mt = file.media_type ?? "";
-  const kind = mt.startsWith("video") ? "video" : mt.startsWith("image") ? "image" : null;
+  // Sony .MXF camera files come through as "application/mxf"; Frame.io still makes a playable copy of them.
+  const kind = mt.startsWith("video") || mt === "application/mxf" || /\.mxf$/i.test(file.name ?? "") ? "video" : mt.startsWith("image") ? "image" : null;
   if (!kind) return null;
   const link = (k: string) => file.media_links?.[k]?.url ?? file.media_links?.[k]?.download_url ?? null;
   const sm = file.media_links?.scrub_sheet?.metadata;

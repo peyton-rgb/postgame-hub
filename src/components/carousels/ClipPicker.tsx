@@ -12,6 +12,7 @@
 
 import { autoLook, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
 import { useGraded, useScenes } from './gradeImage';
+import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import GradeCanvas from './GradeCanvas';
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import HlsVideo from './HlsVideo';
@@ -27,7 +28,7 @@ export type PickerClip = {
   height: number | null;
   thumb: string | null;
   play: string | null;
-  scrub?: unknown;
+  scrub?: ScrubSheet | null;
   viewUrl: string | null;
   folder: string;
 };
@@ -47,6 +48,31 @@ function HoverPreview({ c, look }: { c: PickerClip; look: Look | null }) {
     <span className="absolute inset-0">
       <HlsVideo src={c.play} poster={c.thumb} cors={!!look || !!autoLook(c.name)} className="h-full w-full object-cover" />
       {look && !failed && <GradeCanvas look={look} style={cover} onFail={() => setFailed(true)} />}
+    </span>
+  );
+}
+
+// Hover scrub: slide the mouse across a tile to run through the clip. The frames come from
+// Frame.io's scrub sheet (one picture holding ~100 small frames of the clip), drawn through the
+// clip's grade; a red line and the time mark where you are.
+function ScrubPreview({ sheet, look, at, w, h, dur }: { sheet: ScrubSheet; look: Look | null; at: number; w: number; h: number; dur: number | null }) {
+  const url = useGraded(sheet.url, look, 2600) ?? sheet.url;
+  const f = Math.min(sheet.frames - 1, Math.max(0, Math.floor(at * sheet.frames)));
+  const col = f % sheet.tx, row = Math.floor(f / sheet.tx);
+  const k = Math.max(w / sheet.tw, h / sheet.th);                       // cover the tile, like the thumbnail does
+  const stepX = (sheet.tw + sheet.pad) * k, stepY = (sheet.th + sheet.pad) * k;
+  return (
+    <span className="pointer-events-none absolute inset-0">
+      <span className="absolute inset-0" style={{
+        backgroundImage: `url(${url})`, backgroundRepeat: 'no-repeat',
+        backgroundSize: `${sheet.tx * stepX}px ${sheet.ty * stepY}px`,
+        backgroundPosition: `${-col * stepX - (sheet.tw * k - w) / 2}px ${-row * stepY - (sheet.th * k - h) / 2}px`,
+      }} />
+      <span className="absolute inset-y-0 w-[2px] bg-accent shadow-[0_0_0_1px_rgba(7,7,10,.45)]" style={{ left: `calc(${at * 100}% - 1px)` }} />
+      <span className="absolute inset-x-0 bottom-0 h-[3px] bg-ground/60"><span className="block h-full bg-accent" style={{ width: `${at * 100}%` }} /></span>
+      {dur != null && (
+        <span className="absolute left-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold tracking-[.08em] text-ink-1">{fmt(at * dur)}</span>
+      )}
     </span>
   );
 }
@@ -76,6 +102,8 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
   const ref = useRef<HTMLLIElement>(null);
   const [seen, setSeen] = useState(false);
   const [hover, setHover] = useState(false);
+  // Where the mouse is across the thumbnail (0–1) and the thumbnail's size, for the hover scrub.
+  const [scrubAt, setScrubAt] = useState<{ at: number; w: number; h: number } | null>(null);
 
   // Nothing is fetched or graded for a tile until it is near the visible part of the panel.
   useEffect(() => {
@@ -102,19 +130,28 @@ const Tile = memo(function Tile({ c, tall, root, disabled, busy, swapping, onPic
         type="button"
         onClick={() => onPick(c)}
         onMouseEnter={() => setHover(true)}
-        onMouseLeave={() => setHover(false)}
+        onMouseLeave={() => { setHover(false); setScrubAt(null); }}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
         aria-label={swapping ? `Swap in ${short(c.name)}` : `Add ${short(c.name)} to the selected slide`}
         disabled={disabled}
         className={`group flex w-full flex-col gap-1 text-left disabled:cursor-wait ${busy ? 'opacity-50' : ''}`}
       >
-        <span className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}>
-          {!seen ? null : hover && c.kind === 'video' ? (
+        <span
+          className={`relative block overflow-hidden rounded-[10px] bg-surface-raised ${tall ? 'aspect-[4/5]' : 'aspect-[16/10]'}`}
+          onMouseMove={c.kind === 'video' && c.scrub ? (e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setScrubAt({ at: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), w: r.width, h: r.height });
+          } : undefined}
+        >
+          {!seen ? null : hover && c.kind === 'video' && !c.scrub ? (
             <HoverPreview c={c} look={look} />
           ) : c.thumb ? (
             <GradedThumb url={c.thumb} look={look} />
           ) : null}
+          {seen && hover && c.kind === 'video' && c.scrub && scrubAt && (
+            <ScrubPreview sheet={c.scrub} look={look} at={scrubAt.at} w={scrubAt.w} h={scrubAt.h} dur={c.duration} />
+          )}
           {c.duration != null && (
             <span className="absolute right-1.5 top-1.5 rounded-full bg-ground/75 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[.14em] text-ink-1">
               ▶ {fmt(c.duration)}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { autoLook, cameraLook, greenShare, lookFor, refineLook } from './grade.ts';
+import { autoLook, cameraLook, greenShare, lookFor, needsScene, refineLook, sceneKind } from './grade.ts';
 
 test('autoLook: camera → look, per the grade README', () => {
   const cases: [string, string | null][] = [
@@ -43,18 +43,28 @@ test('cameraLook: artifact clips read their camera from the label, source or key
   for (const [m, key, want] of cases) assert.equal(cameraLook(m, key), want, m.label);
 });
 
-test('refineLook + greenShare: Auto is as shot; Canon off the green screen is brightened', () => {
-  assert.equal(refineLook('canonstudio', true, true), null);          // Ninja green screen: as shot
-  assert.equal(refineLook('canonstudio', true, false), 'lift');       // Ninja warm room: brightened
-  assert.equal(refineLook('btscanon', true, false), 'lift');          // Canon CK: brightened
-  assert.equal(refineLook('btscanon', true, undefined), null);        // not checked yet: as shot
-  assert.equal(refineLook('canonstudio', false, false), 'canonstudio');   // picked by hand: kept
-  assert.equal(refineLook('sonystudio', true, false), null);          // Sony: as shot
-  assert.equal(refineLook('blackmagic', true, false), null);          // Blackmagic: as shot
-  assert.equal(refineLook('lift', false, true), 'lift');
+test("refineLook + scenes: Auto colours each clip with Andres's look for its camera", () => {
+  assert.equal(refineLook('canonstudio', true, 'green'), 'canonstudio');   // Canon via Ninja: its look on any set
+  assert.equal(refineLook('canonstudio', true, 'plain'), 'canonstudio');
+  assert.equal(refineLook('canonstudio', true, undefined), 'canonstudio'); // no scene check needed
+  assert.equal(refineLook('sonystudio', true, false), 'sonystudio');       // Sony
+  assert.equal(refineLook('blackmagic', true, false), 'blackmagic');       // Blackmagic
+  assert.equal(refineLook('btscanon', true, 'plain'), 'btscanon');         // Canon CK, bright interior
+  assert.equal(refineLook('btscanon', true, 'green'), 'btscanon');
+  assert.equal(refineLook('btscanon', true, 'dark'), 'canoncourt');        // Canon CK on the dark court set
+  assert.equal(refineLook('btscanon', true, false), 'btscanon');           // no thumbnail to check
+  assert.equal(refineLook('btscanon', true, undefined), null);             // not checked yet: as shot for a moment
+  assert.equal(refineLook(null, true, 'dark'), null);                      // already graded / Super 8 / iPhone: left alone
+  assert.equal(refineLook('btscanon', false, 'dark'), 'btscanon');         // picked by hand: kept
+  assert.equal(refineLook('lift', false, 'green'), 'lift');
+  assert.equal(needsScene('btscanon'), true);
+  assert.equal(needsScene('canonstudio'), false);
   const px = (r: number, g: number, b: number, n: number) => Array.from({ length: n }, () => [r, g, b, 255]).flat();
   const screen = [...px(90, 170, 110, 40), ...px(200, 60, 60, 20), ...px(0, 0, 0, 40)];   // 2/3 of non-black is green
   assert.ok(greenShare(screen) > 0.6);
   const room = [...px(190, 170, 140, 50), ...px(150, 40, 40, 20), ...px(0, 0, 0, 30)];    // beige walls, red shirt
   assert.equal(greenShare(room), 0);
+  assert.equal(sceneKind(screen), 'green');
+  assert.equal(sceneKind(room), 'plain');
+  assert.equal(sceneKind([...px(60, 52, 48, 60), ...px(0, 0, 0, 30)]), 'dark');   // dim court, black bars ignored
 });

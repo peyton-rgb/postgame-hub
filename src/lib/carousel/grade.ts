@@ -1,4 +1,4 @@
-// Colour grades (Andres's looks + a plain brighten), applied live in the editor (see GradedVideo).
+// Colour grades (Andres's looks + a plain brighten), applied live in the editor (see GradeCanvas).
 // Each look is a 33×33×33 LUT fitted to his graded stills (andres/luts/
 // README.json), stored as a 1089×33 PNG in public/luts: column = r + b·33,
 // row = g. Which look a clip gets comes from its camera, read off the file
@@ -60,21 +60,23 @@ export function lookFor(L: { grade?: Layer['grade']; media?: string }, m: (Media
   return cameraLook(m, L.media ?? '');
 }
 
-/** Canon footage (CK files and Canon via the Ninja). */
-const CANON: ReadonlySet<Look> = new Set<Look>(['btscanon', 'canonstudio', 'canoncourt']);
-/** Does Auto need to know whether this clip is green screen? */
-export const needsScene = (look: Look | null) => !!look && CANON.has(look);
+/** What a clip's thumbnail shows: green screen, a dark set, or anything else. */
+export type Scene = 'green' | 'dark' | 'plain';
+/** Does Auto need to look at the picture before it can choose? Only Canon CK files do: their look depends on the set. */
+export const needsScene = (look: Look | null) => look === 'btscanon';
 
-/** What Auto actually shows. Peyton's call (Nov 2026): the footage looks best
- *  as shot — Andres's fitted looks came out too saturated and dark on most
- *  sets. Only Canon footage away from the green screen (the dim warm room,
- *  the Canon black-set shots) is brightened; everything else stays as shot.
- *  Andres's looks remain one pick away in each layer's dropdown.
- *  `green` undefined = not checked yet → as shot for a moment. */
-export function refineLook(look: Look | null, auto: boolean, green: boolean | undefined): Look | null {
-  if (!auto) return look;
-  if (!needsScene(look) || green === undefined) return null;
-  return green ? null : 'lift';
+/** What Auto actually shows. Peyton's call (Nov 11 2026): every clip is coloured with
+ *  Andres's template for the camera it was shot on — the camera_to_lut table in
+ *  andres/luts/README.json. (Before that, Auto meant "as shot".) Canon CK files have two
+ *  Andres looks: the dark basketball-court set gets "Canon court", everything else
+ *  "Canon BTS / bright". Clips already coloured (file name says "graded") and Super 8
+ *  never reach here — autoLook leaves them alone. "As shot, brightened" stays one pick
+ *  away in each layer's dropdown.
+ *  `scene` undefined = not checked yet → as shot for a moment; false = no thumbnail to check. */
+export function refineLook(look: Look | null, auto: boolean, scene: Scene | boolean | undefined): Look | null {
+  if (!auto || !needsScene(look)) return look;
+  if (scene === undefined) return null;
+  return scene === 'dark' ? 'canoncourt' : 'btscanon';
 }
 
 /** Share of a picture that is green-screen green, ignoring black side bars.
@@ -95,3 +97,17 @@ export function greenShare(rgba: Uint8ClampedArray | number[]): number {
   return counted ? green / counted : 0;
 }
 export const GREEN_SCREEN_SHARE = 0.15;
+/** A Canon Log frame this dim (average brightness, black bars ignored) is the dark court set:
+ *  Andres's court reference frame sits at 0.22, his bright-interior one at 0.32. */
+export const DARK_SCENE_LUMA = 0.27;
+/** Sort a thumbnail's pixels (0–255 rgba) into green screen / dark set / anything else. */
+export function sceneKind(rgba: Uint8ClampedArray | number[]): Scene {
+  if (greenShare(rgba) >= GREEN_SCREEN_SHARE) return 'green';
+  let sum = 0, n = 0;
+  for (let k = 0; k < rgba.length; k += 4) {
+    const l = (0.2126 * rgba[k] + 0.7152 * rgba[k + 1] + 0.0722 * rgba[k + 2]) / 255;
+    if (l < 0.06) continue;                        // pillarbox / pure black
+    sum += l; n++;
+  }
+  return n && sum / n < DARK_SCENE_LUMA ? 'dark' : 'plain';
+}

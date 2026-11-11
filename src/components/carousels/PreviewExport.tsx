@@ -14,7 +14,7 @@ import { PREVIEW, previewLength, previewState, clipAt } from '@/lib/carousel/pre
 import { FRAG, VERT, loadLut } from './GradeCanvas';
 import { filmAmount, filmFrame, filmGeo } from '@/lib/carousel/film';
 import { createFilmRenderer, type FilmRenderer } from './filmGL';
-import { loadImg, sceneIsGreen } from './gradeImage';
+import { loadImg, sceneOf } from './gradeImage';
 import type { CanvasMedia } from './CarouselCanvas';
 
 type BioLine = { t: string; k?: '' | 'cat' | 'link' };
@@ -286,7 +286,7 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             if (!m.src) continue;
             const el = await loadVideo(m.src, cleanup);
             let look = lookFor(L, m);
-            if ((L.grade ?? 'auto') === 'auto') look = refineLook(look, true, needsScene(look) && m.thumb ? await sceneIsGreen(m.thumb) : false);
+            if ((L.grade ?? 'auto') === 'auto') look = refineLook(look, true, needsScene(look) && m.thumb ? await sceneOf(m.thumb) : false);
             const film = makeFilm(L, m.kind, look, cleanup);
             items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look && !film ? makeGrader(look) : null, film });
           } else {
