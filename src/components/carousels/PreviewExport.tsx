@@ -12,6 +12,8 @@ import { placeLayer, vinOf, vlenOf, SLIDE, H as SLIDE_H, type Layer, type Layout
 import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
 import { PREVIEW, previewLength, previewState, clipAt } from '@/lib/carousel/preview';
 import { FRAG, VERT, loadLut } from './GradeCanvas';
+import { filmAmount, filmFrame, filmGeo } from '@/lib/carousel/film';
+import { createFilmRenderer, type FilmRenderer } from './filmGL';
 import { loadImg, sceneIsGreen } from './gradeImage';
 import type { CanvasMedia } from './CarouselCanvas';
 
@@ -31,7 +33,19 @@ const FONT = '-apple-system, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, 
 type Item = {
   L: Layer; m: CanvasMedia; el: HTMLVideoElement | HTMLImageElement; vin: number; vlen: number;
   grade: ((src: HTMLVideoElement) => HTMLCanvasElement | null) | null;
+  /** Super 8 film look: strength (0 = off), its own drawing surface, and the last film picture drawn. */
+  film?: { amt: number; canvas: HTMLCanvasElement; r: FilmRenderer; n: number };
 };
+// A layer's Super 8 drawing surface (the grade, if any, is drawn underneath by the same pass).
+function makeFilm(L: Layer, kind: string, look: Look | null, cleanup: (() => void)[]): Item['film'] {
+  const amt = filmAmount(L, kind);
+  if (!amt) return undefined;
+  const canvas = document.createElement('canvas');
+  const r = createFilmRenderer(canvas, look, true);
+  if (!r) return undefined;
+  cleanup.push(() => r.dispose());
+  return { amt, canvas, r, n: -1 };
+}
 
 // ---------------------------------------------------------------- grading
 function makeGrader(look: Look) {
@@ -273,10 +287,11 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
             const el = await loadVideo(m.src, cleanup);
             let look = lookFor(L, m);
             if ((L.grade ?? 'auto') === 'auto') look = refineLook(look, true, needsScene(look) && m.thumb ? await sceneIsGreen(m.thumb) : false);
-            items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look ? makeGrader(look) : null });
+            const film = makeFilm(L, m.kind, look, cleanup);
+            items.push({ L, m, el, vin: vinOf(L, m), vlen: vlenOf(L, m), grade: look && !film ? makeGrader(look) : null, film });
           } else {
             const el = await img((m.src ?? m.thumb)!);
-            if (el) items.push({ L, m, el, vin: 0, vlen: 0, grade: null });
+            if (el) items.push({ L, m, el, vin: 0, vlen: 0, grade: null, film: makeFilm(L, m.kind, null, cleanup) });
           }
           if (!alive) return;
         }
@@ -308,6 +323,12 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
               if (!c.playing && !el.paused) el.pause();
               if (el.readyState < 2) continue;
               src = (it.grade && it.grade(el)) || el;
+            }
+            if (it.film && it.film.r.ready()) {
+              // Super 8: a clip takes a new frame only when the film steps on (18 a second); a photo is sent once.
+              const f = it.film, n = filmFrame(t).n, vid = el instanceof HTMLVideoElement;
+              const sw = vid ? el.videoWidth : el.naturalWidth, sh = vid ? el.videoHeight : el.naturalHeight;
+              if (f.r.draw(el, sw, sh, filmGeo(pl), f.amt, t, vid ? n !== f.n : f.n < 0)) { src = f.canvas; f.n = n; }
             }
             sx.save();
             sx.beginPath(); sx.rect(pl.frame.left, pl.frame.top, pl.frame.width, pl.frame.height); sx.clip();

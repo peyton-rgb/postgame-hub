@@ -182,6 +182,24 @@ export default function LayerProps({
         );
       })()}
 
+      {(media.kind === 'video' || media.kind === 'image') && (
+        <div className="flex flex-col gap-2 rounded-xl border border-hairline-soft p-3">
+          <label className="flex min-h-[28px] cursor-pointer items-center justify-between gap-3">
+            <span className={label}>Super 8 film look</span>
+            <input type="checkbox" role="switch" aria-checked={!!L.film} checked={!!L.film} className="h-5 w-5 accent-[var(--accent,#D73F09)]"
+              onChange={(e) => onChange({ film: e.target.checked ? true : undefined }, true)} />
+          </label>
+          {L.film ? (
+            <>
+              <Slider name="Amount" k="filmAmt" min={0.2} max={1} step={0.01} value={L.filmAmt ?? 1} onChange={onChange} />
+              <span className="text-[12px] text-ink-4">Soft focus, grain, faded blacks, flicker and film-speed motion, live. The Frame.io file isn&apos;t changed.</span>
+            </>
+          ) : (
+            <span className="text-[12px] text-ink-4">Off. Switch on to make this {media.kind === 'video' ? 'clip' : 'photo'} look like the Super 8 footage.</span>
+          )}
+        </div>
+      )}
+
       <span className={label}>Position &amp; size</span>
       <div className="-mt-2 grid grid-cols-2 gap-2">
         {numField('x', 'X')}{numField('y', 'Y')}{numField('w', 'Width')}{numField('h', 'Height')}
@@ -280,6 +298,12 @@ export function MultiProps({ layers, media, onChange, onClear, onDelete }: {
       </div>
       {P0 && (
         <>
+          <label className="flex min-h-[28px] cursor-pointer items-center justify-between gap-3 rounded-xl border border-hairline-soft p-3">
+            <span className={label}>Super 8 film look · all selected</span>
+            <input type="checkbox" role="switch" className="h-5 w-5 accent-[var(--accent,#D73F09)]"
+              aria-checked={layers.every((o) => o.type === 'text' || !!o.film)} checked={layers.every((o) => o.type === 'text' || !!o.film)}
+              onChange={(e) => onChange({ film: e.target.checked ? true : undefined }, true)} />
+          </label>
           <Slider name="Crop focus ↔" k="cx" min={0} max={1} step={0.01} value={P0.cx ?? 0.5} onChange={onChange} />
           <Slider name="Crop focus ↕" k="cy" min={0} max={1} step={0.01} value={P0.cy ?? 0.5} onChange={onChange} />
           <Slider name="Zoom" k="zoom" min={1} max={4} step={0.01} value={P0.zoom ?? 1} onChange={onChange} />

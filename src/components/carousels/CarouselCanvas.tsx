@@ -10,6 +10,7 @@ import type { ScrubSheet } from '@/lib/carousel/frameio-clips';
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { DUR, H, SLIDE, W, clipTime, placeLayer, type Layer, type Layout, type MediaInfo } from '@/lib/carousel/layout';
 import { lookFor, needsScene, refineLook, type Look } from '@/lib/carousel/grade';
+import { filmAmount, filmGeo } from '@/lib/carousel/film';
 import { useGraded, useScenes } from './gradeImage';
 import GradeCanvas from './GradeCanvas';
 
@@ -188,7 +189,9 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
           // Ask for readable pixels whenever the clip *might* be graded — Auto's
           // green-screen check finishes after the video starts loading, and a
           // video fetched without CORS can't be graded later.
-          const cors = !!look || !!lookFor(L, m);
+          // Super 8 film look: drawn over clips and photos, with the grade underneath.
+          const film = still ? 0 : filmAmount(L, m.kind);
+          const cors = !!look || !!lookFor(L, m) || film > 0;
           const mediaStyle: React.CSSProperties = {
             position: 'absolute', display: 'block', maxWidth: 'none', pointerEvents: 'none',
             ...p.media, filter: p.filter,
@@ -215,11 +218,19 @@ const CarouselCanvas = forwardRef<CanvasHandle, Props>(function CarouselCanvas(
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={m.src ?? undefined} alt="" draggable={false} style={mediaStyle} />
               )}
-              {/* The clip's grade, drawn live over the playing clip */}
-              {m.kind === 'video' && !still && look && !gradeFailed.has(`${L.id}:${look}`) && (
-                <GradeCanvas key={look} look={look} style={mediaStyle}
-                  onFail={() => setGradeFailed((s) => new Set(s).add(`${L.id}:${look}`))} />
-              )}
+              {/* The clip's grade and/or the Super 8 film look, drawn live over the clip or photo */}
+              {(() => {
+                if (still || !(film > 0 || (m.kind === 'video' && look))) return null;
+                const lk = m.kind === 'video' ? look : null;
+                const fk = `${L.id}:${lk}:${film > 0 ? 'film' : ''}`;
+                if (gradeFailed.has(fk)) return null;
+                return (
+                  <GradeCanvas key={`${lk}:${film > 0 ? 'film' : ''}`} look={lk} style={mediaStyle}
+                    film={film} geo={film > 0 ? filmGeo(p) : undefined} animate={playing}
+                    imageSrc={m.kind === 'image' ? m.src : undefined}
+                    onFail={() => setGradeFailed((s) => new Set(s).add(fk))} />
+                );
+              })()}
             </div>
           );
         })}

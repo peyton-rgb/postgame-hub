@@ -20,6 +20,8 @@ export type Layer = {
   clip?: '' | 'left' | 'right';
   bright?: number; contrast?: number; sat?: number; bw?: boolean; blur?: number;
   shadow?: boolean; hidden?: boolean; locked?: boolean; pop?: boolean;
+  /** Super 8 film look (lib/carousel/film): off unless switched on; filmAmt 0.1–1 is how strong (default 1). */
+  film?: boolean; filmAmt?: number;
   vin?: number; vlen?: number;
   // text layers
   text?: string; size?: number; weight?: number; align?: 'left' | 'center' | 'right'; color?: string; opacity?: number; font?: string;

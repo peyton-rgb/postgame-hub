@@ -6,9 +6,16 @@
 // same box with the same CSS (crop, filters), so every other control still
 // works. If the browser can't read the video's pixels (no WebGL, or a source
 // without CORS), it gives up and the plain video shows instead.
+//
+// With `film` on it also draws the Super 8 film look (lib/carousel/film) — on
+// a clip or, given `imageSrc`, on a photo — stepping at film speed while the
+// carousel plays and holding still while it is paused.
 
 import { useEffect, useRef, useState } from 'react';
 import type { Look } from '@/lib/carousel/grade';
+import { FILM_FPS, type FilmGeo } from '@/lib/carousel/film';
+import { createFilmRenderer } from './filmGL';
+import { loadImg } from './gradeImage';
 
 const N = 33;
 export const VERT = `
@@ -41,11 +48,64 @@ export function loadLut(look: Look) {
   return p;
 }
 
-export default function GradeCanvas({ look, style, onFail }: { look: Look; style: React.CSSProperties; onFail: () => void }) {
+export default function GradeCanvas({ look, style, onFail, film = 0, geo, animate = true, imageSrc }: {
+  look: Look | null; style: React.CSSProperties; onFail: () => void;
+  /** Super 8 strength, 0 = off. */
+  film?: number;
+  /** Where the film frame sits on the picture (filmGeo of the placed layer). */
+  geo?: FilmGeo;
+  /** Is the carousel playing? Film grain only moves while it is. */
+  animate?: boolean;
+  /** For a photo: its address (the film look reads its own copy of the pixels). */
+  imageSrc?: string | null;
+}) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
+  const filmOn = film > 0;
+  const live = useRef({ film, geo, animate });
+  live.current = { film, geo, animate };
 
+  // ---- Super 8 film look (with the grade underneath, if there is one)
   useEffect(() => {
+    if (!filmOn) return;
+    const canvas = ref.current;
+    if (!canvas) return;
+    const video = imageSrc ? null : canvas.parentElement?.querySelector('video') ?? null;
+    if (!video && !imageSrc) return;
+    const r = createFilmRenderer(canvas, look);
+    if (!r) { onFail(); return; }
+    let stop = false, raf = 0, shown = false, lastKey = '', lastN = -1, lastT = -1, held = 0;
+    let photo: HTMLImageElement | null = null, photoSent = false;
+    if (imageSrc) loadImg(imageSrc).then((i) => { photo = i; }).catch(() => { if (!stop) { stop = true; onFail(); } });
+    const tick = () => {
+      if (stop) return;
+      raf = requestAnimationFrame(tick);
+      const { film: amt, geo: g, animate: anim } = live.current;
+      if (!g || !r.ready()) return;
+      const src = video ?? photo;
+      if (!src) return;
+      if (video && (video.readyState < 2 || !video.videoWidth)) return;
+      // Playing: a new film picture 18 times a second. Paused: hold the grain still.
+      if (anim) held = performance.now() / 1000;
+      const n = Math.floor(held * FILM_FPS);
+      const t = video ? video.currentTime : 0;
+      const key = `${amt}|${g.vis.join(',')}|${g.asp}|${g.pxu.join(',')}`;
+      const stepped = n !== lastN, moved = !anim && t !== lastT;
+      if (shown && !stepped && !moved && key === lastKey) return;
+      // A clip only takes a new frame when the film steps (or when it is scrubbed while paused).
+      const upload = video ? stepped || moved || !shown : !photoSent;
+      const sw = video ? video.videoWidth : photo!.naturalWidth, sh = video ? video.videoHeight : photo!.naturalHeight;
+      if (!r.draw(src, sw, sh, g, amt, held, upload)) { stop = true; onFail(); return; }   // pixels not readable (no CORS)
+      photoSent = true; lastN = n; lastT = t; lastKey = key;
+      if (!shown) { shown = true; setReady(true); }
+    };
+    tick();
+    return () => { stop = true; cancelAnimationFrame(raf); r.dispose(); };
+  }, [look, filmOn, imageSrc]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ---- Colour grade only
+  useEffect(() => {
+    if (filmOn || !look) return;
     const canvas = ref.current;
     const video = canvas?.parentElement?.querySelector('video');
     if (!canvas || !video) return;
@@ -103,7 +163,7 @@ export default function GradeCanvas({ look, style, onFail }: { look: Look; style
       // React re-runs effects on the same canvas (dev), which would get a dead context back.
       setTimeout(() => { if (!canvas.isConnected) gl.getExtension('WEBGL_lose_context')?.loseContext(); }, 0);
     };
-  }, [look]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [look, filmOn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <canvas ref={ref} aria-hidden style={{ ...style, opacity: ready ? (style.opacity ?? 1) : 0 }} />;
 }
