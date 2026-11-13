@@ -65,11 +65,18 @@ export function instagramCode(url: string | null | undefined): string | null {
   return m ? m[1] : null;
 }
 
-/** Drive file id from a ".../file/d/<id>/view" or "...?id=<id>" link. Folder links return null. */
-export function driveFileId(url: string | null | undefined): string | null {
-  if (!url || /\/folders\//.test(url)) return null;
-  const m = url.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/) || url.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
-  return m ? m[1] : null;
+/**
+ * Drive file id from the sheet's "Drive File" cell. Muse has written that cell
+ * three ways: a ".../file/d/<id>/view" link, a "...?id=<id>" link, and — on
+ * rows from 11 Nov 2026 on — the bare id with no link around it. Folder links
+ * return null.
+ */
+export function driveFileId(value: string | null | undefined): string | null {
+  const v = (value || "").trim();
+  if (!v || /\/folders\//.test(v)) return null;
+  const m = v.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/) || v.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{20,}$/.test(v) ? v : null;
 }
 
 function list(value: string): string[] {
