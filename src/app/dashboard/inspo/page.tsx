@@ -20,6 +20,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createBrowserSupabase } from '@/lib/supabase';
 import type { InspoItem, ContentType, TaggingStatus } from '@/lib/types/intake';
+import { PlayIcon, Still, TileMedia, downloadUrl, isVideoItem, stillFor } from './inspo-media';
+import MoodboardPicker, { loadMoodboards, type MoodboardRow } from './MoodboardPicker';
 
 // --- Display helpers ---
 
@@ -74,77 +76,6 @@ const TAG_CATEGORIES = {
   },
 };
 
-// The Instagram ingest stored its reels with no mime_type, so "is this a
-// video" cannot rest on mime_type alone. Fall back to the file extension.
-const VIDEO_EXT = /\.(mp4|mov|m4v|webm)(\?|$)/i;
-
-function isVideoItem(item: InspoItem): boolean {
-  if (item.mime_type?.startsWith('video/')) return true;
-  return !item.mime_type && VIDEO_EXT.test(item.file_url || '');
-}
-
-// The picture to show for an item: its thumbnail, or the file itself when the
-// file is an image. Never a video file. An <img> cannot render one, and a
-// failed <img> prints its alt text, which is how the grid turned into a wall
-// of descriptions.
-function stillFor(item: InspoItem): string | null {
-  if (item.thumbnail_url) return item.thumbnail_url;
-  if (item.file_url && !isVideoItem(item)) return item.file_url;
-  return null;
-}
-
-function PlayIcon({ size = 14 }: { size?: number }) {
-  return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5v14l11-7z" />
-    </svg>
-  );
-}
-
-// An image that degrades to a quiet icon instead of alt text when it is
-// missing or fails to load. The alt is a short label, never the long
-// AI description.
-function Still({
-  src,
-  label,
-  video,
-  className = 'w-full h-full object-cover',
-}: {
-  src: string | null;
-  label: string;
-  video: boolean;
-  className?: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return (
-      <div
-        role="img"
-        aria-label={label}
-        className="w-full h-full min-h-[120px] flex items-center justify-center text-gray-500"
-      >
-        {video ? (
-          <PlayIcon size={28} />
-        ) : (
-          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <path d="M3 16l5-5 4 4 3-3 6 6" />
-          </svg>
-        )}
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt={label}
-      loading="lazy"
-      onError={() => setFailed(true)}
-      className={className}
-    />
-  );
-}
-
 export default function InspoLibraryPage() {
   const supabase = createBrowserSupabase();
 
@@ -164,6 +95,12 @@ export default function InspoLibraryPage() {
   const [statusFilter, setStatusFilter] = useState('ready');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Moodboards: the list for the board filter, the board being viewed, and
+  // whether the "add to moodboard" picker is open.
+  const [boards, setBoards] = useState<MoodboardRow[]>([]);
+  const [boardFilter, setBoardFilter] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   // Pagination
   const [offset, setOffset] = useState(0);
   const LIMIT = 50;
@@ -174,6 +111,28 @@ export default function InspoLibraryPage() {
   // --- Fetch items from the API ---
   const fetchItems = useCallback(async (currentOffset = 0) => {
     setLoading(true);
+
+    // Viewing one moodboard: read its items in board order. Boards are small,
+    // so this skips the search API and its paging.
+    if (boardFilter) {
+      const { data: links } = await supabase
+        .from('moodboard_items')
+        .select('inspo_item_id, position, created_at')
+        .eq('moodboard_id', boardFilter)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true });
+      const ids = (links || []).map((l) => l.inspo_item_id as string);
+      let boardItems: InspoItem[] = [];
+      if (ids.length > 0) {
+        const { data } = await supabase.from('inspo_items').select('*').in('id', ids);
+        const byId = new Map((data || []).map((row) => [row.id as string, row as InspoItem]));
+        boardItems = ids.map((id) => byId.get(id)).filter((row): row is InspoItem => !!row);
+      }
+      setItems(boardItems);
+      setTotal(boardItems.length);
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
     if (searchQuery) params.set('q', searchQuery);
@@ -198,13 +157,35 @@ export default function InspoLibraryPage() {
     }
 
     setLoading(false);
-  }, [searchQuery, contentTypeFilter, sportFilter, vibeFilter, tagFilter, sortBy, statusFilter]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase is a fresh client each render; listing it would refetch forever
+  }, [searchQuery, contentTypeFilter, sportFilter, vibeFilter, tagFilter, sortBy, statusFilter, boardFilter]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
     setOffset(0);
     fetchItems(0);
   }, [fetchItems]);
+
+  const refreshBoards = useCallback(async () => {
+    setBoards(await loadMoodboards(supabase));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see fetchItems
+  }, []);
+
+  useEffect(() => {
+    refreshBoards();
+  }, [refreshBoards]);
+
+  // Below the nav breakpoint the detail panel is a full screen laid over the
+  // grid. Hold the page still behind it so the grid keeps its scroll position
+  // for when the panel closes.
+  useEffect(() => {
+    if (!selectedItem || window.innerWidth >= 900) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [selectedItem]);
 
   // Debounced search — waits 400ms after user stops typing
   const handleSearchChange = (value: string) => {
@@ -315,8 +296,8 @@ export default function InspoLibraryPage() {
   return (
     <div>
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-white/10 px-4 nav:px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">Inspo Library</h1>
             <p className="text-sm text-gray-400 mt-1">
@@ -326,13 +307,13 @@ export default function InspoLibraryPage() {
           <div className="flex items-center gap-2">
             <a
               href="/dashboard/inspo/triage"
-              className="px-4 py-2 border border-[#D73F09]/40 bg-[#D73F09]/10 hover:bg-[#D73F09]/20 text-[#ff6a38] rounded-lg text-sm transition-colors flex items-center gap-1.5"
+              className="min-h-[44px] nav:min-h-0 px-4 py-2 border border-[#D73F09]/40 bg-[#D73F09]/10 hover:bg-[#D73F09]/20 text-[#ff6a38] rounded-lg text-sm transition-colors flex items-center gap-1.5"
             >
               <span>Triage pending</span>
             </a>
             <a
               href="/dashboard/intake"
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
+              className="min-h-[44px] nav:min-h-0 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors flex items-center"
             >
               Upload new
             </a>
@@ -351,7 +332,27 @@ export default function InspoLibraryPage() {
         </div>
 
         {/* Filter row */}
-        <div className="flex flex-wrap gap-3 mt-3">
+        <div className="flex flex-wrap gap-2 nav:gap-3 mt-3">
+          {/* Moodboard filter: shows one board's assets in place of the library */}
+          {boards.length > 0 && (
+            <select
+              value={boardFilter}
+              onChange={(e) => {
+                setBoardFilter(e.target.value);
+                setSelectedItem(null);
+              }}
+              aria-label="Moodboard"
+              className="min-h-[44px] nav:min-h-0 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 focus:outline-none focus:border-white/30 max-w-[60vw]"
+            >
+              <option value="">All assets</option>
+              {boards.map((board) => (
+                <option key={board.id} value={board.id}>
+                  Moodboard: {board.name} ({board.itemCount})
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Content type filter */}
           <select
             value={contentTypeFilter}
@@ -368,7 +369,7 @@ export default function InspoLibraryPage() {
             type="button"
             onClick={() => setShowFilters((v) => !v)}
             aria-expanded={showFilters}
-            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors"
+            className="min-h-[44px] nav:min-h-0 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors"
           >
             {showFilters ? 'Hide filters' : 'Filters'}
             {!showFilters && [sportFilter, vibeFilter, tagFilter, statusFilter !== 'ready', sortBy !== 'newest'].filter(Boolean).length > 0 && (
@@ -456,7 +457,7 @@ export default function InspoLibraryPage() {
       {/* Main content area */}
       <div className="flex">
         {/* Grid */}
-        <div className={`flex-1 p-6 ${selectedItem ? 'pr-3' : ''}`}>
+        <div className={`flex-1 min-w-0 p-3 nav:p-6 ${selectedItem ? 'nav:pr-3' : ''}`}>
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="text-gray-400">Loading assets...</div>
@@ -483,7 +484,7 @@ export default function InspoLibraryPage() {
           ) : (
             <>
               {/* Asset grid — responsive columns */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 nav:gap-3">
                 {items.map((item) => (
                   <div
                     key={item.id}
@@ -496,11 +497,7 @@ export default function InspoLibraryPage() {
                   >
                     {/* Still. Tall, because most of the library is vertical reels. */}
                     <div className="aspect-[3/4] bg-white/5 relative">
-                      <Still
-                        src={stillFor(item)}
-                        label={CONTENT_TYPE_LABELS[item.content_type] || 'Asset'}
-                        video={isVideoItem(item)}
-                      />
+                      <TileMedia item={item} label={CONTENT_TYPE_LABELS[item.content_type] || 'Asset'} />
 
                       {/* Video marker */}
                       {isVideoItem(item) && stillFor(item) && (
@@ -524,7 +521,7 @@ export default function InspoLibraryPage() {
                       {/* Hover overlay: type, sport and the description. The
                           same detail is one tap away in the side panel, so
                           nothing is hover-only on touch. */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end gap-1 p-3">
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent opacity-0 nav:group-hover:opacity-100 transition-opacity flex-col justify-end gap-1 p-3 hidden nav:flex pointer-events-none">
                         <span className="text-[11px] uppercase tracking-wider text-white/80">
                           {CONTENT_TYPE_LABELS[item.content_type]}
                           {item.sport ? ` · ${item.sport}` : ''}
@@ -568,16 +565,19 @@ export default function InspoLibraryPage() {
 
         {/* Detail panel — slides in from right */}
         {selectedItem && (
-          <div className="w-[420px] border-l border-white/10 bg-white/[0.02] overflow-y-auto max-h-[calc(100vh-200px)] sticky top-0">
+          <div className="fixed inset-0 z-[60] bg-ground overflow-y-auto nav:sticky nav:inset-auto nav:top-0 nav:z-auto nav:w-[420px] nav:flex-shrink-0 nav:border-l nav:border-white/10 nav:bg-white/[0.02] nav:max-h-[calc(100vh-200px)]">
             <div className="p-4">
               {/* Close button */}
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-gray-300">Asset Detail</h3>
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="text-gray-500 hover:text-white transition-colors"
+                  aria-label="Close asset detail"
+                  className="w-11 h-11 -mr-2 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
                 >
-                  ✕
+                  <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
                 </button>
               </div>
 
@@ -587,7 +587,8 @@ export default function InspoLibraryPage() {
                   <video
                     src={selectedItem.file_url}
                     controls
-                    className="w-full"
+                    playsInline
+                    className="w-full max-h-[60vh] nav:max-h-none"
                     poster={selectedItem.thumbnail_url || undefined}
                   />
                 ) : (
@@ -600,18 +601,41 @@ export default function InspoLibraryPage() {
                 )}
               </div>
 
-              {/* Actions */}
+              {/* Actions: take the asset somewhere */}
+              <div className="flex gap-2 mb-2">
+                {downloadUrl(selectedItem) ? (
+                  <a
+                    href={downloadUrl(selectedItem)!}
+                    download
+                    className="flex-1 min-h-[44px] px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors flex items-center justify-center"
+                  >
+                    Download
+                  </a>
+                ) : (
+                  <span className="flex-1 min-h-[44px] px-3 py-2 bg-white/5 rounded-lg text-sm text-gray-500 flex items-center justify-center">
+                    No file to download
+                  </span>
+                )}
+                <button
+                  onClick={() => setPickerOpen(true)}
+                  className="flex-1 min-h-[44px] px-3 py-2 rounded-lg text-sm transition-colors border border-[#D73F09]/40 bg-[#D73F09]/10 hover:bg-[#D73F09]/20 text-[#ff6a38]"
+                >
+                  Add to moodboard
+                </button>
+              </div>
+
+              {/* Actions: curate the asset */}
               <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => handleRetag(selectedItem.id)}
                   disabled={retagging === selectedItem.id}
-                  className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors disabled:opacity-50"
+                  className="flex-1 min-h-[44px] px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors disabled:opacity-50"
                 >
                   {retagging === selectedItem.id ? 'Re-tagging...' : 'Re-tag'}
                 </button>
                 <button
                   onClick={() => handleToggleHero(selectedItem)}
-                  className={`flex-1 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  className={`flex-1 min-h-[44px] px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedItem.is_hero
                       ? 'bg-status-warn/20 text-status-warn-ink border border-status-warn/30 hover:bg-status-warn/30'
                       : 'bg-white/10 hover:bg-white/20'
@@ -770,6 +794,18 @@ export default function InspoLibraryPage() {
           </div>
         )}
       </div>
+
+      {pickerOpen && selectedItem && (
+        <MoodboardPicker
+          item={selectedItem}
+          supabase={supabase}
+          onClose={() => setPickerOpen(false)}
+          onChanged={() => {
+            refreshBoards();
+            if (boardFilter) fetchItems(0);
+          }}
+        />
+      )}
     </div>
   );
 }
