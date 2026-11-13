@@ -74,6 +74,77 @@ const TAG_CATEGORIES = {
   },
 };
 
+// The Instagram ingest stored its reels with no mime_type, so "is this a
+// video" cannot rest on mime_type alone. Fall back to the file extension.
+const VIDEO_EXT = /\.(mp4|mov|m4v|webm)(\?|$)/i;
+
+function isVideoItem(item: InspoItem): boolean {
+  if (item.mime_type?.startsWith('video/')) return true;
+  return !item.mime_type && VIDEO_EXT.test(item.file_url || '');
+}
+
+// The picture to show for an item: its thumbnail, or the file itself when the
+// file is an image. Never a video file. An <img> cannot render one, and a
+// failed <img> prints its alt text, which is how the grid turned into a wall
+// of descriptions.
+function stillFor(item: InspoItem): string | null {
+  if (item.thumbnail_url) return item.thumbnail_url;
+  if (item.file_url && !isVideoItem(item)) return item.file_url;
+  return null;
+}
+
+function PlayIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+// An image that degrades to a quiet icon instead of alt text when it is
+// missing or fails to load. The alt is a short label, never the long
+// AI description.
+function Still({
+  src,
+  label,
+  video,
+  className = 'w-full h-full object-cover',
+}: {
+  src: string | null;
+  label: string;
+  video: boolean;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div
+        role="img"
+        aria-label={label}
+        className="w-full h-full min-h-[120px] flex items-center justify-center text-gray-500"
+      >
+        {video ? (
+          <PlayIcon size={28} />
+        ) : (
+          <svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M3 16l5-5 4 4 3-3 6 6" />
+          </svg>
+        )}
+      </div>
+    );
+  }
+  return (
+    <img
+      src={src}
+      alt={label}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={className}
+    />
+  );
+}
+
 export default function InspoLibraryPage() {
   const supabase = createBrowserSupabase();
 
@@ -91,6 +162,7 @@ export default function InspoLibraryPage() {
   const [tagFilter, setTagFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [statusFilter, setStatusFilter] = useState('ready');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -256,13 +328,13 @@ export default function InspoLibraryPage() {
               href="/dashboard/inspo/triage"
               className="px-4 py-2 border border-[#D73F09]/40 bg-[#D73F09]/10 hover:bg-[#D73F09]/20 text-[#ff6a38] rounded-lg text-sm transition-colors flex items-center gap-1.5"
             >
-              <span>⚡ Triage Pending</span>
+              <span>Triage pending</span>
             </a>
             <a
               href="/dashboard/intake"
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors"
             >
-              + Upload New
+              Upload new
             </a>
           </div>
         </div>
@@ -292,6 +364,22 @@ export default function InspoLibraryPage() {
             ))}
           </select>
 
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+            className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors"
+          >
+            {showFilters ? 'Hide filters' : 'Filters'}
+            {!showFilters && [sportFilter, vibeFilter, tagFilter, statusFilter !== 'ready', sortBy !== 'newest'].filter(Boolean).length > 0 && (
+              <span className="ml-1.5 text-[#ff6a38]">
+                {[sportFilter, vibeFilter, tagFilter, statusFilter !== 'ready', sortBy !== 'newest'].filter(Boolean).length}
+              </span>
+            )}
+          </button>
+
+          {showFilters && (
+          <>
           {/* Sport filter */}
           <input
             type="text"
@@ -342,6 +430,8 @@ export default function InspoLibraryPage() {
             <option value="oldest">Oldest</option>
             <option value="hero_first">Heroes First</option>
           </select>
+          </>
+          )}
 
           {/* Clear filters */}
           {(searchQuery || contentTypeFilter || sportFilter || vibeFilter || tagFilter || statusFilter !== 'ready' || sortBy !== 'newest') && (
@@ -373,7 +463,6 @@ export default function InspoLibraryPage() {
             </div>
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="text-4xl mb-4">🧠</div>
               <h3 className="text-lg font-medium text-gray-300 mb-2">
                 {statusFilter === 'ready' || statusFilter === 'tagged' ? 'No assets yet' : 'No assets found'}
               </h3>
@@ -399,68 +488,51 @@ export default function InspoLibraryPage() {
                   <div
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
-                    className={`group relative rounded-lg overflow-hidden cursor-pointer border transition-all ${
+                    className={`group relative rounded-xl overflow-hidden cursor-pointer border transition-all ${
                       selectedItem?.id === item.id
                         ? 'border-white/40 ring-1 ring-ink/20'
                         : 'border-white/5 hover:border-white/20'
                     }`}
                   >
-                    {/* Thumbnail */}
-                    <div className="aspect-[4/3] bg-white/5 relative">
-                      {(item.thumbnail_url || item.file_url) ? (
-                        item.mime_type?.startsWith('video/') ? (
-                          item.thumbnail_url ? (
-                            <img
-                              src={item.thumbnail_url}
-                              alt={item.visual_description || 'Video thumbnail'}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-500">
-                              <span className="text-3xl">🎬</span>
-                            </div>
-                          )
-                        ) : (
-                          <img
-                            src={item.file_url || item.thumbnail_url || ''}
-                            alt={item.visual_description || 'Asset'}
-                            className="w-full h-full object-cover"
-                          />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-500">
-                          <span className="text-2xl">📁</span>
-                        </div>
+                    {/* Still. Tall, because most of the library is vertical reels. */}
+                    <div className="aspect-[3/4] bg-white/5 relative">
+                      <Still
+                        src={stillFor(item)}
+                        label={CONTENT_TYPE_LABELS[item.content_type] || 'Asset'}
+                        video={isVideoItem(item)}
+                      />
+
+                      {/* Video marker */}
+                      {isVideoItem(item) && stillFor(item) && (
+                        <span className="absolute top-2 left-2 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center">
+                          <PlayIcon size={12} />
+                        </span>
                       )}
 
                       {/* Video duration overlay */}
                       {item.duration_seconds && (
-                        <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">
+                        <span className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">
                           {formatDuration(item.duration_seconds)}
                         </span>
                       )}
 
                       {/* Hero star */}
                       {item.is_hero && (
-                        <span className="absolute top-1 right-1 text-status-warn text-sm">★</span>
+                        <span className="absolute top-2 right-2 text-status-warn text-sm">★</span>
                       )}
 
-                      {/* Hover overlay */}
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                        <p className="text-xs text-white line-clamp-2">
-                          {item.visual_description || item.athlete_name || CONTENT_TYPE_LABELS[item.content_type]}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Bottom strip */}
-                    <div className="p-2 bg-white/[0.02]">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`inline-block px-1.5 py-0.5 text-[10px] rounded border ${CONTENT_TYPE_COLORS[item.content_type]}`}>
+                      {/* Hover overlay: type, sport and the description. The
+                          same detail is one tap away in the side panel, so
+                          nothing is hover-only on touch. */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end gap-1 p-3">
+                        <span className="text-[11px] uppercase tracking-wider text-white/80">
                           {CONTENT_TYPE_LABELS[item.content_type]}
+                          {item.sport ? ` · ${item.sport}` : ''}
                         </span>
-                        {item.sport && (
-                          <span className="text-[10px] text-gray-500">{item.sport}</span>
+                        {(item.visual_description || item.athlete_name) && (
+                          <p className="text-xs text-white line-clamp-3">
+                            {item.visual_description || item.athlete_name}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -511,23 +583,18 @@ export default function InspoLibraryPage() {
 
               {/* Preview */}
               <div className="rounded-lg overflow-hidden bg-black mb-4">
-                {selectedItem.mime_type?.startsWith('video/') ? (
-                  selectedItem.file_url ? (
-                    <video
-                      src={selectedItem.file_url}
-                      controls
-                      className="w-full"
-                      poster={selectedItem.thumbnail_url || undefined}
-                    />
-                  ) : selectedItem.thumbnail_url ? (
-                    <img src={selectedItem.thumbnail_url} alt="" className="w-full" />
-                  ) : (
-                    <div className="aspect-video flex items-center justify-center text-gray-500">🎬</div>
-                  )
+                {isVideoItem(selectedItem) && selectedItem.file_url ? (
+                  <video
+                    src={selectedItem.file_url}
+                    controls
+                    className="w-full"
+                    poster={selectedItem.thumbnail_url || undefined}
+                  />
                 ) : (
-                  <img
-                    src={selectedItem.file_url || selectedItem.thumbnail_url || ''}
-                    alt={selectedItem.visual_description || ''}
+                  <Still
+                    src={stillFor(selectedItem)}
+                    label={CONTENT_TYPE_LABELS[selectedItem.content_type] || 'Asset'}
+                    video={isVideoItem(selectedItem)}
                     className="w-full"
                   />
                 )}
@@ -540,7 +607,7 @@ export default function InspoLibraryPage() {
                   disabled={retagging === selectedItem.id}
                   className="flex-1 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors disabled:opacity-50"
                 >
-                  {retagging === selectedItem.id ? 'Re-tagging...' : '🔄 Re-tag'}
+                  {retagging === selectedItem.id ? 'Re-tagging...' : 'Re-tag'}
                 </button>
                 <button
                   onClick={() => handleToggleHero(selectedItem)}
