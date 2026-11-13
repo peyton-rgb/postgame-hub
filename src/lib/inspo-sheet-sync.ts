@@ -262,7 +262,6 @@ export function museFields(row: MuseRow) {
     brief_fit: row.brandFit,
     mood_tags: row.mood,
     shot_type: row.shotTypes.join(", ") || null,
-    format: row.mediaType || null,
     pro_tags: {
       lens_shot_type: row.shotTypes,
       editing_techniques: row.editing,
@@ -291,4 +290,25 @@ export function extensionFor(mimeType: string | null | undefined, name: string |
   const m = (name || "").match(/\.([A-Za-z0-9]{2,5})$/);
   if (m) return m[1].toLowerCase();
   return mimeType?.startsWith("video/") ? "mp4" : "bin";
+}
+
+/**
+ * inspo_items.format is the ASPECT RATIO, held to a fixed list by a check
+ * constraint ('9:16', '16:9', '1:1', '4:5', 'unknown') — not the kind of post.
+ * "reel" or "carousel" belongs in context_tags.ig_type. Returns null when the
+ * dimensions are not known, which the column allows.
+ */
+export function aspectFormat(width: number | null | undefined, height: number | null | undefined): string | null {
+  if (!width || !height) return null;
+  const ratio = width / height;
+  const known: [string, number][] = [
+    ["9:16", 9 / 16],
+    ["4:5", 4 / 5],
+    ["1:1", 1],
+    ["16:9", 16 / 9],
+  ];
+  for (const [label, value] of known) {
+    if (Math.abs(ratio - value) / value < 0.04) return label;
+  }
+  return "unknown";
 }

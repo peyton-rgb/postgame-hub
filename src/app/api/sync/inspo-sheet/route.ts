@@ -28,7 +28,9 @@
 // always applies). The cron entry is NOT registered in vercel.json yet — this
 // ships manual-only until a one-row test has been checked by a person.
 //
-// Never deletes and never touches the sheet or Drive (read-only on both).
+// Never deletes library rows and never touches the sheet or Drive (read-only on
+// both). The one removal it makes is of files it stored itself in the same call
+// when that row's insert then fails.
 // ============================================================
 
 import { NextRequest, NextResponse } from "next/server";
@@ -41,6 +43,7 @@ import { getGoogleAuth } from "@/lib/google-auth";
 import { getDriveClient } from "@/lib/google-drive";
 import { buildEmbeddingInput, generateEmbedding } from "@/lib/services/embeddings";
 import {
+  aspectFormat,
   INSPO_SHEET_ID,
   INSPO_SHEET_RANGE,
   driveFileId,
@@ -129,13 +132,16 @@ interface DriveMeta {
   size: number | null;
   thumbnailLink: string | null;
   durationSeconds: number | null;
+  width: number | null;
+  height: number | null;
 }
 
 async function driveMeta(fileId: string): Promise<DriveMeta> {
   const res = await getDriveClient().files.get({
     fileId,
     supportsAllDrives: true,
-    fields: "id,name,mimeType,size,thumbnailLink,videoMediaMetadata(durationMillis)",
+    fields:
+      "id,name,mimeType,size,thumbnailLink,videoMediaMetadata(durationMillis,width,height),imageMediaMetadata(width,height)",
   });
   const millis = Number(res.data.videoMediaMetadata?.durationMillis);
   return {
@@ -145,6 +151,8 @@ async function driveMeta(fileId: string): Promise<DriveMeta> {
     size: res.data.size ? Number(res.data.size) : null,
     thumbnailLink: res.data.thumbnailLink ?? null,
     durationSeconds: Number.isFinite(millis) && millis > 0 ? Math.round(millis / 1000) : null,
+    width: res.data.videoMediaMetadata?.width ?? res.data.imageMediaMetadata?.width ?? null,
+    height: res.data.videoMediaMetadata?.height ?? res.data.imageMediaMetadata?.height ?? null,
   };
 }
 
@@ -152,6 +160,14 @@ async function signedUrl(supabase: SupabaseClient, bucket: string, path: string)
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, SIGNED_URL_SECONDS);
   if (error || !data?.signedUrl) throw new Error(`sign ${bucket}/${path}: ${error?.message || "no url"}`);
   return data.signedUrl;
+}
+
+interface MediaResult {
+  columns: Record<string, unknown>;
+  fetchStatus: string;
+  /** Objects this call put in storage, so a failed insert can take them back out. */
+  stored?: { bucket: string; path: string }[];
+  thumbnailBytes?: number;
 }
 
 /**
@@ -164,7 +180,7 @@ async function copyMedia(
   supabase: SupabaseClient,
   itemId: string,
   fileId: string
-): Promise<{ columns: Record<string, unknown>; fetchStatus: string }> {
+): Promise<MediaResult> {
   let meta: DriveMeta;
   try {
     meta = await driveMeta(fileId);
@@ -180,6 +196,7 @@ async function copyMedia(
     mime_type: meta.mimeType,
     file_size_bytes: meta.size,
     duration_seconds: meta.durationSeconds,
+    format: aspectFormat(meta.width, meta.height),
   };
 
   try {
@@ -194,6 +211,7 @@ async function copyMedia(
       .upload(path, body, { contentType: meta.mimeType || "application/octet-stream", upsert: true });
     if (error) throw new Error(error.message);
     columns.file_url = await signedUrl(supabase, MEDIA_BUCKET, path);
+    const stored = [{ bucket: MEDIA_BUCKET, path }];
 
     // A still for the grid. Drive makes one for videos and images alike; ask
     // for a larger size than its default 220px. An image with no Drive
@@ -201,7 +219,12 @@ async function copyMedia(
     let still: Buffer | null = null;
     if (meta.thumbnailLink) {
       const token = await getGoogleAuth().getAccessToken();
-      const thumb = await fetch(meta.thumbnailLink.replace(/=s\d+$/, "=s1080"), {
+      // The link ends in a size suffix such as "=s220"; some carry extra flags
+      // after it. Swap whatever is there for a 1080px request.
+      const large = /=[swh]\d+[^/=]*$/.test(meta.thumbnailLink)
+        ? meta.thumbnailLink.replace(/=[swh]\d+[^/=]*$/, "=s1080")
+        : meta.thumbnailLink;
+      const thumb = await fetch(large, {
         headers: { Authorization: `Bearer ${token.token}` },
       });
       if (thumb.ok) still = Buffer.from(await thumb.arrayBuffer());
@@ -212,9 +235,12 @@ async function copyMedia(
       const up = await supabase.storage
         .from(THUMB_BUCKET)
         .upload(thumbPath, still, { contentType: "image/jpeg", upsert: true });
-      if (!up.error) columns.thumbnail_url = await signedUrl(supabase, THUMB_BUCKET, thumbPath);
+      if (!up.error) {
+        columns.thumbnail_url = await signedUrl(supabase, THUMB_BUCKET, thumbPath);
+        stored.push({ bucket: THUMB_BUCKET, path: thumbPath });
+      }
     }
-    return { columns, fetchStatus: "fetched" };
+    return { columns, fetchStatus: "fetched", stored, thumbnailBytes: still?.length };
   } catch (err) {
     return { columns, fetchStatus: `failed:${message(err)}`.slice(0, 200) };
   }
@@ -365,10 +391,7 @@ async function run(req: NextRequest) {
       }
 
       const id = randomUUID();
-      let media: { columns: Record<string, unknown>; fetchStatus: string } = {
-        columns: {},
-        fetchStatus: "no-drive-file",
-      };
+      let media: MediaResult = { columns: {}, fetchStatus: "no-drive-file" };
       if (fileId) media = await copyMedia(supabase, id, fileId);
 
       const insert = {
@@ -385,7 +408,14 @@ async function run(req: NextRequest) {
       };
       const { error: insertError } = await supabase.from("inspo_items").insert(insert);
       if (insertError) {
-        results.push({ ...base, outcome: `failed: ${insertError.message}` });
+        // The row did not land, so its files would be orphans nothing points
+        // at. Take back exactly what this call stored — never anything else.
+        const removed: string[] = [];
+        for (const obj of media.stored || []) {
+          const { error: removeError } = await supabase.storage.from(obj.bucket).remove([obj.path]);
+          if (!removeError) removed.push(`${obj.bucket}/${obj.path}`);
+        }
+        results.push({ ...base, outcome: `failed: ${insertError.message}`, files_removed: removed });
         continue;
       }
 
@@ -402,6 +432,8 @@ async function run(req: NextRequest) {
         fetch_status: media.fetchStatus,
         has_file: !!media.columns.file_url,
         has_thumbnail: !!media.columns.thumbnail_url,
+        thumbnail_kb: media.thumbnailBytes ? Math.round(media.thumbnailBytes / 1024) : null,
+        format: media.columns.format ?? null,
         embeddings: Object.keys(emb.update),
         warnings: emb.errors,
       });
@@ -417,7 +449,7 @@ async function run(req: NextRequest) {
       const { data: current, error: readError } = await supabase
         .from("inspo_items")
         .select(
-          "id, visual_description, search_phrases, context_tags, pro_tags, social_tags, brief_fit, mood_tags, shot_type, format, sport, school"
+          "id, visual_description, search_phrases, context_tags, pro_tags, social_tags, brief_fit, mood_tags, shot_type, sport, school"
         )
         .eq("id", id)
         .single();
@@ -460,7 +492,6 @@ async function run(req: NextRequest) {
       if (!((current.brief_fit as string[] | null) || []).length) update.brief_fit = fields.brief_fit;
       if (!Array.isArray(current.mood_tags) || current.mood_tags.length === 0) update.mood_tags = fields.mood_tags;
       if (!current.shot_type && fields.shot_type) update.shot_type = fields.shot_type;
-      if (!current.format && fields.format) update.format = fields.format;
 
       const report = {
         sheet_row: row.sheetRow,
