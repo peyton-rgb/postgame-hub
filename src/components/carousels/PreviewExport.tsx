@@ -35,6 +35,8 @@ type Item = {
   grade: ((src: HTMLVideoElement) => HTMLCanvasElement | null) | null;
   /** Super 8 film look: strength (0 = off), its own drawing surface, and the last film picture drawn. */
   film?: { amt: number; canvas: HTMLCanvasElement; r: FilmRenderer; n: number; pre: Pre | null };
+  /** The clip has played to its end and is resting on the frame it stopped at. */
+  held?: boolean;
 };
 // A layer's Super 8 drawing surface (the grade, if any, is drawn underneath by the same pass).
 function makeFilm(L: Layer, kind: string, look: Look | null, pre: Pre | null, cleanup: (() => void)[]): Item['film'] {
@@ -324,7 +326,13 @@ export default function PreviewExport({ slug, name, layout, media, onClose }: {
               // Each slide's clips start from the top when the slide arrives (as on Instagram).
               const c = clipAt(t, slideOf(L, slides), it.vlen, plan);
               const want = it.vin + c.at;
-              if (Math.abs(el.currentTime - want) > (c.playing ? 0.3 : 0.05)) el.currentTime = want;
+              const off = Math.abs(el.currentTime - want);
+              // A clip that has just played to its end is paused on the frame it stands on. Seeking
+              // it the last few hundredths of a second would empty its slot until the seek lands —
+              // a black flash on a 4K source whenever a shorter clip ends while its slide is still up.
+              if (c.playing || c.at === 0) it.held = false;
+              else if (!el.paused && off < 0.5) it.held = true;
+              if (!(it.held && off < 0.5) && off > (c.playing ? 0.3 : 0.05)) el.currentTime = want;
               if (c.playing && el.paused) el.play().catch(() => {});
               if (!c.playing && !el.paused) el.pause();
               if (el.readyState < 2) continue;
