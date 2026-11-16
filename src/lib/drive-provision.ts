@@ -39,6 +39,9 @@
 
 import type { drive_v3 } from "googleapis";
 import { getDriveClient, createFolder } from "@/lib/google-drive";
+import { adminCampaignFolderName, folderNameFor, matchesSubfolder, normalizeName } from "@/lib/drive-folder-names";
+
+export { adminCampaignFolderName, folderNameFor, matchesSubfolder, normalizeName };
 
 /** The five top-level subfolders every campaign gets (current standard, Sep
  *  2026). Legal has its own nested subfolders; see NESTED_SUBFOLDERS below. */
@@ -86,8 +89,11 @@ export interface ProvisionOutcome {
   legalFolderId: string;
   legalBrandFolderId: string;
   legalAthleteFolderId: string;
-  travelFolderId: string;
-  productionAssetsFolderId: string;
+  /** Null when the campaign folder is one the admin built — the admin's
+   *  standard has no Travel or Production Assets, and we don't add old-style
+   *  folders into a new-style tree. */
+  travelFolderId: string | null;
+  productionAssetsFolderId: string | null;
 }
 
 export interface ProvisionSkip {
@@ -123,16 +129,6 @@ export function campaignYear(candidate: CampaignCandidate): number {
   return parsed.getUTCFullYear();
 }
 
-/**
- * A campaign name as a folder name.
- *
- * Trims, and removes "/" because Drive treats it as a path separator. Nothing
- * else: the brief is explicit that names go in as-is, so no case changes, no
- * punctuation stripping, no "tidying".
- */
-export function folderNameFor(campaignName: string): string {
-  return campaignName.replace(/\//g, "").trim();
-}
 
 /** Child folders of a parent, as {id, name}. Handles shared drives and pages. */
 async function listChildFolders(
@@ -175,9 +171,10 @@ function matchesByName(
   children: Array<{ id: string; name: string }>,
   target: string,
 ): Array<{ id: string; name: string }> {
-  const needle = target.trim().toLowerCase();
-  return children.filter((c) => c.name.trim().toLowerCase() === needle);
+  const needle = normalizeName(target);
+  return children.filter((c) => normalizeName(c.name) === needle);
 }
+
 
 /**
  * True when `name` carries `year` as a standalone token.
@@ -347,6 +344,7 @@ export async function resolveYearFolder(
  */
 export async function provisionCampaign(
   candidate: CampaignCandidate,
+  brandName: string,
   brandRootId: string,
   storedYearFolderId: string | null,
   onYearFolderResolved: (year: number, folderId: string) => Promise<void>,
@@ -381,7 +379,14 @@ export async function provisionCampaign(
 
   // The campaign folder: adopt an existing one rather than making a twin. This
   // is also what makes a re-run after a partial failure safe.
-  const existing = matchesByName(await listChildFolders(drive, yearFolder.id), name);
+  // Two names count as "already there": the Hub's own ("Holiday Bikes") and
+  // the admin's ("Holiday Bikes - Raising Cane's 2026"). The admin's wins when
+  // both exist, because it follows the current standard.
+  const yearChildren = await listChildFolders(drive, yearFolder.id);
+  const adminStyle = matchesByName(yearChildren, adminCampaignFolderName(candidate.name, brandName, year));
+  const plain = matchesByName(yearChildren, name);
+  const isAdminFolder = adminStyle.length > 0;
+  const existing = isAdminFolder ? adminStyle : plain;
   const linkedExisting = existing.length > 0;
   const campaignFolderId = linkedExisting
     ? existing[0].id
@@ -389,14 +394,21 @@ export async function provisionCampaign(
 
   // Same adopt-or-create rule one level down.
   const children = linkedExisting ? await listChildFolders(drive, campaignFolderId) : [];
-  const subIds: Record<string, string> = {};
   // Tracked alongside subIds so the nested pass below knows whether it's safe
   // to skip listing a subfolder's children (freshly created = definitely empty).
   const subWasAdopted: Record<string, boolean> = {};
+  const subIds: Record<string, string | null> = {};
   for (const sub of SUBFOLDERS) {
-    const hit = matchesByName(children, sub);
+    const hit = matchesSubfolder(children, sub);
     subWasAdopted[sub] = hit.length > 0;
-    subIds[sub] = hit.length > 0 ? hit[0].id : await createFolder(sub, campaignFolderId);
+    if (hit.length > 0) {
+      subIds[sub] = hit[0].id;
+    } else if (isAdminFolder && (sub === "Travel" || sub === "Production Assets")) {
+      // Not part of the admin's standard — leave its tree alone.
+      subIds[sub] = null;
+    } else {
+      subIds[sub] = await createFolder(sub, campaignFolderId);
+    }
   }
 
   // One level deeper still, for the two subfolders that split further
@@ -405,9 +417,10 @@ export async function provisionCampaign(
   const nestedIds: Record<string, string> = {};
   for (const [parent, names] of Object.entries(NESTED_SUBFOLDERS) as [string, readonly string[]][]) {
     const parentId = subIds[parent];
+    if (!parentId) continue;
     const parentChildren = subWasAdopted[parent] ? await listChildFolders(drive, parentId) : [];
     for (const name of names) {
-      const hit = matchesByName(parentChildren, name);
+      const hit = matchesSubfolder(parentChildren, name);
       nestedIds[`${parent}/${name}`] = hit.length > 0 ? hit[0].id : await createFolder(name, parentId);
     }
   }
@@ -420,8 +433,8 @@ export async function provisionCampaign(
     yearFolderVia: yearFolder.via,
     yearFolderName: yearFolder.name,
     campaignFolderId,
-    contentFolderId: subIds.Content,
-    legalFolderId: subIds.Legal,
+    contentFolderId: subIds.Content as string,
+    legalFolderId: subIds.Legal as string,
     legalBrandFolderId: nestedIds["Legal/Brand Legal"],
     legalAthleteFolderId: nestedIds["Legal/Athlete Legal"],
     travelFolderId: subIds.Travel,
