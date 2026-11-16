@@ -43,6 +43,61 @@ export interface CoverChoice {
   photos: number[];
   /** True when the AI picked; false when this is the fallback. */
   judged: boolean;
+  /** Where the athlete is in each chosen image (cover + photos), keyed by
+   *  candidate index: [left, top, right, bottom] as 0–1 fractions. Used to
+   *  crop a copy centred on the athlete for the recap cards. */
+  boxes?: Record<number, Box>;
+}
+
+/** [left, top, right, bottom], each a 0–1 fraction of the image. */
+export type Box = [number, number, number, number];
+
+/** Card crops are 4:5 — they sit in 9:16, 4:5 and 1:1 cards without losing the athlete. */
+const CROP_RATIO = 4 / 5;
+/** The athlete fills at most this much of the crop's height / width (room to breathe, and
+ *  narrow enough to survive a 9:16 card trimming the sides of a 4:5 crop). */
+const SUBJECT_MAX_H = 0.86;
+const SUBJECT_MAX_W = 0.6;
+
+function cleanBox(v: unknown): Box | null {
+  if (!Array.isArray(v) || v.length !== 4) return null;
+  const n = v.map(Number);
+  if (n.some((x) => !Number.isFinite(x))) return null;
+  // Accept 0–100 percentages too.
+  const f = n.some((x) => x > 1.5) ? n.map((x) => x / 100) : n;
+  const [l, t, r, b] = f.map((x) => Math.min(1, Math.max(0, x)));
+  if (r - l < 0.02 || b - t < 0.02) return null;
+  return [l, t, r, b];
+}
+
+/**
+ * A copy of `buf` cropped to 4:5 around the athlete's box, centred on them,
+ * as a ≤1080px-wide jpeg. With no box, the photo is only resized — never a
+ * blind crop that could cut the athlete off.
+ */
+export async function cropToSubject(buf: Buffer, box: Box | null | undefined): Promise<Buffer> {
+  const img = sharp(buf).rotate();
+  const meta = await img.metadata();
+  // .rotate() swaps width/height for portrait EXIF orientations.
+  const swap = (meta.orientation || 1) >= 5;
+  const W = (swap ? meta.height : meta.width) || 0;
+  const H = (swap ? meta.width : meta.height) || 0;
+  const out = (s: sharp.Sharp) => s.resize({ width: 1080, withoutEnlargement: true }).jpeg({ quality: 86 }).toBuffer();
+  if (!box || !W || !H) return out(img);
+
+  const [l, t, r, b] = box;
+  const sw = (r - l) * W, sh = (b - t) * H;
+  const cx = ((l + r) / 2) * W, cy = ((t + b) / 2) * H;
+  let ch = Math.max(sh / SUBJECT_MAX_H, sw / SUBJECT_MAX_W / CROP_RATIO);
+  let cw = ch * CROP_RATIO;
+  if (cw > W) { cw = W; ch = cw / CROP_RATIO; }
+  if (ch > H) { ch = H; cw = ch * CROP_RATIO; }
+  const left = Math.round(Math.min(Math.max(cx - cw / 2, 0), W - cw));
+  // Centre on the athlete — but if they're taller than the crop, keep their
+  // head in and lose the feet instead (a cut-off head is never acceptable).
+  const headroom = t * H - 0.04 * ch;
+  const top = Math.round(Math.min(Math.max(Math.min(cy - ch / 2, headroom), 0), H - ch));
+  return out(sharp(await img.toBuffer()).extract({ left, top, width: Math.round(cw), height: Math.round(ch) }));
 }
 
 /** Recap content rule (Peyton, 2026-11-16): 1 video + 3–10 of the best photos. */
@@ -180,10 +235,15 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `You are choosing images for a client-facing campaign recap. The athlete is ${athlete}` +
   (brand ? `, and the brand is ${brand}` : "") +
   `. The ${n} images are numbered in order. Each is either a still from the athlete's video or one of their photos (labelled).\n\n` +
+  `Every image you pick must pass ALL of these:\n` +
+  `- The athlete is clearly visible — them, not just their feet, hands or the product. A shoe/product close-up with no athlete in it does not pass.\n` +
+  `- Good lighting: the athlete is well lit and their face is readable. No silhouettes or backlit shots where they are dark against the sky or sun, no underexposed or blown-out shots.\n` +
+  `- Sharp and in focus. Not a screen recording, app screen, text card, or a frame dominated by caption text. Not mid-blink or caught in an awkward pose.\n\n` +
   `Pick:\n` +
-  `- "cover": the best cover for the video. It must show the athlete clearly — face visible, in focus, well lit — ideally holding or using the product or with the brand visible. Prefer a natural, flattering, expressive moment. Reject phone screen recordings, app screens, text cards, black or blurry frames, frames where the athlete is tiny, cut off or mid-blink, and frames dominated by caption text.\n` +
-  `- "photos": the PHOTOS to show on the athlete's recap card, best first — up to ${MAX_RECAP_PHOTOS}. Use the same standard. Leave out near-duplicates (the same moment, pose or framing — keep only the best one), blurry or badly lit shots, and anything that isn't a real photo of the athlete. Fewer good photos beat padding with weak ones. [] if there are no photos.\n\n` +
-  `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "reason": "<one short sentence>"}`;
+  `- "cover": the best cover for the video (a video still or a photo). Face visible, the athlete large in the frame, ideally with the product or brand visible.\n` +
+  `- "photos": the PHOTOS for the athlete's recap card, best first — up to ${MAX_RECAP_PHOTOS}. The FIRST photo is the athlete's hero image on the recap: face clearly visible, well lit, the athlete filling a good part of the frame, shoes/product in shot if possible. Leave out near-duplicates (same moment, pose or framing — keep only the best one) and anything failing the rules above. Fewer good photos beat padding with weak ones. [] if no photo passes.\n` +
+  `- "boxes": for the cover and EVERY photo you picked, a tight box around the athlete's whole body (head to feet, or as much of them as is in the frame), as fractions of the image: {"<image number>": [left, top, right, bottom]}, each 0–1.\n\n` +
+  `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "boxes": {"<number>": [l, t, r, b]}, "reason": "<one short sentence>"}`;
 
 /**
  * Ask the vision model to choose. Falls back to the first frame (or first
@@ -215,7 +275,7 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 400, messages: [{ role: "user", content }] });
+    const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 900, messages: [{ role: "user", content }] });
     const text = res.content.map((b: any) => (b.type === "text" ? b.text : "")).join("");
     const json = JSON.parse(text.replace(/^[\s\S]*?\{/, "{").replace(/\}[\s\S]*$/, "}"));
     const cover = Number(json.cover) - 1;
@@ -232,8 +292,16 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
       if (picked.length >= Math.min(MIN_RECAP_PHOTOS, photoIdx.length)) break;
       if (!picked.includes(i)) picked.push(i);
     }
-    console.log(`[slack-recap/covers] ${athlete}: cover #${cover + 1}, photos [${picked.map((i) => i + 1).join(", ")}] — ${json.reason || ""}`);
-    return { cover, photo: picked[0] ?? null, photos: picked, judged: true };
+    const boxes: Record<number, Box> = {};
+    if (json.boxes && typeof json.boxes === "object") {
+      for (const [k, v] of Object.entries(json.boxes)) {
+        const i = Number(k) - 1;
+        const b = cleanBox(v);
+        if (b && Number.isInteger(i) && i >= 0 && i < candidates.length) boxes[i] = b;
+      }
+    }
+    console.log(`[slack-recap/covers] ${athlete}: cover #${cover + 1}, photos [${picked.map((i) => i + 1).join(", ")}], ${Object.keys(boxes).length} boxes — ${json.reason || ""}`);
+    return { cover, photo: picked[0] ?? null, photos: picked, judged: true, boxes };
   } catch (e: any) {
     console.warn(`[slack-recap/covers] AI pick failed for ${athlete}, using fallback:`, e?.message || e);
     return fallback;
