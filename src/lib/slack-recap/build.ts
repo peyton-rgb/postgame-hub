@@ -45,6 +45,7 @@ import {
   coverFrame,
   cropToSubject,
   dHash,
+  refineBoxes,
   frameCandidates,
   hashDistance,
   localVideo,
@@ -444,35 +445,60 @@ async function importAthleteContent(
       if (c.kind === "photo" && b) boxById.set(c.key, b);
     });
     const photoUrls = new Map<string, string>();
-    let order = 1;
+    // 1) Bring each picked photo into the recap's storage and keep its bytes.
+    const uploaded: { id: string; storagePath: string; publicUrl: string; buf: Buffer | null }[] = [];
     for (const id of pickedIds) {
       const meta = photoMeta.get(id);
       if (!meta) continue;
       const storagePath = buildStoragePath(recapId, athlete.id, meta.file.name);
       try {
         const up = await downloadAndUpload(supabase, { fileId: id, fileName: meta.file.name, storagePath });
-        const framed = await saveFramedCopy(
-          supabase,
-          buildStoragePath(recapId, athlete.id, `framed-${meta.file.name}.jpg`),
-          up.publicUrl,
-          boxById.get(id),
-        );
+        const res = await fetch(up.publicUrl, { cache: "no-store" }).catch(() => null);
+        const buf = res?.ok ? Buffer.from(await res.arrayBuffer()) : null;
+        uploaded.push({ id, storagePath, publicUrl: up.publicUrl, buf });
+      } catch (e: any) {
+        console.error(`[slack-recap] photo import failed for ${athlete.name}:`, e?.message || e);
+      }
+    }
+    // 2) A closer look so every crop is tight and centred on the subject.
+    const withBytes = uploaded.filter((u) => u.buf);
+    const tight = await refineBoxes(
+      athlete.name.trim(),
+      withBytes.map((u) => ({ buf: u.buf!, box: boxById.get(u.id) })),
+    );
+    withBytes.forEach((u, i) => {
+      const b = tight[i];
+      if (b) boxById.set(u.id, b);
+    });
+    // 3) Framed copies + media rows, hero first.
+    let order = 1;
+    for (const u of uploaded) {
+      const meta = photoMeta.get(u.id)!;
+      try {
+        const framed = u.buf
+          ? await saveFramedCopy(
+              supabase,
+              buildStoragePath(recapId, athlete.id, `framed-${meta.file.name}.jpg`),
+              u.buf,
+              boxById.get(u.id),
+            )
+          : null;
         const { error } = await supabase.from("media").insert({
           campaign_id: recapId,
           athlete_id: athlete.id,
           type: "image",
-          file_url: up.publicUrl,
-          thumbnail_url: framed || up.publicUrl,
+          file_url: u.publicUrl,
+          thumbnail_url: framed || u.publicUrl,
           is_video_thumbnail: false,
-          drive_file_id: id,
+          drive_file_id: u.id,
           sort_order: order,
           phash: meta.hash,
         });
         if (error) {
-          await removeUpload(supabase, storagePath);
+          await removeUpload(supabase, u.storagePath);
           console.error(`[slack-recap] photo insert failed for ${athlete.name}:`, error.message);
         } else {
-          photoUrls.set(id, framed || up.publicUrl);
+          photoUrls.set(u.id, framed || u.publicUrl);
           created++;
           order++;
         }
@@ -485,10 +511,14 @@ async function importAthleteContent(
     if (video && videoUpload) {
       // The video's cover: a full-size still at the chosen moment, or the
       // chosen photo. Null only if nothing at all could be produced.
-      let thumbnailUrl: string | null = null;
+      // The hero photo (photo #1, athlete + product) is the cover whenever
+      // there are photos; a video still only when there are none.
+      let thumbnailUrl: string | null = firstPhotoUrl;
       const c = candidates[choice.cover];
       try {
-        if (c?.kind === "frame" && local) {
+        if (thumbnailUrl) {
+          // hero photo already framed above
+        } else if (c?.kind === "frame" && local) {
           thumbnailUrl = await uploadJpeg(
             supabase,
             buildStoragePath(recapId, athlete.id, `cover-${video.name}.jpg`),
