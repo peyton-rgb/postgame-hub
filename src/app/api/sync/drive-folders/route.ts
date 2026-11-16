@@ -348,6 +348,7 @@ export async function POST(req: NextRequest) {
 
         const result = await provisionCampaign(
           candidate,
+          brand.name,
           brandRoot,
           yearFolders.get(shelfKey) ?? null,
           async (resolvedYear, folderId) => {
