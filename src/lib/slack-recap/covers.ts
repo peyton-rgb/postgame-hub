@@ -241,15 +241,72 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `You are choosing images for a client-facing campaign recap. The athlete is ${athlete}` +
   (brand ? `, and the brand is ${brand}` : "") +
   `. The ${n} images are numbered in order. Each is either a still from the athlete's video or one of their photos (labelled).\n\n` +
-  `Every image you pick must pass ALL of these:\n` +
-  `- The athlete is clearly visible — them, not just their feet, hands or the product. A shoe/product close-up with no athlete in it does not pass.\n` +
-  `- Good lighting: the athlete is well lit and their face is readable. No silhouettes or backlit shots where they are dark against the sky or sun, no underexposed or blown-out shots.\n` +
-  `- Sharp and in focus. Not a screen recording, app screen, text card, or a frame dominated by caption text. Not mid-blink or caught in an awkward pose.\n\n` +
+  `Every image you pick must be sharp and in focus, decently lit (not a silhouette, not underexposed or blown out), and a real photo — not a screen recording, app screen, text card, or a frame dominated by caption text.\n\n` +
   `Pick:\n` +
-  `- "cover": the best cover for the video (a video still or a photo). Face visible, the athlete large in the frame, ideally with the product or brand visible.\n` +
-  `- "photos": the PHOTOS for the athlete's recap card, best first — up to ${MAX_RECAP_PHOTOS}. The FIRST photo is the athlete's hero image on the recap: face clearly visible, well lit, the athlete filling a good part of the frame, shoes/product in shot if possible. Leave out near-duplicates (same moment, pose or framing — keep only the best one) and anything failing the rules above. Fewer good photos beat padding with weak ones. [] if no photo passes.\n` +
-  `- "boxes": for the cover and EVERY photo you picked, a tight box around the athlete's whole body (head to feet, or as much of them as is in the frame), as fractions of the image: {"<image number>": [left, top, right, bottom]}, each 0–1.\n\n` +
+  `- "photos": ${MIN_RECAP_PHOTOS}–${MAX_RECAP_PHOTOS} PHOTOS for the athlete's recap card, in order. Return at least ${MIN_RECAP_PHOTOS} whenever that many photos pass the rules above.\n` +
+  `  - The FIRST photo is the HERO — the athlete's cover on the recap. It must show BOTH the athlete and the ${brand ? brand + " " : ""}product clearly: the athlete's face visible and well lit, the athlete large in the frame, the shoes/product in shot. Prefer the closest strong shot of the athlete over a wide scenic one.\n` +
+  `  - The REST are the athlete's carousel: a good variety — different poses, angles and moments. Product close-ups and detail shots are fine here. Leave out near-duplicates (the same moment, pose or framing — keep only the best one).\n` +
+  `- "cover": the image number of the hero photo. Only if no photo passes, pick the best video still instead (athlete clearly visible, face visible).\n` +
+  `- "boxes": for the cover and EVERY photo you picked, a tight box around the main subject — the athlete's whole body (head to feet, as much as is in frame), or the product in a product shot — as fractions of the image: {"<image number>": [left, top, right, bottom]}, each 0–1.\n\n` +
   `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "boxes": {"<number>": [l, t, r, b]}, "reason": "<one short sentence>"}`;
+
+/**
+ * A second, closer look to tighten the subject boxes — models mark subjects
+ * loosely on a whole photo (Antonio Talley / Nate Frazier, Ghost Max 4: the
+ * athlete filled ~45% of a box meant to hug them). Each photo is cropped to its
+ * rough box plus a margin, all are sent in ONE call, and the tight boxes come
+ * back mapped to full-photo fractions. Anything that fails keeps its rough box.
+ */
+export async function refineBoxes(
+  athlete: string,
+  items: { buf: Buffer; box: Box | null | undefined }[],
+): Promise<(Box | null)[]> {
+  const rough = items.map((it) => it.box ?? null);
+  if (items.length === 0 || !process.env.ANTHROPIC_API_KEY) return rough;
+  try {
+    const regions: { l: number; t: number; w: number; h: number }[] = [];
+    const content: Anthropic.ContentBlockParam[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const upright = await sharp(items[i].buf).rotate().toBuffer();
+      const m = await sharp(upright).metadata();
+      const W = m.width || 0, H = m.height || 0;
+      const b = items[i].box || [0, 0, 1, 1];
+      const mx = (b[2] - b[0]) * 0.2, my = (b[3] - b[1]) * 0.12;
+      const l = Math.max(0, b[0] - mx), t = Math.max(0, b[1] - my);
+      const r = Math.min(1, b[2] + mx), btm = Math.min(1, b[3] + my);
+      const region = { l, t, w: r - l, h: btm - t };
+      regions.push(region);
+      const img = await sharp(upright)
+        .extract({ left: Math.round(l * W), top: Math.round(t * H), width: Math.max(1, Math.round(region.w * W)), height: Math.max(1, Math.round(region.h * H)) })
+        .resize({ width: 640, height: 640, fit: "inside" })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      content.push({ type: "text", text: `Image ${i + 1}` });
+      content.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: img.toString("base64") } });
+    }
+    content.push({
+      type: "text",
+      text:
+        `These are close-ups from ${athlete}'s campaign photos. For EACH image, give a tight box around the main subject — ` +
+        `the athlete's whole body (top of the head to the feet, as much as is in frame), or the product if the image is a product close-up with no athlete. ` +
+        `The box edges should touch the subject. Fractions of that image, 0–1.\n` +
+        `Reply with JSON only: {"boxes": {"1": [left, top, right, bottom], ...}}`,
+    });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 900, messages: [{ role: "user", content }] });
+    const text = res.content.map((c: any) => (c.type === "text" ? c.text : "")).join("");
+    const json = parseAiJson(text);
+    return items.map((_, i) => {
+      const fine = cleanBox(json?.boxes?.[String(i + 1)]);
+      if (!fine) return rough[i];
+      const g = regions[i];
+      return [g.l + fine[0] * g.w, g.t + fine[1] * g.h, g.l + fine[2] * g.w, g.t + fine[3] * g.h] as Box;
+    });
+  } catch (e: any) {
+    console.error(`[slack-recap/covers] box refine failed for ${athlete}, using rough boxes:`, e?.message || e);
+    return rough;
+  }
+}
 
 /**
  * The JSON object in a model reply: everything from the first "{" to the LAST
