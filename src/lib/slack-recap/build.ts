@@ -29,7 +29,14 @@ import {
   parseTrackerAthletes,
   toTipTapHtml,
 } from "@/lib/recap-intake";
-import { getCampaignDriveMedia, getDriveThumbnail, type DriveFile } from "@/lib/google-drive";
+import {
+  getCampaignDriveMedia,
+  getDriveClient,
+  getDriveThumbnail,
+  listAllMediaInAthleteFolder,
+  type DriveFile,
+} from "@/lib/google-drive";
+import { readTrackerContentFolders } from "@/lib/slack-recap/content-links";
 import { buildStoragePath, downloadAndUpload, removeUpload } from "@/lib/drive-import";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import type { BuildSummary } from "@/lib/slack-recap/views";
@@ -61,8 +68,11 @@ export interface RecapRequestState {
   covers_done?: string[];
   /** Athlete ids the content phase has already tried (imported OR no match). */
   content_tried?: string[];
-  /** Drive folder id pasted into the request — where this build pulls content from. */
+  /** Drive folder id pasted into the request — the fallback place to look for content. */
   content_folder_id?: string | null;
+  /** athlete id → that athlete's content folder, read once from the tracker's
+   *  "Content Folder" column links. Preferred over folder-name matching. */
+  athlete_folders?: Record<string, string>;
   /** Last time a build chunk saved progress. The resume sweeper restarts a
    *  "building" request whose heartbeat has gone quiet. */
   heartbeat_at?: string;
@@ -423,25 +433,49 @@ export async function runContentPhase(
 
   const { data: row } = await supabase
     .from("campaign_recaps")
-    .select("settings, drive_folder_id, client_name")
+    .select("settings, drive_folder_id, client_name, tracker_url")
     .eq("id", recapId)
     .single();
+  const reqState = ((row as any)?.settings?.recap_request || {}) as Partial<RecapRequestState>;
   // The folder pasted into the request; older requests (before 2026-11-16)
   // saved it into drive_folder_id, so fall back to that.
-  const folderId = (((row as any)?.settings?.recap_request?.content_folder_id as string | undefined) ||
-    (row as any)?.drive_folder_id) as string | null;
+  const folderId = (reqState.content_folder_id || (row as any)?.drive_folder_id) as string | null;
   const brand = ((row as any)?.client_name as string | null) || "";
-  if (!folderId) return { done: true, imported, tried: Array.from(tried) };
 
   const [{ data: athletes }, { data: media }] = await Promise.all([
     supabase.from("athletes").select("id, name").eq("campaign_id", recapId),
     supabase.from("media").select("athlete_id").eq("campaign_id", recapId),
   ]);
+  const allAthletes = (athletes as { id: string; name: string }[]) || [];
   const hasMedia = new Set(((media as any[]) || []).map((m) => m.athlete_id).filter(Boolean));
-  const todo = ((athletes as { id: string; name: string }[]) || []).filter((a) => !hasMedia.has(a.id) && !tried.has(a.id));
+  const todo = allAthletes.filter((a) => !hasMedia.has(a.id) && !tried.has(a.id));
   if (todo.length === 0) return { done: true, imported, tried: Array.from(tried) };
 
-  const drive = await getCampaignDriveMedia(folderId);
+  // Each athlete's own folder, from the tracker's Content Folder links. Read
+  // once per build and kept on the request so later chunks skip the Sheets call.
+  let athleteFolders = reqState.athlete_folders;
+  if (!athleteFolders) {
+    const byName = await readTrackerContentFolders((row as any)?.tracker_url);
+    athleteFolders = {};
+    for (const a of allAthletes) {
+      const f = byName.get(normLoose(a.name));
+      if (f) athleteFolders[a.id] = f;
+    }
+    await writeRequestState(recapId, { athlete_folders: athleteFolders });
+  }
+
+  if (!folderId && Object.keys(athleteFolders).length === 0) return { done: true, imported, tried: Array.from(tried) };
+
+  // Folder-name fallback for athletes the tracker doesn't link. Listed lazily:
+  // when every athlete has a tracker link, the pasted folder is never scanned.
+  let drive: Awaited<ReturnType<typeof getCampaignDriveMedia>> | null = null;
+  const fallbackFiles = async (name: string): Promise<DriveFile[] | null> => {
+    if (!folderId) return null;
+    if (!drive) drive = await getCampaignDriveMedia(folderId);
+    const folder = drive.athletes.find((f) => folderMatches(f.folderName, name));
+    return folder ? folder.files : null;
+  };
+  const driveClient = getDriveClient();
 
   for (const athlete of todo) {
     if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried) };
@@ -455,9 +489,18 @@ export async function runContentPhase(
       .eq("campaign_id", recapId)
       .eq("athlete_id", athlete.id);
     if ((existing || 0) > 0) continue;
-    const folder = drive.athletes.find((f) => folderMatches(f.folderName, athlete.name));
-    if (!folder) continue;
-    imported += await importAthleteContent(supabase, recapId, brand, athlete, folder.files);
+    const linked = athleteFolders[athlete.id];
+    let files: DriveFile[] | null = null;
+    if (linked) {
+      try {
+        files = await listAllMediaInAthleteFolder(driveClient, linked);
+      } catch (e: any) {
+        console.warn(`[slack-recap] couldn't open ${athlete.name}'s linked folder ${linked}:`, e?.message || e);
+      }
+    }
+    if (!files || files.length === 0) files = await fallbackFiles(athlete.name);
+    if (!files || files.length === 0) continue;
+    imported += await importAthleteContent(supabase, recapId, brand, athlete, files);
   }
   return { done: true, imported, tried: Array.from(tried) };
 }

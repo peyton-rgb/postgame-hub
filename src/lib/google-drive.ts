@@ -154,7 +154,7 @@ async function listMediaFilesInFolder(
  * Media inside one athlete folder: root, each immediate subfolder, and one nested
  * level under each (e.g. Photos/Edited). Deeper nesting is ignored.
  */
-async function listAllMediaInAthleteFolder(
+export async function listAllMediaInAthleteFolder(
   drive: drive_v3.Drive,
   athleteFolderId: string
 ): Promise<DriveFile[]> {
