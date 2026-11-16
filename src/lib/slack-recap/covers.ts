@@ -77,6 +77,20 @@ function cleanBox(v: unknown): Box | null {
 }
 
 /**
+ * A pixel rectangle for sharp's extract() from fractions, always inside the
+ * image. Rounding used to push left+width one pixel past the edge whenever a
+ * box touched it, sharp threw "bad extract area", and the framing silently fell
+ * back to loose boxes (Ghost Max 4, 2026-11-16).
+ */
+export function pixelRect(W: number, H: number, l: number, t: number, w: number, h: number) {
+  const left = Math.min(Math.max(0, Math.round(l * W)), W - 1);
+  const top = Math.min(Math.max(0, Math.round(t * H)), H - 1);
+  const width = Math.max(1, Math.min(Math.round(w * W), W - left));
+  const height = Math.max(1, Math.min(Math.round(h * H), H - top));
+  return { left, top, width, height };
+}
+
+/**
  * A copy of `buf` cropped to 4:5 around the athlete's box, centred on them,
  * as a ≤1080px-wide jpeg. With no box, the photo is only resized — never a
  * blind crop that could cut the athlete off.
@@ -103,7 +117,7 @@ export async function cropToSubject(buf: Buffer, box: Box | null | undefined): P
   // head in and lose the feet instead (a cut-off head is never acceptable).
   const headroom = t * H - 0.04 * ch;
   const top = Math.round(Math.min(Math.max(Math.min(cy - ch / 2, headroom), 0), H - ch));
-  return out(sharp(await img.toBuffer()).extract({ left, top, width: Math.round(cw), height: Math.round(ch) }));
+  return out(sharp(await img.toBuffer()).extract(pixelRect(W, H, left / W, top / H, cw / W, ch / H)));
 }
 
 /** Recap content rule (Peyton, 2026-11-16): 1 video + 3–10 of the best photos. */
@@ -250,6 +264,11 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `- "boxes": for the cover and EVERY photo you picked, a tight box around the main subject — the athlete's whole body (head to feet, as much as is in frame), or the product in a product shot — as fractions of the image: {"<image number>": [left, top, right, bottom]}, each 0–1.\n\n` +
   `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "boxes": {"<number>": [l, t, r, b]}, "reason": "<one short sentence>"}`;
 
+/** A box found inside a zoomed region, mapped back to full-photo fractions. */
+export function mapBack(g: { l: number; t: number; w: number; h: number }, fine: Box): Box {
+  return [g.l + fine[0] * g.w, g.t + fine[1] * g.h, g.l + fine[2] * g.w, g.t + fine[3] * g.h];
+}
+
 /**
  * A second, closer look to tighten the subject boxes — models mark subjects
  * loosely on a whole photo (Antonio Talley / Nate Frazier, Ghost Max 4: the
@@ -260,9 +279,10 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
 export async function refineBoxes(
   athlete: string,
   items: { buf: Buffer; box: Box | null | undefined }[],
-): Promise<(Box | null)[]> {
+): Promise<{ boxes: (Box | null)[]; error?: string }> {
   const rough = items.map((it) => it.box ?? null);
-  if (items.length === 0 || !process.env.ANTHROPIC_API_KEY) return rough;
+  if (items.length === 0) return { boxes: rough };
+  if (!process.env.ANTHROPIC_API_KEY) return { boxes: rough, error: "ANTHROPIC_API_KEY is not set" };
   try {
     const regions: { l: number; t: number; w: number; h: number }[] = [];
     const content: Anthropic.ContentBlockParam[] = [];
@@ -277,7 +297,7 @@ export async function refineBoxes(
       const region = { l, t, w: r - l, h: btm - t };
       regions.push(region);
       const img = await sharp(upright)
-        .extract({ left: Math.round(l * W), top: Math.round(t * H), width: Math.max(1, Math.round(region.w * W)), height: Math.max(1, Math.round(region.h * H)) })
+        .extract(pixelRect(W, H, l, t, region.w, region.h))
         .resize({ width: 640, height: 640, fit: "inside" })
         .jpeg({ quality: 80 })
         .toBuffer();
@@ -296,15 +316,19 @@ export async function refineBoxes(
     const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 900, messages: [{ role: "user", content }] });
     const text = res.content.map((c: any) => (c.type === "text" ? c.text : "")).join("");
     const json = parseAiJson(text);
-    return items.map((_, i) => {
+    let missing = 0;
+    const boxes = items.map((_, i) => {
       const fine = cleanBox(json?.boxes?.[String(i + 1)]);
-      if (!fine) return rough[i];
-      const g = regions[i];
-      return [g.l + fine[0] * g.w, g.t + fine[1] * g.h, g.l + fine[2] * g.w, g.t + fine[3] * g.h] as Box;
+      if (!fine) {
+        missing++;
+        return rough[i];
+      }
+      return mapBack(regions[i], fine);
     });
+    return missing ? { boxes, error: `no tight box for ${missing} of ${items.length} photos` } : { boxes };
   } catch (e: any) {
     console.error(`[slack-recap/covers] box refine failed for ${athlete}, using rough boxes:`, e?.message || e);
-    return rough;
+    return { boxes: rough, error: String(e?.message || e).slice(0, 200) };
   }
 }
 

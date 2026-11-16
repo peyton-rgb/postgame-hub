@@ -67,3 +67,28 @@ test("AI reply with nested boxes, prose and a code fence parses whole", () => {
 test("a reply with no JSON throws (so the build reports it)", () => {
   assert.throws(() => parseAiJson("sorry, I can't help with that"));
 });
+
+import { pixelRect, mapBack } from "./covers.ts";
+
+test("pixelRect never leaves the image, even for edge-touching boxes", () => {
+  for (const [W, H] of [[1001, 1501], [4032, 3024], [333, 777]]) {
+    for (const [l, t, w, h] of [[0.3333, 0.5, 0.6667, 0.5], [0, 0, 1, 1], [0.9999, 0.9999, 0.5, 0.5], [0.12345, 0.6789, 0.87655, 0.3211]]) {
+      const r = pixelRect(W, H, l, t, w, h);
+      assert.ok(r.left >= 0 && r.top >= 0 && r.width >= 1 && r.height >= 1);
+      assert.ok(r.left + r.width <= W, `x overflow ${JSON.stringify(r)} in ${W}`);
+      assert.ok(r.top + r.height <= H, `y overflow ${JSON.stringify(r)} in ${H}`);
+    }
+  }
+});
+
+test("a tight box from the zoomed region maps back to the full photo", () => {
+  const b = mapBack({ l: 0.2, t: 0.3, w: 0.4, h: 0.5 }, [0.25, 0, 0.75, 1]);
+  assert.deepEqual(b.map((x) => Math.round(x * 1000) / 1000), [0.3, 0.3, 0.5, 0.8]);
+});
+
+test("cropping a box that touches the right edge of an odd-sized image works", async () => {
+  const img = await sharp({ create: { width: 1001, height: 1501, channels: 3, background: "#808080" } }).jpeg().toBuffer();
+  const out = await cropToSubject(img, [0.55, 0.2, 1, 0.95]);
+  const m = await sharp(out).metadata();
+  assert.ok(Math.abs(m.width! / m.height! - 0.8) < 0.01);
+});

@@ -467,9 +467,16 @@ async function importAthleteContent(
       withBytes.map((u) => ({ buf: u.buf!, box: boxById.get(u.id) })),
     );
     withBytes.forEach((u, i) => {
-      const b = tight[i];
+      const b = tight.boxes[i];
       if (b) boxById.set(u.id, b);
     });
+    if (tight.error) {
+      // Loose framing is reported on the review, like a failed AI pick.
+      const { state } = await readRequestState(recapId);
+      const list = (state?.ai_fallback || []).filter((f) => f.athlete !== athlete.name.trim());
+      list.push({ athlete: athlete.name.trim(), error: `framing: ${tight.error}` });
+      await writeRequestState(recapId, { ai_fallback: list }).catch(() => {});
+    }
     // 3) Framed copies + media rows, hero first.
     let order = 1;
     for (const u of uploaded) {
