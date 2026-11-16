@@ -24,7 +24,11 @@ import { join } from "path";
 import Anthropic from "@anthropic-ai/sdk";
 import sharp from "sharp";
 
-const COVER_MODEL = process.env.RECAP_COVER_MODEL || "claude-sonnet-5";
+// "claude-sonnet-5" (the old default) isn't a model this account can call, so
+// every pick silently fell back to folder order until 2026-11-16 — Lexi's
+// silhouette and Nate's shoe-only hero on Ghost Max 4. claude-sonnet-4-6 is
+// the vision model the pitch generator already uses successfully.
+const COVER_MODEL = process.env.RECAP_COVER_MODEL || "claude-sonnet-4-6";
 const CANDIDATE_WIDTH = 384;
 const COVER_WIDTH = 1080;
 const FRAME_POINTS = [0.08, 0.24, 0.4, 0.56, 0.72, 0.9];
@@ -43,6 +47,8 @@ export interface CoverChoice {
   photos: number[];
   /** True when the AI picked; false when this is the fallback. */
   judged: boolean;
+  /** Why the AI didn't pick, when judged is false. */
+  error?: string;
   /** Where the athlete is in each chosen image (cover + photos), keyed by
    *  candidate index: [left, top, right, bottom] as 0–1 fractions. Used to
    *  crop a copy centred on the athlete for the recap cards. */
@@ -261,7 +267,10 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
     judged: false,
   };
   if (candidates.length === 0) return fallback;
-  if (!process.env.ANTHROPIC_API_KEY) return fallback;
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("[slack-recap/covers] ANTHROPIC_API_KEY is not set — photos fall back to folder order");
+    return { ...fallback, error: "ANTHROPIC_API_KEY is not set" };
+  }
 
   const content: Anthropic.ContentBlockParam[] = [];
   candidates.forEach((c, i) => {
@@ -279,7 +288,10 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
     const text = res.content.map((b: any) => (b.type === "text" ? b.text : "")).join("");
     const json = JSON.parse(text.replace(/^[\s\S]*?\{/, "{").replace(/\}[\s\S]*$/, "}"));
     const cover = Number(json.cover) - 1;
-    if (!Number.isInteger(cover) || cover < 0 || cover >= candidates.length) return fallback;
+    if (!Number.isInteger(cover) || cover < 0 || cover >= candidates.length) {
+      console.error(`[slack-recap/covers] AI reply for ${athlete} had no usable cover:`, text.slice(0, 300));
+      return { ...fallback, error: "the AI reply couldn't be read" };
+    }
     const picked: number[] = [];
     for (const n of Array.isArray(json.photos) ? json.photos : json.photo != null ? [json.photo] : []) {
       const i = Number(n) - 1;
@@ -303,7 +315,7 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
     console.log(`[slack-recap/covers] ${athlete}: cover #${cover + 1}, photos [${picked.map((i) => i + 1).join(", ")}], ${Object.keys(boxes).length} boxes — ${json.reason || ""}`);
     return { cover, photo: picked[0] ?? null, photos: picked, judged: true, boxes };
   } catch (e: any) {
-    console.warn(`[slack-recap/covers] AI pick failed for ${athlete}, using fallback:`, e?.message || e);
-    return fallback;
+    console.error(`[slack-recap/covers] AI pick failed for ${athlete} (model ${COVER_MODEL}), using fallback:`, e?.message || e);
+    return { ...fallback, error: String(e?.message || e).slice(0, 200) };
   }
 }
