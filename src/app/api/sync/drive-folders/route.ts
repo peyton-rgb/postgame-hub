@@ -28,7 +28,9 @@ import { getStaffUser } from "@/lib/staff-auth";
 import { createLiveServiceSupabase } from "@/lib/supabase-server";
 import {
   campaignYear,
+  performanceTrackerName,
   provisionCampaign,
+  V2_TRACKER_TEMPLATE_ID,
   resolveBrandRoot,
   type BrandRootVia,
   type CampaignCandidate,
@@ -38,13 +40,9 @@ import {
 import { getDriveClient, copyFile, findFileByName } from "@/lib/google-drive";
 import { hubProvisioningStoodDown, standDownReport } from "@/lib/admin-drive/stand-down";
 
-/**
- * The master Performance Tracker template, in the Campaign Templates folder.
- * Copied (never edited) into every new campaign's folder as "{Campaign
- * Name} Recap". Finalized 11 Sep 2026 — the older, formula-broken version
- * that used to live at a different file ID has been retired.
- */
-const TRACKER_TEMPLATE_ID = "1gzkzwpEXfMR2Jsk3vwbdfTCqVO7BBZ0156YDEMDtpzc";
+// The master Performance Tracker template lives in lib/drive-provision.ts
+// (V2_TRACKER_TEMPLATE_ID) so this sweep and the Slack "Get a tracker" flow
+// always copy the same file.
 
 /**
  * The manual "create form" button caps max_files at 100 — that's a UI
@@ -379,11 +377,10 @@ export async function POST(req: NextRequest) {
         // Adopt-before-create, same pattern as ensureFolder: if a retry lands
         // here after an earlier run already made this file, use it rather
         // than leaving a duplicate behind.
-        const trackerYear = String(year).slice(-2);
-        const trackerName = `${candidate.name} ${brand.name} '${trackerYear} Performance Tracker`;
+        const trackerName = performanceTrackerName(candidate.name, brand.name, year);
         const existingTracker = await findFileByName(trackerName, result.campaignFolderId);
         const tracker =
-          existingTracker ?? (await copyFile(TRACKER_TEMPLATE_ID, trackerName, result.campaignFolderId));
+          existingTracker ?? (await copyFile(V2_TRACKER_TEMPLATE_ID, trackerName, result.campaignFolderId));
 
         // A working /submit/[token] link the moment the campaign exists.
         // Idempotency guard: check for an existing ACTIVE link first, rather

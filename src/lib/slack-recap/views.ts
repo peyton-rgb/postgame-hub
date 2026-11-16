@@ -15,11 +15,15 @@ export const ACTIONS = {
   campaign: "campaign",
   publish: "publish_recap",
   requestChanges: "request_recap_changes",
+  openTracker: "open_tracker_request",
+  trackerBrand: "tracker_brand",
+  trackerCampaign: "tracker_campaign",
 } as const;
 
 export const CALLBACKS = {
   request: "recap_request",
   changes: "recap_changes",
+  tracker: "tracker_request",
 } as const;
 
 export interface RequestMeta {
@@ -58,6 +62,8 @@ export function requestModal(
   meta: RequestMeta,
   campaign: CampaignForRequest | null,
   alreadyBuiltUrl?: string,
+  /** The campaign's v2 tracker, filled into the tracker field when known. */
+  prefillTrackerUrl?: string,
 ): Record<string, unknown> {
   const blocks: any[] = [];
 
@@ -119,11 +125,16 @@ export function requestModal(
         type: "input",
         block_id: "tracker_block",
         label: plain("Google Sheets link"),
-        hint: plain("Use the v2 tracker template."),
+        hint: plain(
+          prefillTrackerUrl
+            ? "Filled in from this campaign's v2 tracker. Change it if you're using a different sheet."
+            : "Use the v2 tracker template.",
+        ),
         element: {
           type: "url_text_input",
           action_id: "tracker",
           placeholder: plain("Paste the Google Sheets link"),
+          ...(prefillTrackerUrl ? { initial_value: prefillTrackerUrl } : {}),
         },
       },
       {
@@ -346,3 +357,114 @@ export function failedBlocks(name: string, reason: string, editor: string): any[
 }
 
 export type { SlackOption };
+
+// ── "Get a v2 performance tracker" ───────────────────────────────────────────
+
+export interface TrackerMeta {
+  brandId?: string;
+  brandName?: string;
+  recapId?: string;
+  /** What getTrackerStatus found for the picked campaign. */
+  kind?: "none" | "v2" | "old" | "no_folder";
+}
+
+/** The pop-up form: Brand → Campaign, then a one-line status of that campaign's tracker. */
+export function trackerModal(meta: TrackerMeta, campaign: CampaignForRequest | null): Record<string, unknown> {
+  const blocks: any[] = [
+    {
+      type: "section",
+      text: md("Pick the campaign you're tracking. The Hub makes a fresh v2 tracker, names it and files it in the campaign's folder."),
+    },
+    {
+      type: "input",
+      block_id: "tracker_brand_block",
+      dispatch_action: true,
+      label: plain("Brand"),
+      element: {
+        type: "external_select",
+        action_id: ACTIONS.trackerBrand,
+        placeholder: plain("Choose a brand"),
+        min_query_length: 0,
+        ...(meta.brandId && meta.brandName
+          ? { initial_option: { text: plain(meta.brandName), value: meta.brandId } }
+          : {}),
+      },
+    },
+  ];
+
+  if (meta.brandId) {
+    blocks.push({
+      type: "input",
+      block_id: `tracker_campaign_block_${meta.brandId}`,
+      dispatch_action: true,
+      label: plain("Campaign"),
+      element: {
+        type: "external_select",
+        action_id: ACTIONS.trackerCampaign,
+        placeholder: plain(`Choose a ${meta.brandName ?? ""} campaign`.replace(/\s+/g, " ")),
+        min_query_length: 0,
+        ...(campaign
+          ? { initial_option: { text: plain(campaignLabel(campaign).slice(0, 75)), value: campaign.id } }
+          : {}),
+      },
+    });
+  } else {
+    blocks.push({ type: "context", elements: [md("Pick a brand to see its campaigns.")] });
+  }
+
+  const status: Record<string, string> = {
+    none: ":white_check_mark: No tracker yet. A new v2 tracker will be made.",
+    old: ":arrows_counterclockwise: This campaign has an old-layout tracker. A fresh v2 tracker will be made, and the old one gets \"(old layout)\" added to its name.",
+    v2: ":page_facing_up: This campaign already has a v2 tracker. You'll get its link.",
+    no_folder: ":warning: This campaign doesn't have a Drive folder yet, so there's nowhere to put a tracker. It gets one when it's created in the admin. Ping Peyton if that's not happening.",
+  };
+  if (campaign && meta.kind) blocks.push({ type: "context", elements: [md(status[meta.kind])] });
+
+  const canSubmit = !!campaign && meta.kind !== "no_folder";
+  return {
+    type: "modal",
+    callback_id: CALLBACKS.tracker,
+    private_metadata: JSON.stringify(meta),
+    title: plain("Performance tracker"),
+    close: plain("Cancel"),
+    ...(canSubmit ? { submit: plain(meta.kind === "v2" ? "Get the link" : "Create tracker") } : {}),
+    blocks,
+  };
+}
+
+/** DM'd to the person once the tracker exists. */
+export function trackerReadyBlocks(r: {
+  name: string;
+  outcome: "created" | "existing";
+  trackerName: string;
+  trackerUrl: string;
+  folderUrl: string;
+  renamedOld?: string;
+}): any[] {
+  const head = r.outcome === "created" ? `*Your tracker is ready: ${r.name}*` : `*Here's the tracker for ${r.name}*`;
+  const lines = [
+    head,
+    `:bar_chart: ${r.trackerName}`,
+    ...(r.renamedOld ? [`_The old-layout tracker is still in the folder as "${r.renamedOld}"._`] : []),
+  ];
+  return [
+    { type: "section", text: md(lines.join("\n")) },
+    {
+      type: "actions",
+      elements: [
+        { type: "button", style: "primary", text: plain("Open tracker"), url: r.trackerUrl, action_id: "tracker_open_sheet" },
+        { type: "button", text: plain("Open folder"), url: r.folderUrl, action_id: "tracker_open_folder" },
+      ],
+    },
+    { type: "context", elements: [md("This campaign's recap request will fill in this tracker automatically.")] },
+  ];
+}
+
+export function trackerFailedBlocks(name: string, reason: string): any[] {
+  return [
+    {
+      type: "section",
+      text: md(`:warning: *Couldn't make the tracker for ${name}*\n${reason}\nPeyton's been tagged.`),
+    },
+  ];
+}
