@@ -30,6 +30,14 @@ export function bigVideoWarnings(state: RecapRequestState | null, names: Map<str
     .map(([id, v]) => `${names.get(id) || "An athlete"}'s video (${v.name}) couldn't be added automatically — add it in the Hub editor.`);
 }
 
+/** One warning when the AI photo picker failed for any athlete (folder order used instead). */
+export function aiFallbackWarnings(state: RecapRequestState | null): string[] {
+  const f = state?.ai_fallback || [];
+  if (f.length === 0) return [];
+  const names = f.slice(0, 6).map((x) => x.athlete).join(", ") + (f.length > 6 ? ` and ${f.length - 6} more` : "");
+  return [`AI photo picking failed for ${f.length} athlete${f.length === 1 ? "" : "s"} (${names}) — their photos are in folder order and not framed on the athlete. Reason: ${f[0].error}`];
+}
+
 /**
  * Flip the request from `fromStatus` to "review" and post the review message.
  * Returns false (and posts nothing) if the request had already moved on.
@@ -41,7 +49,7 @@ export async function postReview(recapId: string, fromStatus: RecapRequestState[
 
   const { data: athletes } = await supabase.from("athletes").select("id, name").eq("campaign_id", recapId);
   const names = new Map(((athletes as { id: string; name: string }[]) || []).map((a) => [a.id, a.name.trim()]));
-  const warnings = [...(state.summary?.warnings || []), ...bigVideoWarnings(state, names)];
+  const warnings = [...(state.summary?.warnings || []), ...bigVideoWarnings(state, names), ...aiFallbackWarnings(state)];
   const summary = await summarize(recapId, warnings);
 
   // Compare-and-set: only the caller that moves fromStatus → review posts.

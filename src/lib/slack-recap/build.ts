@@ -105,6 +105,9 @@ export interface RecapRequestState {
   overview?: string;
   takeaways: string;
   notes?: string;
+  /** Athletes whose photos the AI couldn't pick (folder order used instead),
+   *  with the reason — surfaced as a warning on the review post. */
+  ai_fallback?: { athlete: string; error: string }[];
   dm_channel?: string;
   dm_ts?: string;
   channel_ts?: string;
@@ -420,6 +423,14 @@ async function importAthleteContent(
             photos: candidates[0]?.kind === "photo" ? [0] : [],
             judged: false,
           };
+
+    if (!choice.judged && candidates.length > 1) {
+      // Don't let a broken AI picker go unnoticed: it's reported on the review.
+      const { state } = await readRequestState(recapId);
+      const list = (state?.ai_fallback || []).filter((f) => f.athlete !== athlete.name.trim());
+      list.push({ athlete: athlete.name.trim(), error: (choice as { error?: string }).error || "unknown" });
+      await writeRequestState(recapId, { ai_fallback: list }).catch(() => {});
+    }
 
     // The athlete's photos, best first. sort_order: video 0, photos 1..n.
     const pickedIds = choice.photos
