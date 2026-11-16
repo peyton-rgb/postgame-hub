@@ -612,6 +612,28 @@ app.post("/recap-video", authenticate, async (req, res) => {
   }
 });
 
+// -- POST /detect-person -------------------------------------------------------
+// Body: the raw image bytes (any type; iPhone HEIC is converted). Returns the
+// people in it so the Hub can crop recap photos tight on the athlete:
+//   { width, height, persons: [{ box: [l,t,r,b] (0–1), score }], jpeg: base64|null }
+// `jpeg` is set only when the input was HEIC — a browser-friendly copy.
+const { detectPersons } = require("./detect");
+app.post(
+  "/detect-person",
+  authenticate,
+  express.raw({ type: () => true, limit: "60mb" }),
+  async (req, res) => {
+    try {
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ error: "send the image bytes as the body" });
+      const r = await detectPersons(req.body);
+      res.json({ width: r.width, height: r.height, persons: r.persons, jpeg: r.jpeg ? r.jpeg.toString("base64") : null });
+    } catch (err) {
+      console.error("[detect-person]", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  },
+);
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => console.log(`FFmpeg worker listening on :${PORT}`));

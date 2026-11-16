@@ -62,8 +62,41 @@ export type Box = [number, number, number, number];
 const CROP_RATIO = 4 / 5;
 /** The athlete fills at most this much of the crop's height / width (room to breathe, and
  *  narrow enough to survive a 9:16 card trimming the sides of a 4:5 crop). */
-const SUBJECT_MAX_H = 0.86;
-const SUBJECT_MAX_W = 0.6;
+const SUBJECT_MAX_H = 0.88;
+const SUBJECT_MAX_W = 0.62;
+/** Never crop to fewer source pixels than this tall (keeps cards sharp). */
+const MIN_CROP_PX = 700;
+
+/** A person the detector found: box as 0–1 fractions, confidence 0–1. */
+export interface Person {
+  box: Box;
+  score: number;
+}
+
+/**
+ * The athlete among the detected people. When the AI marked where the subject
+ * is, take the confident person who overlaps that most (the AI knows WHO the
+ * athlete is; the detector knows exactly WHERE). Otherwise the most prominent
+ * confident person — big, confident and near the middle. Null when nobody was
+ * found (product close-ups), so the caller keeps the AI's box.
+ */
+export function pickAthleteBox(persons: Person[] | null | undefined, aiBox?: Box | null): Box | null {
+  const ok = (persons || []).filter((p) => p.score >= 0.45);
+  if (ok.length === 0) return null;
+  const area = (b: Box) => Math.max(0, b[2] - b[0]) * Math.max(0, b[3] - b[1]);
+  if (aiBox) {
+    const overlap = (b: Box) =>
+      Math.max(0, Math.min(b[2], aiBox[2]) - Math.max(b[0], aiBox[0])) *
+      Math.max(0, Math.min(b[3], aiBox[3]) - Math.max(b[1], aiBox[1]));
+    const best = ok.map((p) => ({ p, o: overlap(p.box) / Math.max(area(p.box), 1e-6) })).sort((a, b) => b.o - a.o)[0];
+    if (best && best.o >= 0.3) return best.p.box;
+  }
+  const prominence = (p: Person) => {
+    const cx = (p.box[0] + p.box[2]) / 2;
+    return area(p.box) * p.score * (1 - Math.min(0.5, Math.abs(cx - 0.5)));
+  };
+  return ok.sort((a, b) => prominence(b) - prominence(a))[0].box;
+}
 
 function cleanBox(v: unknown): Box | null {
   if (!Array.isArray(v) || v.length !== 4) return null;
@@ -108,7 +141,7 @@ export async function cropToSubject(buf: Buffer, box: Box | null | undefined): P
   const [l, t, r, b] = box;
   const sw = (r - l) * W, sh = (b - t) * H;
   const cx = ((l + r) / 2) * W, cy = ((t + b) / 2) * H;
-  let ch = Math.max(sh / SUBJECT_MAX_H, sw / SUBJECT_MAX_W / CROP_RATIO);
+  let ch = Math.max(sh / SUBJECT_MAX_H, sw / SUBJECT_MAX_W / CROP_RATIO, Math.min(MIN_CROP_PX, H * 0.4, W / CROP_RATIO));
   let cw = ch * CROP_RATIO;
   if (cw > W) { cw = W; ch = cw / CROP_RATIO; }
   if (ch > H) { ch = H; cw = ch * CROP_RATIO; }
@@ -258,9 +291,9 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `Every image you pick must be sharp and in focus, decently lit (not a silhouette, not underexposed or blown out), and a real photo — not a screen recording, app screen, text card, or a frame dominated by caption text.\n\n` +
   `Pick:\n` +
   `- "photos": ${MIN_RECAP_PHOTOS}–${MAX_RECAP_PHOTOS} PHOTOS for the athlete's recap card, in order. Return at least ${MIN_RECAP_PHOTOS} whenever that many photos pass the rules above.\n` +
-  `  - The FIRST photo is the HERO — the athlete's cover on the recap. It must show BOTH the athlete and the ${brand ? brand + " " : ""}product clearly: the athlete's face visible and well lit, the athlete large in the frame, the shoes/product in shot. Prefer the closest strong shot of the athlete over a wide scenic one.\n` +
+  `  - The FIRST photo is the HERO — the athlete's cover on the recap. It must show BOTH the athlete and the ${brand ? brand + " " : ""}product (shoes) clearly: face visible and well lit, shoes visible. It must NOT be a wide shot — the athlete fills at least half the frame's height. Of the photos that qualify, choose the closest one.\n` +
   `  - The REST are the athlete's carousel: a good variety — different poses, angles and moments. Product close-ups and detail shots are fine here. Leave out near-duplicates (the same moment, pose or framing — keep only the best one).\n` +
-  `- "cover": the image number of the hero photo. Only if no photo passes, pick the best video still instead (athlete clearly visible, face visible).\n` +
+  `- "cover": the image number of the hero photo. If NO photo qualifies as the hero (all wide, face hidden, back turned or shoes not visible), pick the best video still instead where the athlete is close, face and shoes visible — it becomes the cover, and the photos still go in "photos".\n` +
   `- "boxes": for the cover and EVERY photo you picked, a tight box around the main subject — the athlete's whole body (head to feet, as much as is in frame), or the product in a product shot — as fractions of the image: {"<image number>": [left, top, right, bottom]}, each 0–1.\n\n` +
   `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "boxes": {"<number>": [l, t, r, b]}, "reason": "<one short sentence>"}`;
 

@@ -71,3 +71,47 @@ export async function kickVideoWorker(job: {
     return false;
   }
 }
+
+/** People the worker's detector found in an image (see ffmpeg-worker/detect.js). */
+export interface DetectResult {
+  width: number;
+  height: number;
+  persons: { box: [number, number, number, number]; score: number }[];
+  /** Set when the input was HEIC: the same photo as JPEG. */
+  jpeg: Buffer | null;
+}
+
+/**
+ * Ask the ffmpeg worker where the people are in a photo. Null if the worker is
+ * unreachable or errors — callers fall back to the AI's own boxes.
+ */
+export async function detectPersons(image: Buffer): Promise<DetectResult | null> {
+  const url = process.env.FFMPEG_WORKER_URL || "https://postgame-ffmpeg-worker.fly.dev";
+  const secret = process.env.FFMPEG_WORKER_SECRET;
+  if (!secret) {
+    console.error("[slack-recap] FFMPEG_WORKER_SECRET not set — no person detection");
+    return null;
+  }
+  try {
+    const res = await fetch(`${url}/detect-person`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream", "x-ffmpeg-secret": secret },
+      body: new Uint8Array(image),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) {
+      console.error("[slack-recap] person detection failed:", res.status, (await res.text()).slice(0, 200));
+      return null;
+    }
+    const j = (await res.json()) as any;
+    return {
+      width: j.width,
+      height: j.height,
+      persons: Array.isArray(j.persons) ? j.persons : [],
+      jpeg: j.jpeg ? Buffer.from(j.jpeg, "base64") : null,
+    };
+  } catch (e: any) {
+    console.error("[slack-recap] person detection unreachable:", e?.message || e);
+    return null;
+  }
+}
