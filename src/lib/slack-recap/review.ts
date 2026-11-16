@@ -35,7 +35,7 @@ export function aiFallbackWarnings(state: RecapRequestState | null): string[] {
   const f = state?.ai_fallback || [];
   if (f.length === 0) return [];
   const names = f.slice(0, 6).map((x) => x.athlete).join(", ") + (f.length > 6 ? ` and ${f.length - 6} more` : "");
-  return [`AI photo picking failed for ${f.length} athlete${f.length === 1 ? "" : "s"} (${names}) — their photos are in folder order and not framed on the athlete. Reason: ${f[0].error}`];
+  return [`AI photo picking or framing failed for ${f.length} athlete${f.length === 1 ? "" : "s"} (${names}) — check their photos and crops. Reason: ${f[0].error}`];
 }
 
 /**
