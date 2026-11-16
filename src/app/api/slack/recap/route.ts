@@ -40,6 +40,7 @@ import {
   writeRequestState,
 } from "@/lib/slack-recap/build";
 import { kickWorker } from "@/lib/slack-recap/worker";
+import { ensureV2Tracker, folderUrl, getTrackerStatus } from "@/lib/slack-recap/tracker";
 import {
   ACTIONS,
   CALLBACKS,
@@ -51,7 +52,11 @@ import {
   recapLinkText,
   requestModal,
   reviewPublishedBlocks,
+  trackerFailedBlocks,
+  trackerModal,
+  trackerReadyBlocks,
   type RequestMeta,
+  type TrackerMeta,
 } from "@/lib/slack-recap/views";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +94,8 @@ export async function POST(req: Request) {
       case "shortcut":
         if (payload.callback_id === ACTIONS.openRequest) {
           await slack("views.open", { trigger_id: payload.trigger_id, view: requestModal({}, null) });
+        } else if (payload.callback_id === ACTIONS.openTracker) {
+          await slack("views.open", { trigger_id: payload.trigger_id, view: trackerModal({}, null) });
         }
         return ok();
       default:
@@ -104,7 +111,11 @@ export async function POST(req: Request) {
 
 async function suggest(payload: any) {
   const query = String(payload.value || "");
-  if (payload.action_id === ACTIONS.brand) return searchBrands(query);
+  if (payload.action_id === ACTIONS.brand || payload.action_id === ACTIONS.trackerBrand) return searchBrands(query);
+  if (payload.action_id === ACTIONS.trackerCampaign) {
+    const meta = readMeta(payload.view);
+    return searchCampaigns(meta.brandId || "", query);
+  }
   if (payload.action_id === ACTIONS.campaign) {
     const meta = readMeta(payload.view);
     return searchCampaigns(meta.brandId || "", query);
@@ -154,10 +165,38 @@ async function handleAction(payload: any) {
             ? liveRecapUrl(campaign.slug)
             : editorUrl(campaign.id)
           : undefined;
+      // Fill in the tracker link when the campaign already has a v2 tracker
+      // (e.g. one made with "Get a v2 performance tracker").
+      const tracker = campaign && !builtUrl ? await getTrackerStatus(campaign.id).catch(() => null) : null;
       await slack("views.update", {
         view_id: payload.view.id,
         hash: payload.view.hash,
-        view: requestModal({ ...meta, recapId }, campaign, builtUrl),
+        view: requestModal({ ...meta, recapId }, campaign, builtUrl, tracker?.kind === "v2" ? tracker.trackerUrl : undefined),
+      });
+      return;
+    }
+
+    case ACTIONS.openTracker: {
+      await slack("views.open", { trigger_id: payload.trigger_id, view: trackerModal({}, null) });
+      return;
+    }
+
+    case ACTIONS.trackerBrand: {
+      const sel = action.selected_option;
+      const meta: TrackerMeta = { brandId: sel?.value, brandName: sel?.text?.text };
+      await slack("views.update", { view_id: payload.view.id, hash: payload.view.hash, view: trackerModal(meta, null) });
+      return;
+    }
+
+    case ACTIONS.trackerCampaign: {
+      const meta = readMeta(payload.view) as TrackerMeta;
+      const recapId = action.selected_option?.value as string | undefined;
+      const campaign = recapId ? await getCampaignForRequest(recapId) : null;
+      const status = campaign ? await getTrackerStatus(campaign.id).catch(() => null) : null;
+      await slack("views.update", {
+        view_id: payload.view.id,
+        hash: payload.view.hash,
+        view: trackerModal({ brandId: meta.brandId, brandName: meta.brandName, recapId, kind: status?.kind ?? "none" }, campaign),
       });
       return;
     }
@@ -271,6 +310,18 @@ async function handleSubmission(payload: any) {
     return ok();
   }
 
+  if (view.callback_id === CALLBACKS.tracker) {
+    const meta = readMeta(view) as TrackerMeta;
+    if (!meta.recapId) {
+      return NextResponse.json({
+        response_action: "errors",
+        errors: { [`tracker_campaign_block_${meta.brandId}`]: "Pick a campaign." },
+      });
+    }
+    waitUntil(makeTracker(meta.recapId, userId));
+    return ok(); // closes the form
+  }
+
   if (view.callback_id !== CALLBACKS.request) return ok();
 
   const meta = readMeta(view);
@@ -374,4 +425,35 @@ async function postChanges(recapId: string, userId: string, note: string) {
       `✏️ <@${RECAP_OWNER_ID}> changes requested on *${name}* by <@${userId}>:\n` +
       `> ${note.replace(/\n/g, "\n> ")}\n<${editorUrl(recapId)}|Open it in the Hub>`,
   });
+}
+
+// ── "Get a v2 performance tracker" ───────────────────────────────────────────
+
+async function makeTracker(recapId: string, userId: string) {
+  const campaign = await getCampaignForRequest(recapId);
+  const name = campaign ? displayName(campaign) : recapId;
+  try {
+    const r = await ensureV2Tracker(recapId);
+    await slack("chat.postMessage", {
+      channel: userId,
+      text: `Your tracker is ready: ${name} ${r.trackerUrl}`,
+      blocks: trackerReadyBlocks({
+        name,
+        outcome: r.outcome,
+        trackerName: r.trackerName,
+        trackerUrl: r.trackerUrl,
+        folderUrl: folderUrl(r.folderId),
+        renamedOld: r.renamedOld,
+      }),
+      unfurl_links: false,
+    });
+  } catch (e: any) {
+    const reason = String(e?.message || e);
+    console.error(`[slack-tracker] ${recapId} failed:`, reason);
+    await slack("chat.postMessage", { channel: userId, text: `Couldn't make the tracker for ${name}`, blocks: trackerFailedBlocks(name, reason) });
+    await slack("chat.postMessage", {
+      channel: RECAP_OWNER_ID,
+      text: `:warning: <@${userId}> tried to get a v2 tracker for *${name}* and it failed: ${reason}`,
+    });
+  }
 }

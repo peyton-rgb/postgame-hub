@@ -13,13 +13,20 @@
 // ─────────────────────────────────────────────────────────────
 
 import { slack } from "./api";
-import { requestModal } from "./views";
+import { requestModal, trackerModal } from "./views";
 
-/** Must match the `functions` key in the Slack app manifest. */
+/** Must match the `functions` keys in the Slack app manifest. */
 export const RECAP_STEP_CALLBACK_ID = "open_recap_request_step";
+/** "Get a v2 performance tracker" — same one-job step, opening the tracker form. */
+export const TRACKER_STEP_CALLBACK_ID = "open_tracker_request_step";
+
+const STEP_VIEWS: Record<string, () => Record<string, unknown>> = {
+  [RECAP_STEP_CALLBACK_ID]: () => requestModal({}, null),
+  [TRACKER_STEP_CALLBACK_ID]: () => trackerModal({}, null),
+};
 
 export function isRecapStepEvent(event: any): boolean {
-  return event?.type === "function_executed" && event?.function?.callback_id === RECAP_STEP_CALLBACK_ID;
+  return event?.type === "function_executed" && !!STEP_VIEWS[event?.function?.callback_id];
 }
 
 /**
@@ -37,12 +44,13 @@ export async function handleRecapStep(event: any): Promise<() => Promise<void>> 
   // Interactivity URL, so the brand/campaign search finds nothing. A bot-token
   // view behaves exactly like the pinned launcher's form. The workflow token
   // is only a fallback if Slack refuses the pointer for the bot token.
+  const makeView = STEP_VIEWS[event?.function?.callback_id] ?? STEP_VIEWS[RECAP_STEP_CALLBACK_ID];
   let opened: any = { ok: false, error: "no interactivity pointer — is the step's input wired to the workflow trigger?" };
   if (pointer) {
-    opened = await slack("views.open", { interactivity_pointer: pointer, view: requestModal({}, null) });
+    opened = await slack("views.open", { interactivity_pointer: pointer, view: makeView() });
     if (!opened.ok && token) {
       console.warn("[slack-recap] step: bot-token views.open failed, falling back to workflow token:", opened.error);
-      opened = await slack("views.open", { interactivity_pointer: pointer, view: requestModal({}, null) }, token);
+      opened = await slack("views.open", { interactivity_pointer: pointer, view: makeView() }, token);
     }
   }
 
@@ -53,7 +61,7 @@ export async function handleRecapStep(event: any): Promise<() => Promise<void>> 
     } else {
       await slack(
         "functions.completeError",
-        { function_execution_id: executionId, error: `Couldn't open the recap form (${opened.error})` },
+        { function_execution_id: executionId, error: `Couldn't open the form (${opened.error})` },
         token,
       );
     }

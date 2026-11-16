@@ -101,6 +101,21 @@ export interface ProvisionSkip {
  * The year shelf a campaign belongs on: the campaign's own admin date when it
  * has one, otherwise when the Hub row appeared. Plain "2026", never a range.
  */
+/**
+ * The v2 Performance Tracker template ("Performance Tracker Template v2
+ * (SOURCE)"). Copied, never edited, into each campaign's folder — by the
+ * nightly drive-folders sweep and by the Slack "Get a v2 performance tracker"
+ * flow. Replaced the pre-v2 "Template — LIVE" sheet (1gzkzw…) on 2026-11-16:
+ * v2 adds a Post Date column to every post group, which the recap builder's
+ * tracker reader now expects.
+ */
+export const V2_TRACKER_TEMPLATE_ID = "18KkHrGbYY8h29r_vfhGz2LSn7S7dUxSsjD82xZ1VIE4";
+
+/** "Ghost Max 4 Brooks '26 Performance Tracker" — the one tracker name. */
+export function performanceTrackerName(campaignName: string, brandName: string, year: number): string {
+  return `${campaignName.trim()} ${brandName.trim()} '${String(year).slice(-2)} Performance Tracker`;
+}
+
 export function campaignYear(candidate: CampaignCandidate): number {
   const source = candidate.admin_created_on ?? candidate.created_at;
   const parsed = new Date(source);

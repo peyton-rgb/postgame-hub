@@ -61,6 +61,8 @@ export interface RecapRequestState {
   covers_done?: string[];
   /** Athlete ids the content phase has already tried (imported OR no match). */
   content_tried?: string[];
+  /** Drive folder id pasted into the request — where this build pulls content from. */
+  content_folder_id?: string | null;
   /** Last time a build chunk saved progress. The resume sweeper restarts a
    *  "building" request whose heartbeat has gone quiet. */
   heartbeat_at?: string;
@@ -183,10 +185,19 @@ export async function runDataPhase(input: DataPhaseInput): Promise<{ athletes: n
     visible_sections: prior.visible_sections || built.visible_sections,
   };
 
+  // The pasted folder is only where THIS request's content comes from. It's
+  // kept on the request (settings.recap_request.content_folder_id) and never
+  // written to drive_folder_id / drive_content_folder_id — those are the
+  // campaign's own Drive folders, set at provisioning and relied on by the
+  // admin handoff, folder repair and the tracker flow. Overwriting
+  // drive_folder_id pointed Brooks Ghost Max 4's campaign folder at the
+  // requester's personal folder on 2026-11-16.
   const folderId = extractDriveFolderId(input.folderUrl);
+  const prevRequest = (settings as Record<string, any>).recap_request || {};
+  (settings as Record<string, any>).recap_request = { ...prevRequest, content_folder_id: folderId };
   const { error: upErr } = await supabase
     .from("campaign_recaps")
-    .update({ tracker_url: input.trackerUrl, drive_folder_id: folderId, settings, status: "draft" })
+    .update({ tracker_url: input.trackerUrl, settings, status: "draft" })
     .eq("id", input.recapId);
   if (upErr) throw new Error(`could not save the recap: ${upErr.message}`);
 
@@ -410,8 +421,15 @@ export async function runContentPhase(
   const tried = new Set(alreadyTried);
   let imported = 0;
 
-  const { data: row } = await supabase.from("campaign_recaps").select("drive_folder_id, client_name").eq("id", recapId).single();
-  const folderId = (row as any)?.drive_folder_id as string | null;
+  const { data: row } = await supabase
+    .from("campaign_recaps")
+    .select("settings, drive_folder_id, client_name")
+    .eq("id", recapId)
+    .single();
+  // The folder pasted into the request; older requests (before 2026-11-16)
+  // saved it into drive_folder_id, so fall back to that.
+  const folderId = (((row as any)?.settings?.recap_request?.content_folder_id as string | undefined) ||
+    (row as any)?.drive_folder_id) as string | null;
   const brand = ((row as any)?.client_name as string | null) || "";
   if (!folderId) return { done: true, imported, tried: Array.from(tried) };
 
