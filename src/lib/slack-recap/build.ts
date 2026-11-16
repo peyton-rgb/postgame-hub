@@ -52,11 +52,24 @@ import {
   type Candidate,
 } from "@/lib/slack-recap/covers";
 
-/** Files bigger than this are skipped by the automatic import (serverless memory/time). */
+/** Files bigger than this aren't downloaded here (serverless memory/time).
+ *  Videos over it go to the ffmpeg worker to be shrunk; photos over it are skipped. */
 const MAX_AUTO_IMPORT_BYTES = 150 * 1024 * 1024;
+/** Hard ceiling for a video handed to the worker (its disk + time budget). */
+const MAX_WORKER_VIDEO_BYTES = 4 * 1024 * 1024 * 1024;
+
+export interface BigVideo {
+  status: "pending" | "done" | "failed";
+  drive_file_id: string;
+  name: string;
+  queued_at: string;
+  error?: string;
+}
 
 export interface RecapRequestState {
-  status: "building" | "review" | "published" | "failed";
+  /** waiting_videos: content done, oversized videos still being shrunk on the
+   *  ffmpeg worker; the review posts when the last one comes back. */
+  status: "building" | "waiting_videos" | "review" | "published" | "failed";
   requested_by: string; // Slack user id
   requested_at: string;
   due?: string;
@@ -76,6 +89,8 @@ export interface RecapRequestState {
   /** athlete id → that athlete's content folder, read once from the tracker's
    *  "Content Folder" column links. Preferred over folder-name matching. */
   athlete_folders?: Record<string, string>;
+  /** athlete id → an oversized video handed to the ffmpeg worker. */
+  big_videos?: Record<string, BigVideo>;
   /** Last time a build chunk saved progress. The resume sweeper restarts a
    *  "building" request whose heartbeat has gone quiet. */
   heartbeat_at?: string;
@@ -272,11 +287,21 @@ async function importAthleteContent(
   brand: string,
   athlete: { id: string; name: string },
   files: DriveFile[],
-): Promise<number> {
+  /** What the athlete already has — only the missing part is imported. */
+  has: { video: boolean; photos: boolean } = { video: false, photos: false },
+): Promise<{ created: number; bigVideo?: DriveFile }> {
   const ok = files.filter((f) => sizeOf(f) <= MAX_AUTO_IMPORT_BYTES);
-  const video = ok.filter((f) => f.mimeType.startsWith("video/")).sort(newestFirst)[0];
-  const allPhotos = ok.filter((f) => f.mimeType.startsWith("image/")).sort(newestFirst).slice(0, MAX_PHOTOS_SCANNED);
-  if (!video && allPhotos.length === 0) return 0;
+  // The latest video, whatever its size. Too big to download here → the
+  // ffmpeg worker shrinks it and the Hub adds it when it comes back.
+  const newestVideo = has.video
+    ? undefined
+    : files.filter((f) => f.mimeType.startsWith("video/") && sizeOf(f) <= MAX_WORKER_VIDEO_BYTES).sort(newestFirst)[0];
+  const bigVideo = newestVideo && sizeOf(newestVideo) > MAX_AUTO_IMPORT_BYTES ? newestVideo : undefined;
+  const video = bigVideo ? undefined : newestVideo;
+  const allPhotos = has.photos
+    ? []
+    : ok.filter((f) => f.mimeType.startsWith("image/")).sort(newestFirst).slice(0, MAX_PHOTOS_SCANNED);
+  if (!newestVideo && allPhotos.length === 0) return { created: 0 };
 
   let created = 0;
   let videoUpload: { publicUrl: string; storagePath: string } | null = null;
@@ -411,7 +436,7 @@ async function importAthleteContent(
   } finally {
     await local?.cleanup().catch(() => {});
   }
-  return created;
+  return { created, bigVideo };
 }
 
 function folderMatches(folderName: string, athleteName: string): boolean {
@@ -425,6 +450,8 @@ export interface ContentPhaseResult {
   done: boolean;
   imported: number;
   tried: string[];
+  /** Oversized videos found this chunk, to hand to the ffmpeg worker. */
+  bigVideos?: { athleteId: string; file: DriveFile }[];
   /** True when this run lost ownership to a newer one and stopped early. */
   stopped?: boolean;
 }
@@ -478,11 +505,22 @@ export async function runContentPhase(
 
   const [{ data: athletes }, { data: media }] = await Promise.all([
     supabase.from("athletes").select("id, name").eq("campaign_id", recapId),
-    supabase.from("media").select("athlete_id").eq("campaign_id", recapId),
+    supabase.from("media").select("athlete_id, type").eq("campaign_id", recapId),
   ]);
   const allAthletes = (athletes as { id: string; name: string }[]) || [];
-  const hasMedia = new Set(((media as any[]) || []).map((m) => m.athlete_id).filter(Boolean));
-  const todo = allAthletes.filter((a) => !hasMedia.has(a.id) && !tried.has(a.id));
+  // An athlete is complete once they have a video AND photos; anyone missing
+  // either gets one try per build to fill in just the missing part.
+  const rowsByType = ((media as any[]) || []).filter((m) => m.athlete_id);
+  const hasVideo = new Set(rowsByType.filter((m) => m.type === "video").map((m) => m.athlete_id));
+  const hasPhotos = new Set(rowsByType.filter((m) => m.type === "image").map((m) => m.athlete_id));
+  const pendingBig = new Set(
+    Object.entries(reqState.big_videos || {})
+      .filter(([, v]) => v.status === "pending")
+      .map(([id]) => id),
+  );
+  const todo = allAthletes.filter(
+    (a) => !tried.has(a.id) && !((hasVideo.has(a.id) || pendingBig.has(a.id)) && hasPhotos.has(a.id)),
+  );
   if (todo.length === 0) return { done: true, imported, tried: Array.from(tried) };
 
   // Each athlete's own folder, from the tracker's Content Folder links. Read
@@ -510,19 +548,25 @@ export async function runContentPhase(
     return folder ? folder.files : null;
   };
   const driveClient = getDriveClient();
+  const bigVideos: { athleteId: string; file: DriveFile }[] = [];
 
   for (const athlete of todo) {
-    if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried) };
-    if (stillOwner && !(await stillOwner())) return { done: false, imported, tried: Array.from(tried), stopped: true };
+    if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried), bigVideos };
+    if (stillOwner && !(await stillOwner())) return { done: false, imported, tried: Array.from(tried), stopped: true, bigVideos };
     tried.add(athlete.id);
-    // Belt and braces: never import for an athlete who already has content
-    // (another run may have done them since this chunk's list was made).
-    const { count: existing } = await supabase
+    // Belt and braces: re-check what this athlete already has (another run may
+    // have filled them in since this chunk's list was made) and only import
+    // the missing part.
+    const { data: nowRows } = await supabase
       .from("media")
-      .select("id", { count: "exact", head: true })
+      .select("type")
       .eq("campaign_id", recapId)
       .eq("athlete_id", athlete.id);
-    if ((existing || 0) > 0) continue;
+    const has = {
+      video: ((nowRows as any[]) || []).some((m) => m.type === "video") || pendingBig.has(athlete.id),
+      photos: ((nowRows as any[]) || []).some((m) => m.type === "image"),
+    };
+    if (has.video && has.photos) continue;
     const linked = athleteFolders[athlete.id];
     let files: DriveFile[] | null = null;
     if (linked) {
@@ -534,9 +578,11 @@ export async function runContentPhase(
     }
     if (!files || files.length === 0) files = await fallbackFiles(athlete.name);
     if (!files || files.length === 0) continue;
-    imported += await importAthleteContent(supabase, recapId, brand, athlete, files);
+    const r = await importAthleteContent(supabase, recapId, brand, athlete, files, has);
+    imported += r.created;
+    if (r.bigVideo) bigVideos.push({ athleteId: athlete.id, file: r.bigVideo });
   }
-  return { done: true, imported, tried: Array.from(tried) };
+  return { done: true, imported, tried: Array.from(tried), bigVideos };
 }
 
 export interface CoversPhaseResult {
@@ -597,6 +643,56 @@ export async function runCoversPhase(recapId: string, alreadyDone: string[], dea
     }
   }
   return { done: true, handled: Array.from(handled), updated };
+}
+
+/**
+ * Pick the cover for one video already in the recap: stills from the video
+ * plus the athlete's photos, judged by the same vision prompt. Used when a
+ * shrunk oversized video comes back from the ffmpeg worker.
+ */
+export async function pickCoverForVideo(recapId: string, mediaId: string): Promise<void> {
+  const supabase = createServiceSupabase();
+  const [{ data: recap }, { data: v }] = await Promise.all([
+    supabase.from("campaign_recaps").select("client_name").eq("id", recapId).single(),
+    supabase.from("media").select("id, athlete_id, file_url").eq("id", mediaId).single(),
+  ]);
+  const video = v as { id: string; athlete_id: string; file_url: string } | null;
+  if (!video?.file_url) return;
+  const { data: a } = await supabase.from("athletes").select("name").eq("id", video.athlete_id).single();
+  const name = String((a as any)?.name || "the athlete").trim();
+  const brand = ((recap as any)?.client_name as string) || "";
+  const { data: photoRows } = await supabase
+    .from("media")
+    .select("file_url")
+    .eq("campaign_id", recapId)
+    .eq("athlete_id", video.athlete_id)
+    .eq("type", "image")
+    .order("sort_order", { ascending: true })
+    .limit(4);
+
+  let local: { path: string; cleanup: () => Promise<void> } | null = null;
+  try {
+    const candidates: Candidate[] = [];
+    local = await localVideo(video.file_url);
+    candidates.push(...(await frameCandidates(local.path)));
+    for (const p of (photoRows as { file_url: string }[]) || []) {
+      const res = await fetch(p.file_url, { cache: "no-store" }).catch(() => null);
+      const small = res?.ok ? await smallJpeg(Buffer.from(await res.arrayBuffer())) : null;
+      if (small) candidates.push({ kind: "photo", key: p.file_url, small });
+    }
+    if (candidates.length === 0) return;
+    const choice = candidates.length > 1 ? await chooseCover(name, brand, candidates) : { cover: 0 };
+    const c = candidates[choice.cover];
+    const thumbnailUrl =
+      c.kind === "photo"
+        ? c.key
+        : await uploadJpeg(supabase, buildStoragePath(recapId, video.athlete_id, `cover-${video.id}.jpg`), await coverFrame(local.path, c.t));
+    await supabase.from("media").update({ thumbnail_url: thumbnailUrl }).eq("id", video.id);
+  } catch (e: any) {
+    console.warn(`[slack-recap] cover pick failed for ${name}'s big video:`, e?.message || e);
+  } finally {
+    await local?.cleanup().catch(() => {});
+  }
 }
 
 /** Final numbers for the review message. */

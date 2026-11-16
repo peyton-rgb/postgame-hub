@@ -16,15 +16,10 @@
 
 import { NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
-import {
-  RECAP_CHANNEL_ID,
-  RECAP_OWNER_ID,
-  editorUrl,
-  previewRecapUrl,
-  slack,
-  workerAuthorized,
-} from "@/lib/slack-recap/api";
-import { kickWorker, type WorkerBody } from "@/lib/slack-recap/worker";
+import { RECAP_CHANNEL_ID, RECAP_OWNER_ID, editorUrl, slack, workerAuthorized } from "@/lib/slack-recap/api";
+import { kickVideoWorker, kickWorker, type WorkerBody } from "@/lib/slack-recap/worker";
+import { pendingBigVideos, postReview } from "@/lib/slack-recap/review";
+import { buildStoragePath } from "@/lib/drive-import";
 import {
   readRequestState,
   runContentPhase,
@@ -36,7 +31,7 @@ import {
   writeRequestState,
 } from "@/lib/slack-recap/build";
 import { getCampaignForRequest } from "@/lib/slack-recap/data";
-import { displayName, failedBlocks, reviewBlocks, reviewPointerBlocks } from "@/lib/slack-recap/views";
+import { displayName, failedBlocks } from "@/lib/slack-recap/views";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -126,6 +121,27 @@ async function work(body: WorkerBody): Promise<void> {
     }
     await writeRequestState(body.recapId, { content_tried: content.tried, heartbeat_at: new Date().toISOString() });
 
+    // Oversized videos found this chunk → the ffmpeg worker shrinks them and
+    // calls /api/slack/recap/video-done, which adds each to the recap.
+    for (const bv of content.bigVideos || []) {
+      const { state: s } = await readRequestState(body.recapId);
+      const big = { ...(s?.big_videos || {}) };
+      if (big[bv.athleteId]) continue; // already handed off
+      big[bv.athleteId] = { status: "pending", drive_file_id: bv.file.id, name: bv.file.name, queued_at: new Date().toISOString() };
+      await writeRequestState(body.recapId, { big_videos: big });
+      const accepted = await kickVideoWorker({
+        jobId: `${body.recapId}:${bv.athleteId}`,
+        driveFileId: bv.file.id,
+        storagePath: buildStoragePath(body.recapId, bv.athleteId, bv.file.name.replace(/\.[^.]+$/, "") + "-web.mp4"),
+      });
+      if (!accepted) {
+        const { state: s2 } = await readRequestState(body.recapId);
+        const big2 = { ...(s2?.big_videos || {}) };
+        big2[bv.athleteId] = { ...big2[bv.athleteId], status: "failed", error: "video worker unreachable" };
+        await writeRequestState(body.recapId, { big_videos: big2 });
+      }
+    }
+
     if (!content.done) {
       // Vercel blocks long self-call chains (508 "loop detected"). If this
       // hand-off is refused, the resume sweeper (/api/slack/recap/resume,
@@ -134,33 +150,16 @@ async function work(body: WorkerBody): Promise<void> {
       return;
     }
 
-    // Done — post the review (preview link + Publish / Request changes) as a
-    // normal message in the channel, tagging the requester, and point their
-    // "Building…" DM at it.
+    // Done. If oversized videos are still being shrunk, wait for them — the
+    // last /video-done callback posts the review. Otherwise post it now.
     const summary = await summarize(body.recapId, extraWarnings);
-    const next = await writeRequestState(body.recapId, { status: "review", summary });
-    const previewUrl = campaign?.slug ? previewRecapUrl(campaign.slug) : editorUrl(body.recapId);
-    const blocks = reviewBlocks(body.recapId, name, previewUrl, summary);
-    const text = `Ready for review: ${name}`;
-
-    let reviewUrl: string | undefined;
-    const review = await slack("chat.postMessage", {
-      channel: RECAP_CHANNEL_ID,
-      text: `<@${next.requested_by}> ${text}`,
-      blocks: [{ type: "section", text: { type: "mrkdwn", text: `<@${next.requested_by}> your recap is ready to review.` } }, ...blocks],
-      unfurl_links: false,
-    });
-    if (review.ok) {
-      await writeRequestState(body.recapId, { review_ts: review.ts });
-      const link = await slack("chat.getPermalink", { channel: RECAP_CHANNEL_ID, message_ts: review.ts });
-      if (link.ok) reviewUrl = link.permalink;
+    const { state: after } = await readRequestState(body.recapId);
+    if (pendingBigVideos(after).length > 0) {
+      await writeRequestState(body.recapId, { status: "waiting_videos", summary, heartbeat_at: new Date().toISOString() });
+      return;
     }
-    const pointer = reviewPointerBlocks(name, reviewUrl);
-    if (next.dm_channel && next.dm_ts) {
-      await slack("chat.update", { channel: next.dm_channel, ts: next.dm_ts, text, blocks: pointer });
-    } else if (next.requested_by) {
-      await slack("chat.postMessage", { channel: next.requested_by, text, blocks: pointer, unfurl_links: false });
-    }
+    await writeRequestState(body.recapId, { summary });
+    await postReview(body.recapId, "building");
   } catch (e: any) {
     const reason = String(e?.message || e);
     console.error(`[slack-recap/build] ${body.recapId} failed:`, reason);
