@@ -341,6 +341,7 @@ async function handleSubmission(payload: any) {
   const trackerUrl: string = (v.tracker_block?.tracker?.value || "").trim();
   const folderUrl: string = (v.folder_block?.folder?.value || "").trim();
   const due: string | undefined = v.due_block?.due?.selected_date || undefined;
+  const overview: string = (v.overview_block?.overview?.value || "").trim();
   const takeaways: string = (v.takeaways_block?.takeaways?.value || "").trim();
   const notes: string | undefined = (v.notes_block?.notes?.value || "").trim() || undefined;
 
@@ -351,7 +352,7 @@ async function handleSubmission(payload: any) {
   if (Object.keys(errors).length) return NextResponse.json({ response_action: "errors", errors });
 
   waitUntil(
-    startRequest({ recapId: campaign.id, name: displayName(campaign), userId, trackerUrl, folderUrl, due, takeaways, notes }),
+    startRequest({ recapId: campaign.id, name: displayName(campaign), userId, trackerUrl, folderUrl, due, overview, takeaways, notes }),
   );
   return ok(); // closes the form
 }
@@ -363,6 +364,7 @@ async function startRequest(r: {
   trackerUrl: string;
   folderUrl: string;
   due?: string;
+  overview: string;
   takeaways: string;
   notes?: string;
 }) {
@@ -389,6 +391,7 @@ async function startRequest(r: {
     requested_by: r.userId,
     requested_at: new Date().toISOString(),
     due: r.due,
+    overview: r.overview,
     takeaways: r.takeaways,
     notes: r.notes,
     dm_channel: dm.ok ? dm.channel : undefined,
@@ -403,6 +406,7 @@ async function startRequest(r: {
     phase: "data",
     trackerUrl: r.trackerUrl,
     folderUrl: r.folderUrl,
+    overview: r.overview,
     takeaways: r.takeaways,
   });
   if (!accepted) {

@@ -9,6 +9,7 @@ export interface WorkerBody {
   phase: "data" | "content" | "covers";
   trackerUrl?: string;
   folderUrl?: string;
+  overview?: string;
   takeaways?: string;
   /** Set on hand-offs within one chain. Absent = a fresh start that claims the build. */
   runId?: string;

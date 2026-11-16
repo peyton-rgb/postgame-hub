@@ -74,6 +74,7 @@ export interface RecapRequestState {
   requested_by: string; // Slack user id
   requested_at: string;
   due?: string;
+  overview?: string;
   takeaways: string;
   notes?: string;
   dm_channel?: string;
@@ -157,6 +158,8 @@ export interface DataPhaseInput {
   recapId: string;
   trackerUrl: string;
   folderUrl: string;
+  /** The requester's write-up for the recap's Campaign Overview section. */
+  overview?: string;
   takeaways: string;
 }
 
@@ -210,7 +213,8 @@ export async function runDataPhase(input: DataPhaseInput): Promise<{ athletes: n
     key_takeaways: toTipTapHtml(input.takeaways),
     hidden_heroes: hidden,
     brand_logo_url: built.brand_logo_url || prior.brand_logo_url || "",
-    description: prior.description || built.description,
+    // The requester's overview, if they wrote one; otherwise keep what's there.
+    description: input.overview?.trim() ? toTipTapHtml(input.overview) : prior.description || built.description,
     visible_sections: prior.visible_sections || built.visible_sections,
   };
 
