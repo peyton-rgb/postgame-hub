@@ -3,7 +3,7 @@
 // POST /api/slack/recap/build — background worker for "Request a recap".
 //
 // Called by the Hub itself (Bearer CRON_SECRET), never by Slack directly.
-// Body: { recapId, phase: "data" | "content" | "covers", trackerUrl?, folderUrl?, takeaways? }
+// Body: { recapId, phase: "data" | "content" | "covers", trackerUrl?, folderUrl?, overview?, takeaways? }
 // ("covers" re-picks the video covers of an already-built recap — started from
 // /api/slack/recap/covers — and DMs the owner when done.)
 //
@@ -103,6 +103,7 @@ async function work(body: WorkerBody): Promise<void> {
         recapId: body.recapId,
         trackerUrl: body.trackerUrl,
         folderUrl: body.folderUrl,
+        overview: body.overview || "",
         takeaways: body.takeaways || "",
       });
       extraWarnings = data.warnings;

@@ -163,6 +163,18 @@ export function requestModal(
       },
       {
         type: "input",
+        block_id: "overview_block",
+        label: plain("Campaign overview"),
+        hint: plain("Shows at the top of the recap, under Campaign Overview."),
+        element: {
+          type: "plain_text_input",
+          action_id: "overview",
+          multiline: true,
+          placeholder: plain("What was the campaign? Goals, who took part, what they posted."),
+        },
+      },
+      {
+        type: "input",
         block_id: "takeaways_block",
         label: plain("Key takeaways"),
         element: {
