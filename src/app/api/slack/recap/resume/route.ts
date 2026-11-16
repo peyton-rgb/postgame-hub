@@ -19,6 +19,8 @@ import { createServiceSupabase } from "@/lib/supabase";
 import { getHubStaff } from "@/lib/staff-auth";
 import { workerAuthorized } from "@/lib/slack-recap/api";
 import { kickWorker } from "@/lib/slack-recap/worker";
+import { readRequestState, writeRequestState } from "@/lib/slack-recap/build";
+import { postReview } from "@/lib/slack-recap/review";
 
 export const dynamic = "force-dynamic";
 // Never serve this route's database reads from Next's data cache: a cached
@@ -28,6 +30,8 @@ export const revalidate = 0;
 
 /** A healthy chunk saves progress at least every ~4 minutes. */
 const STALE_MS = 6 * 60 * 1000;
+/** Big videos the ffmpeg worker hasn't reported back on by now count as failed. */
+const BIG_VIDEO_TIMEOUT_MS = 45 * 60 * 1000;
 
 export async function GET(req: Request) {
   const fromCron = !!process.env.CRON_SECRET && workerAuthorized(req);
@@ -62,6 +66,27 @@ export async function GET(req: Request) {
     }
     const ok = await kickWorker({ recapId: row.id, phase: "content" });
     (ok ? resumed : skipped).push(ok ? row.name : `${row.name} (worker refused)`);
+  }
+
+  // Builds waiting on oversized videos: if the worker has gone quiet for too
+  // long, give up on what's left (flagged in the review) and post the review.
+  const { data: waiting } = await supabase
+    .from("campaign_recaps")
+    .select("id, name")
+    .eq("settings->recap_request->>status", "waiting_videos");
+  for (const row of (waiting as { id: string; name: string }[]) || []) {
+    const { state } = await readRequestState(row.id);
+    const last = Date.parse(state?.heartbeat_at || "") || 0;
+    if (!force && now - last < BIG_VIDEO_TIMEOUT_MS) {
+      skipped.push(`${row.name} (waiting on big videos)`);
+      continue;
+    }
+    const big = { ...(state?.big_videos || {}) };
+    for (const [id, v] of Object.entries(big)) {
+      if (v.status === "pending") big[id] = { ...v, status: "failed", error: "timed out on the video worker" };
+    }
+    await writeRequestState(row.id, { big_videos: big });
+    if (await postReview(row.id, "waiting_videos")) resumed.push(`${row.name} (posted review; some big videos timed out)`);
   }
 
   if (resumed.length) console.log("[slack-recap/resume] resumed:", resumed.join(", "));

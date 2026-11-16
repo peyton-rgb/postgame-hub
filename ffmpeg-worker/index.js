@@ -534,6 +534,84 @@ app.post(
   }
 });
 
+// -- /recap-video --------------------------------------------------------------
+// A recap video too big for the Hub's serverless download (over ~150 MB, e.g. a
+// tier-1 pro edit). Download it from Drive to disk, make a web-size copy (long
+// side ≤ 1920 px, H.264, fast-start so it plays before it finishes loading),
+// upload that to Storage, and tell the Hub. The Hub adds it to the athlete's
+// recap card and picks its cover.
+//
+// Body: { driveFileId, storagePath, callbackUrl, jobId }
+// Callback: { jobId, ok: true, publicUrl, storagePath, bytes } | { jobId, ok: false, error }
+// The request stays open until the work is done (like /composite) so Fly keeps
+// the machine running; the Hub doesn't wait on it.
+
+function driveDownloadToTemp(drive, fileId) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const tmpPath = path.join(os.tmpdir(), `pg-recap-src-${Date.now()}`);
+      const out = fs.createWriteStream(tmpPath);
+      const res = await drive.files.get(
+        { fileId, alt: "media", supportsAllDrives: true },
+        { responseType: "stream" },
+      );
+      res.data.on("error", reject).pipe(out).on("error", reject).on("finish", () => resolve(tmpPath));
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+function shrinkForWeb(inputPath, outputPath) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-y", "-i", inputPath,
+      "-vf", "scale='if(gte(iw,ih),min(iw,1920),-2)':'if(gte(iw,ih),-2,min(ih,1920))'",
+      "-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p",
+      "-c:a", "aac", "-b:a", "128k",
+      "-movflags", "+faststart",
+      outputPath,
+    ];
+    const proc = spawn("ffmpeg", args);
+    let stderr = "";
+    proc.stderr.on("data", (d) => { stderr = (stderr + d.toString()).slice(-2000); });
+    proc.on("error", reject);
+    proc.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}: ${stderr.slice(-400)}`))));
+  });
+}
+
+app.post("/recap-video", authenticate, async (req, res) => {
+  const { driveFileId, storagePath, callbackUrl, jobId } = req.body || {};
+  if (!driveFileId || !storagePath || !callbackUrl || !jobId) {
+    return res.status(400).json({ error: "driveFileId, storagePath, callbackUrl and jobId are required" });
+  }
+  let srcPath = null;
+  let outPath = null;
+  try {
+    console.log(`[recap-video] ${jobId}: downloading ${driveFileId}`);
+    srcPath = await driveDownloadToTemp(getDrive(), driveFileId);
+    outPath = path.join(os.tmpdir(), `pg-recap-out-${Date.now()}.mp4`);
+    console.log(`[recap-video] ${jobId}: shrinking ${fs.statSync(srcPath).size}B`);
+    await shrinkForWeb(srcPath, outPath);
+    const bytes = fs.statSync(outPath).size;
+    console.log(`[recap-video] ${jobId}: uploading ${bytes}B to ${storagePath}`);
+    const supabase = getSupabase();
+    const { error } = await supabase.storage
+      .from("campaign-media")
+      .upload(storagePath, fs.readFileSync(outPath), { contentType: "video/mp4", cacheControl: "3600", upsert: true });
+    if (error) throw new Error(`storage upload: ${error.message}`);
+    const publicUrl = supabase.storage.from("campaign-media").getPublicUrl(storagePath).data.publicUrl;
+    await postCallback(callbackUrl, { jobId, ok: true, publicUrl, storagePath, bytes });
+    res.json({ ok: true, publicUrl, bytes });
+  } catch (err) {
+    console.error(`[recap-video] ${jobId}: ${err.message}`);
+    await postCallback(callbackUrl, { jobId, ok: false, error: err.message });
+    res.status(500).json({ error: err.message });
+  } finally {
+    cleanup(srcPath, outPath);
+  }
+});
+
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => console.log(`FFmpeg worker listening on :${PORT}`));
