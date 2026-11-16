@@ -171,7 +171,22 @@ export interface ComputedStats {
   hasSales: boolean;
 }
 
-export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = []): ComputedStats {
+export interface ComputeStatsOptions {
+  /**
+   * Recaps delivered before 2026-11-16 added a collab post's views once per
+   * athlete in the collab. Those recaps carry `settings.legacy_collab_views`
+   * so their delivered totals never change. Everything else counts a shared
+   * post's views/impressions once (same link in the tracker = one post).
+   */
+  legacyCollabViews?: boolean;
+}
+
+export function computeStats(
+  athletes: Athlete[],
+  collabGroups: CollabGroup[] = [],
+  options: ComputeStatsOptions = {},
+): ComputedStats {
+  const legacyCollabViews = options.legacyCollabViews === true;
   // Filter out blank/whitespace strings when counting uniques (was a bug — blanks counted as a unique value).
   const schools = new Set(athletes.map((a) => (a.school || "").trim()).filter(Boolean));
   const sports = new Set(athletes.map((a) => (a.sport || "").trim()).filter(Boolean));
@@ -184,6 +199,25 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
   for (const g of collabGroups) for (const k of g.rawUrlKeys) collabUrlPlatforms.add(k);
   const isCollabPost = (platform: "ig_feed" | "ig_reel" | "tiktok", url: string | undefined) =>
     !!url && collabUrlPlatforms.has(`${platform}|${url}`);
+
+  // Views/impressions of a collab post, counted ONCE. Copies of the same post
+  // should carry identical numbers; when they don't, the highest copy is used
+  // (see collabViewMismatches() for the editor warning).
+  const collabViews = new Map<string, { platform: "ig_feed" | "ig_reel" | "tiktok"; value: number }>();
+  /** Returns the views to add per-athlete: 0 when the post is a collab (added once later). */
+  const viewsFor = (
+    platform: "ig_feed" | "ig_reel" | "tiktok",
+    isCollab: boolean,
+    url: string | undefined,
+    value: number | undefined,
+  ): number => {
+    const v = value || 0;
+    if (!isCollab || legacyCollabViews) return v;
+    const key = `${platform}|${(url || "").trim()}`;
+    const cur = collabViews.get(key);
+    if (!cur || v > cur.value) collabViews.set(key, { platform, value: v });
+    return 0;
+  };
 
   let totalPosts = 0;
   let totalImpressions = 0;
@@ -242,14 +276,16 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     // Collab post impressions = sum of ALL athletes' individual impressions in the collab.
     const storyTotalImp = m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
+    // 2026-11-16: collab posts now add their views once (after the loop)
+    // unless the recap is flagged legacy_collab_views.
+    const feedImp = viewsFor("ig_feed", feedIsCollab, m.ig_feed?.post_url, m.ig_feed?.impressions);
+    const feed2Imp = viewsFor("ig_feed", feed2IsCollab, m.ig_feed_2?.post_url, m.ig_feed_2?.impressions);
+    const reelViews = viewsFor("ig_reel", reelIsCollab, m.ig_reel?.post_url, m.ig_reel?.views);
+    const reel2Views = viewsFor("ig_reel", reel2IsCollab, m.ig_reel_2?.post_url, m.ig_reel_2?.views);
+    const tiktokViews = viewsFor("tiktok", tiktokIsCollab, m.tiktok?.post_url, m.tiktok?.views);
+    const tiktok2Views = viewsFor("tiktok", tiktok2IsCollab, m.tiktok_2?.post_url, m.tiktok_2?.views);
     totalImpressions +=
-      (m.ig_feed?.impressions || 0) +
-      (m.ig_feed_2?.impressions || 0) +
-      storyTotalImp +
-      (m.ig_reel?.views || 0) +
-      (m.ig_reel_2?.views || 0) +
-      (m.tiktok?.views || 0) +
-      (m.tiktok_2?.views || 0);
+      feedImp + feed2Imp + storyTotalImp + reelViews + reel2Views + tiktokViews + tiktok2Views;
 
     // ── Total Engagements: Feed + Reel + TikTok (Post 1 + Post 2; Story has none) ──
     totalEngagements +=
@@ -266,7 +302,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     // ── Per-platform aggregations (Post 1) ──
     // UPDATED (Change 1): Impressions/views always included, even for collab athletes.
     // Engagement stats (likes, comments, etc.) still skip collab — counted via collab group.
-    igFeed.impressions += m.ig_feed?.impressions || 0;
+    igFeed.impressions += feedImp;
     if (!feedIsCollab) {
       igFeed.reach += m.ig_feed?.reach || 0;
       igFeed.likes += m.ig_feed?.likes || 0;
@@ -283,7 +319,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       }
     }
     // Post 2
-    igFeed.impressions += m.ig_feed_2?.impressions || 0;
+    igFeed.impressions += feed2Imp;
     if (!feed2IsCollab && m.ig_feed_2?.post_url) {
       igFeed.reach += m.ig_feed_2.reach || 0;
       igFeed.likes += m.ig_feed_2.likes || 0;
@@ -304,7 +340,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     igStory.impressions += m.ig_story?.total_impressions
       ?? ((m.ig_story?.impressions ?? 0) * (m.ig_story?.count ?? 0));
 
-    igReel.views += m.ig_reel?.views || 0;
+    igReel.views += reelViews;
     if (!reelIsCollab) {
       igReel.likes += m.ig_reel?.likes || 0;
       igReel.comments += m.ig_reel?.comments || 0;
@@ -320,7 +356,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       }
     }
     // Post 2
-    igReel.views += m.ig_reel_2?.views || 0;
+    igReel.views += reel2Views;
     if (!reel2IsCollab && m.ig_reel_2?.post_url) {
       igReel.likes += m.ig_reel_2.likes || 0;
       igReel.comments += m.ig_reel_2.comments || 0;
@@ -337,7 +373,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     }
 
     tiktok.followers += m.tiktok?.followers || 0;
-    tiktok.views += m.tiktok?.views || 0;
+    tiktok.views += tiktokViews;
     if (!tiktokIsCollab) {
       tiktok.likes += m.tiktok?.likes || 0;
       tiktok.comments += m.tiktok?.comments || 0;
@@ -354,7 +390,7 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
       }
     }
     // Post 2
-    tiktok.views += m.tiktok_2?.views || 0;
+    tiktok.views += tiktok2Views;
     if (!tiktok2IsCollab && m.tiktok_2?.post_url) {
       tiktok.followers += m.tiktok_2.followers || 0;
       tiktok.likes += m.tiktok_2.likes || 0;
@@ -454,6 +490,14 @@ export function computeStats(athletes: Athlete[], collabGroups: CollabGroup[] = 
     }
   }
 
+  // ── Collab views/impressions: added exactly once per shared post ──
+  collabViews.forEach(({ platform, value }) => {
+    totalImpressions += value;
+    if (platform === "ig_feed") igFeed.impressions += value;
+    else if (platform === "ig_reel") igReel.views += value;
+    else tiktok.views += value;
+  });
+
   // ── UPDATED (Change 2): Flat average across all unique posts ──
   const avgEngRate = allRateCount > 0 ? allRateSum / allRateCount : 0;
   const igAvgEngRate = igRateCount > 0 ? igRateSum / igRateCount : 0;
@@ -525,10 +569,13 @@ export function applyOverrides(stats: ComputedStats, overrides?: MetricOverrides
 /** Convenience: compute + apply overrides in one call. */
 export function computeStatsWithOverrides(
   athletes: Athlete[],
-  campaign?: { metric_overrides?: MetricOverrides | null } | null,
+  campaign?: { metric_overrides?: MetricOverrides | null; settings?: unknown } | null,
   collabGroups: CollabGroup[] = [],
 ): AppliedStats {
-  const stats = computeStats(athletes, collabGroups);
+  const settings = (campaign?.settings ?? null) as { legacy_collab_views?: unknown } | null;
+  const stats = computeStats(athletes, collabGroups, {
+    legacyCollabViews: settings?.legacy_collab_views === true,
+  });
   return applyOverrides(stats, campaign?.metric_overrides);
 }
 
@@ -789,4 +836,42 @@ export function getTotalEngagements(athlete: Athlete): number {
     + (m.ig_reel_2?.total_engagements || 0)
     + (m.tiktok?.total_engagements || 0)
     + (m.tiktok_2?.total_engagements || 0);
+}
+
+
+/**
+ * Collab posts whose copies carry different view/impression numbers. The same
+ * link is the same post, so the copies should match — a mismatch means a
+ * tracker row was entered wrong. Shown as a warning in the recap editor.
+ */
+export function collabViewMismatches(
+  athletes: Athlete[],
+  collabGroups: CollabGroup[],
+): { platform: "ig_feed" | "ig_reel" | "tiktok"; url: string; athleteNames: string[]; values: number[] }[] {
+  const out: { platform: "ig_feed" | "ig_reel" | "tiktok"; url: string; athleteNames: string[]; values: number[] }[] = [];
+  const slots = {
+    ig_feed: [["ig_feed", "impressions"], ["ig_feed_2", "impressions"]],
+    ig_reel: [["ig_reel", "views"], ["ig_reel_2", "views"]],
+    tiktok: [["tiktok", "views"], ["tiktok_2", "views"]],
+  } as const;
+  const seen = new Set<string>();
+  for (const g of collabGroups) {
+    for (const key of g.rawUrlKeys) {
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const [platform, url] = key.split("|") as ["ig_feed" | "ig_reel" | "tiktok", string];
+      const names: string[] = [];
+      const values: number[] = [];
+      for (const a of athletes) {
+        for (const [slot, field] of slots[platform]) {
+          const block = (a.metrics as Record<string, Record<string, unknown> | undefined> | undefined)?.[slot];
+          if (!block || String(block.post_url ?? "").trim() !== url) continue;
+          const v = block[field];
+          if (typeof v === "number" && v > 0) { names.push(a.name); values.push(v); }
+        }
+      }
+      if (new Set(values).size > 1) out.push({ platform, url, athleteNames: names, values });
+    }
+  }
+  return out;
 }

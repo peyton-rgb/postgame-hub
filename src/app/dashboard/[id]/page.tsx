@@ -22,7 +22,7 @@ import TeamCollabCard from "@/components/TeamCollabCard";
 import CampaignEditorBanner from "@/components/CampaignEditorBanner";
 import Tier3Picker from "@/components/Tier3Picker";
 import { supabaseImageUrl } from "@/lib/supabase-image";
-import { computeStats, pct, dollar, getTopPerformers, getTopPerformersByImpressions, formatEngagementRate } from "@/lib/recap-helpers";
+import { computeStats, pct, dollar, getTopPerformers, getTopPerformersByImpressions, formatEngagementRate, collabViewMismatches } from "@/lib/recap-helpers";
 import dynamic from "next/dynamic";
 const RichTextEditor = dynamic(() => import("@/components/RichTextEditor"), { ssr: false });
 
@@ -1205,6 +1205,17 @@ export default function CampaignEditor() {
         anchorId: "step-athletes",
       });
     }
+    // Same link in the tracker = one collab post, so every copy should carry
+    // the same views/impressions. A mismatch means a tracker row is wrong.
+    for (const mm of collabViewMismatches(athletes, collabGroups)) {
+      const what = mm.platform === "ig_feed" ? "impressions" : "views";
+      out.push({
+        step: 1,
+        title: `${mm.athleteNames.join(" + ")} — collab ${what} don't match`,
+        detail: `Same post, different numbers (${mm.values.map((v) => v.toLocaleString()).join(" vs ")}). Check the post and fix the tracker; the highest is counted once until then.`,
+        anchorId: "step-athletes",
+      });
+    }
     if (!description.trim()) {
       out.push({
         step: 2,
@@ -1238,7 +1249,7 @@ export default function CampaignEditor() {
       });
     }
     return out;
-  }, [athletes, description, topPerformers, media, blockingVideoCards]);
+  }, [athletes, collabGroups, description, topPerformers, media, blockingVideoCards]);
 
   // Has anything been entered on this step yet? Distinguishes "nothing here
   // yet" (grey, Not started) from "started and still wrong" (dark orange).
