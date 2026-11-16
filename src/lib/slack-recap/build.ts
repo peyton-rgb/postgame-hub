@@ -469,6 +469,7 @@ async function importAthleteContent(
     //    JPEG too (browsers can't show HEIC). If the detector can't be reached,
     //    the AI's second, closer look is the fallback.
     const undetected: typeof uploaded = [];
+    const personsById = new Map<string, Person[]>();
     for (const u of uploaded) {
       if (!u.buf) continue;
       let probe: Buffer = u.buf;
@@ -492,8 +493,16 @@ async function importAthleteContent(
           console.warn(`[slack-recap] HEIC copy failed for ${athlete.name}:`, e?.message || e);
         }
       }
+      personsById.set(u.id, found.persons as Person[]);
       const box = pickAthleteBox(found.persons as Person[], boxById.get(u.id));
       if (box) boxById.set(u.id, box);
+    }
+    // Safety net for the hero: if photo #1 has no clearly-detected person in it
+    // (a product close-up slipped through), put the first photo that does first.
+    const hasAthlete = (ps: Person[] | undefined) => !!ps?.some((p) => p.score >= 0.7 && p.box[3] - p.box[1] >= 0.3);
+    if (uploaded.length > 1 && personsById.size && !hasAthlete(personsById.get(uploaded[0].id))) {
+      const k = uploaded.findIndex((u) => hasAthlete(personsById.get(u.id)));
+      if (k > 0) uploaded.unshift(...uploaded.splice(k, 1));
     }
     if (undetected.length) {
       const tight = await refineBoxes(
@@ -546,7 +555,7 @@ async function importAthleteContent(
         console.error(`[slack-recap] photo import failed for ${athlete.name}:`, e?.message || e);
       }
     }
-    const firstPhotoUrl = pickedIds.map((id) => photoUrls.get(id)).find(Boolean) ?? null;
+    const firstPhotoUrl = uploaded.map((u) => photoUrls.get(u.id)).find(Boolean) ?? null;
 
     if (video && videoUpload) {
       // The video's cover: a full-size still at the chosen moment, or the
