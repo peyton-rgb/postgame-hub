@@ -53,3 +53,25 @@ export function matchesSubfolder(
     return n === exact || n.startsWith(prefix);
   });
 }
+
+/**
+ * Every name the admin may have given this campaign's folder. Today the admin
+ * appends the year even when the campaign name already ends in one
+ * ("Heisman 2026 - Raising Cane's 2026"); once that is fixed it will write
+ * "Heisman - Raising Cane's 2026". Both count, so neither era makes a twin.
+ */
+export function adminCampaignFolderNames(campaignName: string, brandName: string, year: number): string[] {
+  const names = [adminCampaignFolderName(campaignName, brandName, year)];
+  const base = folderNameFor(campaignName);
+  const trailingYear = new RegExp(`[\\s'’]*${year}$`);
+  if (trailingYear.test(base)) {
+    const without = base.replace(trailingYear, "").trim();
+    if (without) names.push(`${without} - ${brandName.trim()} ${year}`);
+  }
+  return names;
+}
+
+/** The admin's year-folder name: "{Year} - {Brand}", e.g. "2026 - CVS". */
+export function adminYearFolderName(brandName: string, year: number): string {
+  return `${year} - ${brandName.trim()}`;
+}

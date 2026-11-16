@@ -8,7 +8,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { adminCampaignFolderName, matchesSubfolder, normalizeName } from "./drive-folder-names.ts";
+import { adminCampaignFolderName, adminCampaignFolderNames, adminYearFolderName, matchesSubfolder, normalizeName } from "./drive-folder-names.ts";
 
 const f = (name: string) => ({ id: name, name });
 
@@ -35,4 +35,20 @@ test("subfolders match the plain name or the admin's suffixed name", () => {
 test("a subfolder name that only starts the same way is not a match", () => {
   assert.equal(matchesSubfolder([f("Contents Archive")], "Content").length, 0);
   assert.equal(matchesSubfolder([f("Legal Hold")], "Legal").length, 0);
+});
+
+test("admin names cover both the doubled-year and fixed-year forms", () => {
+  assert.deepEqual(adminCampaignFolderNames("Heisman 2026", "Raising Cane's", 2026), [
+    "Heisman 2026 - Raising Cane's 2026",
+    "Heisman - Raising Cane's 2026",
+  ]);
+  assert.deepEqual(adminCampaignFolderNames("Holiday Bikes", "Raising Cane's", 2026), [
+    "Holiday Bikes - Raising Cane's 2026",
+  ]);
+  // "Holiday 26" is not the year 2026 — leave it alone
+  assert.deepEqual(adminCampaignFolderNames("Holiday 26", "CVS", 2026), ["Holiday 26 - CVS 2026"]);
+});
+
+test("admin year folder name", () => {
+  assert.equal(adminYearFolderName("CVS", 2026), "2026 - CVS");
 });
