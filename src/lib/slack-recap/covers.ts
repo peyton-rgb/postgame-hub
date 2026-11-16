@@ -252,6 +252,19 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "boxes": {"<number>": [l, t, r, b]}, "reason": "<one short sentence>"}`;
 
 /**
+ * The JSON object in a model reply: everything from the first "{" to the LAST
+ * "}", so nested objects (the "boxes" map) survive and any prose or code fence
+ * around it is ignored. (Cutting at the first "}" broke every reply once boxes
+ * were added — Ghost Max 4, 2026-11-16.)
+ */
+export function parseAiJson(text: string): any {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("no JSON object in the reply");
+  return JSON.parse(text.slice(start, end + 1));
+}
+
+/**
  * Ask the vision model to choose. Falls back to the first frame (or first
  * photo) — and the first photo — if the call fails or returns nonsense.
  */
@@ -286,7 +299,7 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 900, messages: [{ role: "user", content }] });
     const text = res.content.map((b: any) => (b.type === "text" ? b.text : "")).join("");
-    const json = JSON.parse(text.replace(/^[\s\S]*?\{/, "{").replace(/\}[\s\S]*$/, "}"));
+    const json = parseAiJson(text);
     const cover = Number(json.cover) - 1;
     if (!Number.isInteger(cover) || cover < 0 || cover >= candidates.length) {
       console.error(`[slack-recap/covers] AI reply for ${athlete} had no usable cover:`, text.slice(0, 300));
