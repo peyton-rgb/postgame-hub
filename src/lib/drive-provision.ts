@@ -39,9 +39,16 @@
 
 import type { drive_v3 } from "googleapis";
 import { getDriveClient, createFolder } from "@/lib/google-drive";
-import { adminCampaignFolderName, folderNameFor, matchesSubfolder, normalizeName } from "@/lib/drive-folder-names";
+import {
+  adminCampaignFolderName,
+  adminCampaignFolderNames,
+  adminYearFolderName,
+  folderNameFor,
+  matchesSubfolder,
+  normalizeName,
+} from "@/lib/drive-folder-names";
 
-export { adminCampaignFolderName, folderNameFor, matchesSubfolder, normalizeName };
+export { adminCampaignFolderName, adminCampaignFolderNames, adminYearFolderName, folderNameFor, matchesSubfolder, normalizeName };
 
 /** The five top-level subfolders every campaign gets (current standard, Sep
  *  2026). Legal has its own nested subfolders; see NESTED_SUBFOLDERS below. */
@@ -64,6 +71,7 @@ export type SkipReason =
   | "brand_root_not_found"
   | "ambiguous_year_folder"
   | "empty_campaign_name"
+  | "ambiguous_campaign_folder"
   | "error";
 
 export interface CampaignCandidate {
@@ -306,6 +314,7 @@ export async function resolveYearFolder(
   brandRootId: string,
   year: number,
   storedId: string | null,
+  brandName?: string,
 ): Promise<
   | YearFolderResolved
   | { ambiguous: Array<{ id: string; name: string }>; blocked?: boolean }
@@ -331,8 +340,12 @@ export async function resolveYearFolder(
   // alongside the campaign folder that already carries the year.
   if (variants.length > 0) return { ambiguous: variants, blocked: true };
 
-  // 4 ── nothing to adopt.
-  return { id: await createFolder(String(year), brandRootId), via: "created", name: String(year) };
+  // 4 ── nothing to adopt. Create it under the admin's standard name
+  // ("2026 - CVS") so the admin's Drive script finds this same shelf instead of
+  // building a rival one next to it (Nov 16 2026: that split CVS, Whoop and
+  // adidas into two 2026 folders each).
+  const createName = brandName ? adminYearFolderName(brandName, year) : String(year);
+  return { id: await createFolder(createName, brandRootId), via: "created", name: createName };
 }
 
 /**
@@ -362,7 +375,7 @@ export async function provisionCampaign(
     };
   }
 
-  const yearFolder = await resolveYearFolder(drive, brandRootId, year, storedYearFolderId);
+  const yearFolder = await resolveYearFolder(drive, brandRootId, year, storedYearFolderId, brandName);
   if ("ambiguous" in yearFolder) {
     const names = yearFolder.ambiguous.map((f) => `"${f.name}"`).join(", ");
     return {
@@ -382,9 +395,37 @@ export async function provisionCampaign(
   // Two names count as "already there": the Hub's own ("Holiday Bikes") and
   // the admin's ("Holiday Bikes - Raising Cane's 2026"). The admin's wins when
   // both exist, because it follows the current standard.
+  const adminNames = adminCampaignFolderNames(candidate.name, brandName, year);
+  const matchesAdmin = (kids: Array<{ id: string; name: string }>) =>
+    adminNames.flatMap((n) => matchesByName(kids, n));
+
   const yearChildren = await listChildFolders(drive, yearFolder.id);
-  const adminStyle = matchesByName(yearChildren, adminCampaignFolderName(candidate.name, brandName, year));
+  let adminStyle = matchesAdmin(yearChildren);
   const plain = matchesByName(yearChildren, name);
+
+  // Not on our shelf? The admin may have filed it on a different year shelf
+  // of the same brand (it finds its shelf by the exact name "2026 - {Brand}",
+  // so a brand whose shelf is called "2026" or "CVS 2026" got a second one).
+  // Look on every other shelf for this year before ever creating a folder.
+  if (adminStyle.length === 0 && plain.length === 0) {
+    const otherShelves = (await listChildFolders(drive, brandRootId)).filter(
+      (c) => c.id !== yearFolder.id && hasYearToken(c.name.trim(), year),
+    );
+    for (const shelf of otherShelves) {
+      adminStyle = adminStyle.concat(matchesAdmin(await listChildFolders(drive, shelf.id)));
+    }
+    if (adminStyle.length > 1) {
+      return {
+        campaignId: candidate.id,
+        campaignName: candidate.name,
+        reason: "ambiguous_campaign_folder",
+        detail: `${adminStyle.length} admin-built folders match this campaign (${adminStyle
+          .map((f) => `"${f.name}"`)
+          .join(", ")}) — a human has to pick one`,
+      };
+    }
+  }
+
   const isAdminFolder = adminStyle.length > 0;
   const existing = isAdminFolder ? adminStyle : plain;
   const linkedExisting = existing.length > 0;
