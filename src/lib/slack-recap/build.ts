@@ -917,3 +917,31 @@ export async function summarize(recapId: string, extraWarnings: string[]): Promi
     warnings: extraWarnings,
   };
 }
+
+/**
+ * Set a video's cover by hand: the still at `seconds`, cropped on the athlete
+ * with the person detector (AI-free). For covers the automatic pick got wrong.
+ * Returns the new cover URL.
+ */
+export async function setCoverFromStill(mediaId: string, seconds: number): Promise<string> {
+  const supabase = createServiceSupabase();
+  const { data: v } = await supabase.from("media").select("id, campaign_id, athlete_id, type, file_url").eq("id", mediaId).single();
+  const video = v as { id: string; campaign_id: string; athlete_id: string | null; type: string; file_url: string } | null;
+  if (!video || video.type !== "video" || !video.file_url) throw new Error("that media id isn't a video");
+  const local = await localVideo(video.file_url);
+  try {
+    const still = await coverFrame(local.path, seconds);
+    const found = await detectPersons(still);
+    const box = pickAthleteBox((found?.persons || []) as Person[]);
+    const url = await uploadJpeg(
+      supabase,
+      buildStoragePath(video.campaign_id, video.athlete_id || "collab", `cover-${video.id}-${Math.round(seconds * 100)}.jpg`),
+      await cropToSubject(still, box),
+    );
+    const { error } = await supabase.from("media").update({ thumbnail_url: url }).eq("id", video.id);
+    if (error) throw new Error(error.message);
+    return url;
+  } finally {
+    await local.cleanup().catch(() => {});
+  }
+}
