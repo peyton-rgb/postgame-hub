@@ -22,6 +22,8 @@
 import crypto from "crypto";
 import { createServiceSupabase } from "@/lib/supabase";
 import { normLoose } from "@/lib/admin-campaigns";
+import sharp from "sharp";
+import { detectPersons } from "@/lib/slack-recap/worker";
 import {
   buildSettings,
   computeHiddenHeroes,
@@ -46,6 +48,8 @@ import {
   cropToSubject,
   dHash,
   refineBoxes,
+  pickAthleteBox,
+  type Person,
   frameCandidates,
   hashDistance,
   localVideo,
@@ -460,21 +464,50 @@ async function importAthleteContent(
         console.error(`[slack-recap] photo import failed for ${athlete.name}:`, e?.message || e);
       }
     }
-    // 2) A closer look so every crop is tight and centred on the subject.
-    const withBytes = uploaded.filter((u) => u.buf);
-    const tight = await refineBoxes(
-      athlete.name.trim(),
-      withBytes.map((u) => ({ buf: u.buf!, box: boxById.get(u.id) })),
-    );
-    withBytes.forEach((u, i) => {
-      const b = tight.boxes[i];
-      if (b) boxById.set(u.id, b);
-    });
-    if (tight.error) {
-      // Loose framing is reported on the review, like a failed AI pick.
+    // 2) Find the athlete exactly with the worker's person detector, so every
+    //    crop is tight and centred on them. iPhone HEIC photos come back as
+    //    JPEG too (browsers can't show HEIC). If the detector can't be reached,
+    //    the AI's second, closer look is the fallback.
+    const undetected: typeof uploaded = [];
+    for (const u of uploaded) {
+      if (!u.buf) continue;
+      let probe: Buffer = u.buf;
+      try {
+        probe = await sharp(u.buf).rotate().resize({ width: 1600, height: 1600, fit: "inside" }).jpeg({ quality: 85 }).toBuffer();
+      } catch {
+        // sharp can't read it (HEIC) — send the original; the worker converts it.
+      }
+      const found = await detectPersons(probe);
+      if (!found) {
+        undetected.push(u);
+        continue;
+      }
+      if (found.jpeg) {
+        try {
+          const jpgPath = buildStoragePath(recapId, athlete.id, `${photoMeta.get(u.id)!.file.name}.jpg`);
+          const url = await uploadJpeg(supabase, jpgPath, found.jpeg);
+          await removeUpload(supabase, u.storagePath);
+          Object.assign(u, { storagePath: jpgPath, publicUrl: url, buf: found.jpeg });
+        } catch (e: any) {
+          console.warn(`[slack-recap] HEIC copy failed for ${athlete.name}:`, e?.message || e);
+        }
+      }
+      const box = pickAthleteBox(found.persons as Person[], boxById.get(u.id));
+      if (box) boxById.set(u.id, box);
+    }
+    if (undetected.length) {
+      const tight = await refineBoxes(
+        athlete.name.trim(),
+        undetected.map((u) => ({ buf: u.buf!, box: boxById.get(u.id) })),
+      );
+      undetected.forEach((u, i) => {
+        const b = tight.boxes[i];
+        if (b) boxById.set(u.id, b);
+      });
+      // Reported on the review: these crops used the AI's looser boxes.
       const { state } = await readRequestState(recapId);
       const list = (state?.ai_fallback || []).filter((f) => f.athlete !== athlete.name.trim());
-      list.push({ athlete: athlete.name.trim(), error: `framing: ${tight.error}` });
+      list.push({ athlete: athlete.name.trim(), error: `framing: person detector unavailable for ${undetected.length} photo(s)${tight.error ? `; ${tight.error}` : ""}` });
       await writeRequestState(recapId, { ai_fallback: list }).catch(() => {});
     }
     // 3) Framed copies + media rows, hero first.
@@ -520,16 +553,21 @@ async function importAthleteContent(
       // chosen photo. Null only if nothing at all could be produced.
       // The hero photo (photo #1, athlete + product) is the cover whenever
       // there are photos; a video still only when there are none.
-      let thumbnailUrl: string | null = firstPhotoUrl;
+      // The cover is the hero photo — or, when the AI found no photo close
+      // enough and chose a close-up still from the video, that still.
       const c = candidates[choice.cover];
+      let thumbnailUrl: string | null = c?.kind === "frame" && choice.judged ? null : firstPhotoUrl;
       try {
         if (thumbnailUrl) {
           // hero photo already framed above
         } else if (c?.kind === "frame" && local) {
+          const still = await coverFrame(local.path, c.t);
+          const found = await detectPersons(still);
+          const box = pickAthleteBox((found?.persons || []) as Person[], choice.boxes?.[choice.cover]) ?? choice.boxes?.[choice.cover];
           thumbnailUrl = await uploadJpeg(
             supabase,
             buildStoragePath(recapId, athlete.id, `cover-${video.name}.jpg`),
-            await cropToSubject(await coverFrame(local.path, c.t), choice.boxes?.[choice.cover]),
+            await cropToSubject(still, box),
           );
         } else if (c?.kind === "photo") {
           if (photoUrls.has(c.key)) thumbnailUrl = photoUrls.get(c.key)!;

@@ -6,8 +6,7 @@ import sharp from "sharp";
 import { cropToSubject } from "./covers.ts";
 
 /** A 1000×1500 grey image with a white "athlete" block at the given box (fractions). */
-async function scene(box: [number, number, number, number]): Promise<Buffer> {
-  const W = 1000, H = 1500;
+async function scene(box: [number, number, number, number], W = 1000, H = 1500): Promise<Buffer> {
   const [l, t, r, b] = box;
   const block = await sharp({
     create: { width: Math.round((r - l) * W), height: Math.round((b - t) * H), channels: 3, background: "#ffffff" },
@@ -30,7 +29,7 @@ async function brightBox(buf: Buffer): Promise<[number, number, number, number]>
 
 test("crop is 4:5 and centres a small, off-centre athlete", async () => {
   const box: [number, number, number, number] = [0.1, 0.5, 0.3, 0.8];
-  const out = await cropToSubject(await scene(box), box);
+  const out = await cropToSubject(await scene(box, 3000, 4500), box); // phone-photo size
   const m = await sharp(out).metadata();
   assert.ok(Math.abs(m.width! / m.height! - 0.8) < 0.01);
   const [l, t, r, b] = await brightBox(out);
@@ -91,4 +90,28 @@ test("cropping a box that touches the right edge of an odd-sized image works", a
   const out = await cropToSubject(img, [0.55, 0.2, 1, 0.95]);
   const m = await sharp(out).metadata();
   assert.ok(Math.abs(m.width! / m.height! - 0.8) < 0.01);
+});
+
+import { pickAthleteBox } from "./covers.ts";
+
+test("pickAthleteBox: the detected person the AI pointed at wins", () => {
+  const persons = [
+    { box: [0.05, 0.1, 0.25, 0.9] as [number, number, number, number], score: 0.95 }, // bystander, big
+    { box: [0.55, 0.3, 0.7, 0.8] as [number, number, number, number], score: 0.8 }, // athlete
+  ];
+  assert.deepEqual(pickAthleteBox(persons, [0.5, 0.2, 0.75, 0.9]), persons[1].box);
+});
+
+test("pickAthleteBox: without an AI box, the most prominent confident person", () => {
+  const persons = [
+    { box: [0.4, 0.2, 0.6, 0.9] as [number, number, number, number], score: 0.9 },
+    { box: [0.0, 0.5, 0.05, 0.6] as [number, number, number, number], score: 0.9 },
+    { box: [0.1, 0.0, 0.9, 1.0] as [number, number, number, number], score: 0.3 }, // not confident
+  ];
+  assert.deepEqual(pickAthleteBox(persons), persons[0].box);
+});
+
+test("pickAthleteBox: nobody found → null (product shot keeps the AI box)", () => {
+  assert.equal(pickAthleteBox([], [0.2, 0.2, 0.8, 0.8]), null);
+  assert.equal(pickAthleteBox([{ box: [0.1, 0.1, 0.2, 0.2], score: 0.2 }]), null);
 });
