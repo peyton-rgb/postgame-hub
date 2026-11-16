@@ -11,43 +11,10 @@ import PostgameCalendar from "./PostgameCalendar";
 // import FutureOpportunities from "./FutureOpportunities";
 import AssetModal, { type PortalAthlete, type PortalPost, type SideMetrics, type Collaborator } from "@/app/portal/[token]/library/AssetModal";
 import { sanitizeRichHtml } from "@/lib/rich-text";
-// Replaced react-masonry-css with a local shortest-column-next implementation
-// (see BalancedMasonry below). react-masonry-css distributes sequentially,
-// which left uneven column bottoms and a lot of dead space.
-
-// Estimate a card's height relative to width=1, so we can place each
-// card in whichever column is currently shortest.
-function estimateCardHeightRatio(athleteIdx: number, hasVideo: boolean): number {
-  // Mirrors the ratio logic inside MasonryCard: deterministic by cardIndex.
-  const photoRatios = [1, 16 / 9, 5 / 4];      // 1/1, 9/16, 4/5 → h/w
-  const videoRatios = [16 / 9, 5 / 4];         // 9/16, 4/5 → h/w
-  const list = hasVideo ? videoRatios : photoRatios;
-  return list[athleteIdx % list.length];
-}
-
-// Split items into N columns using shortest-column-next. Returns an array
-// of columns, each containing { item, originalIndex } — originalIndex is
-// preserved so MasonryCard can use it as cardIndex for consistent ratios.
-function distributeShortestFirst<T>(
-  items: T[],
-  columnCount: number,
-  heightOf: (item: T, idx: number) => number,
-): Array<Array<{ item: T; originalIndex: number }>> {
-  const cols: Array<Array<{ item: T; originalIndex: number }>> = Array.from(
-    { length: columnCount },
-    () => [],
-  );
-  const heights = new Array(columnCount).fill(0);
-  items.forEach((item, idx) => {
-    let shortestCol = 0;
-    for (let c = 1; c < columnCount; c++) {
-      if (heights[c] < heights[shortestCol]) shortestCol = c;
-    }
-    cols[shortestCol].push({ item, originalIndex: idx });
-    heights[shortestCol] += heightOf(item, idx);
-  });
-  return cols;
-}
+// The Best-in-Class gallery is a dense CSS grid (.bic-grid) — each card sets
+// its own row span from its measured height, and landscape cards span two
+// columns. Replaced the shortest-column masonry on 2026-11-16 so wide photos
+// can show large.
 
 // ── Rich Text Helper ─────────────────────────────────────────
 
@@ -405,40 +372,149 @@ function BestInClassCard({
     ? VIDEO_SAFE_RATIOS[cardIndex % VIDEO_SAFE_RATIOS.length]
     : DEFAULT_RATIOS[cardIndex % DEFAULT_RATIOS.length];
   const [cardRatio, setCardRatio] = useState<string>(defaultRatio);
+  // Landscape hero → a WIDE card: two grid columns, the photo at its true
+  // shape (nothing cropped), name + View More moved BELOW the photo so no
+  // overlay covers it (2026-11-16). Decided by the still the card actually
+  // SHOWS — the cover photo when there is one, else the reel's own frame.
+  const [wide, setWide] = useState(false);
 
-  // Landscape hero -> 16/9 (mirrors the old card's orientation probe).
   useEffect(() => {
-    if (hasVideo) {
-      const vid = rawItems.find((m) => m.type === "video");
-      if (!vid) return;
+    const landscape = (w: number, h: number) => {
+      if (w > h * 1.2) {
+        setWide(true);
+        setCardRatio(`${w}/${h}`);
+      }
+    };
+    if (coverImage) {
+      const img = new Image();
+      img.onload = () => landscape(img.naturalWidth, img.naturalHeight);
+      img.src = coverImage.file_url;
+    } else if (heroVideo) {
       const video = document.createElement("video");
       video.preload = "metadata";
-      video.onloadedmetadata = () => {
-        if (video.videoWidth > video.videoHeight * 1.2) setCardRatio("16/9");
-      };
-      video.src = vid.file_url;
-    } else {
-      const cover = rawItems.find((m) => m.type === "image");
-      if (!cover) return;
-      const img = new Image();
-      img.onload = () => {
-        if (img.naturalWidth > img.naturalHeight * 1.2) setCardRatio("16/9");
-      };
-      img.src = cover.file_url;
+      video.onloadedmetadata = () => landscape(video.videoWidth, video.videoHeight);
+      video.src = heroVideo.file_url;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [coverImage?.file_url, heroVideo?.file_url]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Grid placement: the gallery is a CSS grid with 1px rows; each card spans
+  // as many rows as it is tall (+8px gap), so tall and wide cards pack tightly.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [rowSpan, setRowSpan] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setRowSpan(Math.ceil(el.getBoundingClientRect().height) + 8));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const bebas = "var(--font-bebas-neue), 'Bebas Neue', sans-serif";
 
+  const nameBlock = (
+    <div className="min-w-0">
+      {marker}
+      {title ? (
+        <div
+          style={{
+            fontFamily: bebas,
+            fontSize: 24,
+            fontWeight: 900,
+            letterSpacing: 1,
+            color: "#fff",
+            lineHeight: 1,
+            marginBottom: 3,
+          }}
+        >
+          {title}
+        </div>
+      ) : null}
+      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>
+        {subtitle}
+      </div>
+    </div>
+  );
+
+  const typeTag = (
+    <span
+      className="flex items-center gap-1 flex-shrink-0 rounded-full"
+      style={{
+        background: "rgba(0,0,0,0.55)",
+        backdropFilter: "blur(4px)",
+        WebkitBackdropFilter: "blur(4px)",
+        padding: "4px 9px",
+        fontSize: 9,
+        fontWeight: 800,
+        letterSpacing: 0.8,
+        textTransform: "uppercase",
+        color: "#fff",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {hasReel ? (
+        <>
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="#fff">
+            <polygon points="5,3 19,12 5,21" />
+          </svg>
+          Photos + Video
+        </>
+      ) : (
+        <>
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#fff"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+          Photos
+        </>
+      )}
+    </span>
+  );
+
+  const viewMore = (
+    <button
+      onClick={onViewMore}
+      className="w-full cursor-pointer rounded-full bg-white/[0.13] hover:bg-white/20 transition-colors"
+      style={{
+        border: "1px solid rgba(255,255,255,0.28)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        color: "#fff",
+        fontFamily: bebas,
+        fontSize: 16,
+        fontWeight: 900,
+        letterSpacing: 1.5,
+        textTransform: "uppercase",
+        padding: "9px 14px",
+      }}
+    >
+      View More
+    </button>
+  );
+
   return (
     <div
-      className="break-inside-avoid mb-2 rounded-lg overflow-hidden"
-      style={{ background: "#141418", border: `1px solid ${borderColor}` }}
+      ref={rootRef}
+      className={`bic-item${wide ? " bic-wide" : ""} rounded-lg overflow-hidden`}
+      style={{
+        background: "#141418",
+        border: `1px solid ${borderColor}`,
+        gridRowEnd: rowSpan ? `span ${rowSpan}` : undefined,
+      }}
     >
       <div className="relative overflow-hidden">
         {heroSrc ? (
           <img
-            src={supabaseImageUrl(heroSrc, 1200) ?? heroSrc}
+            src={supabaseImageUrl(heroSrc, wide ? 1600 : 1200) ?? heroSrc}
             className="w-full block object-cover [image-rendering:-webkit-optimize-contrast]"
             style={{ aspectRatio: cardRatio, objectPosition: "center 20%" }}
             draggable={false}
@@ -460,109 +536,46 @@ function BestInClassCard({
           </div>
         )}
 
-        {/* Top overlay — name block (left) + content-type tag (right) over a dark fade */}
-        <div
-          className="absolute top-0 left-0 right-0 z-[2] flex items-start justify-between gap-2"
-          style={{
-            padding: "12px 14px 40px",
-            background:
-              "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, transparent 100%)",
-          }}
-        >
-          <div className="min-w-0">
-            {marker}
-            {title ? (
-              <div
-                style={{
-                  fontFamily: bebas,
-                  fontSize: 24,
-                  fontWeight: 900,
-                  letterSpacing: 1,
-                  color: "#fff",
-                  lineHeight: 1,
-                  marginBottom: 3,
-                }}
-              >
-                {title}
-              </div>
-            ) : null}
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.65)", fontWeight: 500 }}>
-              {subtitle}
+        {!wide && (
+          <>
+            {/* Top overlay — name block (left) + content-type tag (right) over a dark fade */}
+            <div
+              className="absolute top-0 left-0 right-0 z-[2] flex items-start justify-between gap-2"
+              style={{
+                padding: "12px 14px 40px",
+                background:
+                  "linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 45%, transparent 100%)",
+              }}
+            >
+              {nameBlock}
+              {typeTag}
             </div>
-          </div>
-          <span
-            className="flex items-center gap-1 flex-shrink-0 rounded-full"
-            style={{
-              background: "rgba(0,0,0,0.55)",
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
-              padding: "4px 9px",
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: 0.8,
-              textTransform: "uppercase",
-              color: "#fff",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {hasReel ? (
-              <>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="#fff">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-                Photos + Video
-              </>
-            ) : (
-              <>
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                Photos
-              </>
-            )}
-          </span>
-        </div>
 
-        {/* Bottom overlay — scrim + frosted light-glass "View More" over the photo */}
-        <div
-          className="absolute bottom-0 left-0 right-0 z-[2]"
-          style={{
-            padding: "48px 12px 12px",
-            background:
-              "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 48%, transparent 100%)",
-          }}
-        >
-          <button
-            onClick={onViewMore}
-            className="w-full cursor-pointer rounded-full bg-white/[0.13] hover:bg-white/20 transition-colors"
-            style={{
-              border: "1px solid rgba(255,255,255,0.28)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              color: "#fff",
-              fontFamily: bebas,
-              fontSize: 16,
-              fontWeight: 900,
-              letterSpacing: 1.5,
-              textTransform: "uppercase",
-              padding: "9px 14px",
-            }}
-          >
-            View More
-          </button>
-        </div>
+            {/* Bottom overlay — scrim + frosted light-glass "View More" over the photo */}
+            <div
+              className="absolute bottom-0 left-0 right-0 z-[2]"
+              style={{
+                padding: "48px 12px 12px",
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.42) 48%, transparent 100%)",
+              }}
+            >
+              {viewMore}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Wide card: name, tag and View More sit below the photo, never on it. */}
+      {wide && (
+        <div className="flex flex-wrap items-center justify-between gap-3" style={{ padding: "12px 14px" }}>
+          {nameBlock}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {typeTag}
+            <div style={{ width: 150 }}>{viewMore}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2133,39 +2146,30 @@ export function CampaignRecap({
                 ? allEntries
                 : allEntries.slice(0, GALLERY_VISIBLE_COUNT);
 
-              const distributed = distributeShortestFirst(
-                visibleEntries,
-                cols,
-                (entry, i) => estimateCardHeightRatio(i, entry.items.some((m) => m.type === "video")),
-              );
               return (
                 <>
-                  <div className="balanced-masonry">
-                    {distributed.map((colItems, colIdx) => (
-                      <div key={colIdx} className="balanced-masonry_col">
-                        {colItems.map(({ item: entry, originalIndex }) => (
-                          entry.kind === "collab" ? (
-                            <CollabCard
-                              key={`collab-${entry.group.id}`}
-                              group={entry.group}
-                              items={entry.items}
-                              activeFilter={filter}
-                              athletes={fullRoster}
-                              cardIndex={originalIndex}
-                              onViewMore={() => openCollabModal(entry.group, entry.items)}
-                            />
-                          ) : (
-                            <AthleteCard
-                              key={entry.athlete.id}
-                              athlete={entry.athlete}
-                              items={entry.items}
-                              activeFilter={filter}
-                              cardIndex={originalIndex}
-                              onViewMore={() => openAthleteModal(entry.athlete, entry.items)}
-                            />
-                          )
-                        ))}
-                      </div>
+                  <div className="bic-grid" style={{ ["--bic-cols" as string]: String(cols) }}>
+                    {visibleEntries.map((entry, i) => (
+                      entry.kind === "collab" ? (
+                        <CollabCard
+                          key={`collab-${entry.group.id}`}
+                          group={entry.group}
+                          items={entry.items}
+                          activeFilter={filter}
+                          athletes={fullRoster}
+                          cardIndex={i}
+                          onViewMore={() => openCollabModal(entry.group, entry.items)}
+                        />
+                      ) : (
+                        <AthleteCard
+                          key={entry.athlete.id}
+                          athlete={entry.athlete}
+                          items={entry.items}
+                          activeFilter={filter}
+                          cardIndex={i}
+                          onViewMore={() => openAthleteModal(entry.athlete, entry.items)}
+                        />
+                      )
                     ))}
                   </div>
                   {galleryIsTruncated && (
@@ -2198,30 +2202,26 @@ export function CampaignRecap({
             })()}
           </div>
           <style jsx global>{`
-            .balanced-masonry {
-              display: flex;
-              gap: 8px;
+            /* Best-in-Class gallery: a dense CSS grid with 1px rows. Each card
+               spans rows equal to its own height (set by the card), and a card
+               with a landscape photo spans two columns so the whole photo shows
+               large. 2 columns under 768px, 1 under 480px. */
+            .bic-grid {
+              display: grid;
+              grid-template-columns: repeat(var(--bic-cols, 4), minmax(0, 1fr));
+              grid-auto-rows: 1px;
+              grid-auto-flow: row dense;
+              column-gap: 8px;
               width: 100%;
             }
-            .balanced-masonry_col {
-              flex: 1 1 0;
-              min-width: 0;
-              display: flex;
-              flex-direction: column;
-              gap: 8px;
-            }
-            /* Collapse to 2 columns under 768px, 1 column under 480px —
-               matches the old breakpointCols behaviour. */
+            .bic-item { align-self: start; }
+            .bic-wide { grid-column: span 2; }
             @media (max-width: 767px) {
-              .balanced-masonry { flex-wrap: wrap; }
-              .balanced-masonry_col {
-                flex: 1 1 calc(50% - 4px);
-              }
+              .bic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             }
             @media (max-width: 479px) {
-              .balanced-masonry_col {
-                flex: 1 1 100%;
-              }
+              .bic-grid { grid-template-columns: minmax(0, 1fr); }
+              .bic-wide { grid-column: span 1; }
             }
           `}</style>
         </div>
