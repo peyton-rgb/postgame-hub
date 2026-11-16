@@ -47,6 +47,7 @@ import {
   frameCandidates,
   hashDistance,
   localVideo,
+  MIN_RECAP_PHOTOS,
   NEAR_DUPLICATE_BITS,
   smallJpeg,
   type Candidate,
@@ -270,6 +271,27 @@ async function uploadJpeg(supabase: any, storagePath: string, buf: Buffer): Prom
   return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(storagePath).data.publicUrl as string;
 }
 
+/**
+ * A small jpeg of a Drive photo for fingerprinting and the AI. Uses Drive's
+ * thumbnail; if Drive has none (or it fails), downloads the photo itself.
+ */
+async function photoPreview(f: DriveFile): Promise<Buffer | null> {
+  const thumb = await getDriveThumbnail(f.id);
+  const fromThumb = thumb ? await smallJpeg(thumb) : null;
+  if (fromThumb) return fromThumb;
+  if (sizeOf(f) > 40 * 1024 * 1024) return null;
+  try {
+    const res = await getDriveClient().files.get(
+      { fileId: f.id, alt: "media", supportsAllDrives: true },
+      { responseType: "arraybuffer" },
+    );
+    return await smallJpeg(Buffer.from(res.data as ArrayBuffer));
+  } catch (e: any) {
+    console.warn(`[slack-recap] no preview for ${f.name}:`, e?.message || e);
+    return null;
+  }
+}
+
 /** Newest first by Drive createdTime — "the latest version of their video". */
 function newestFirst(a: DriveFile, b: DriveFile): number {
   return (Date.parse(b.createdTime || "") || 0) - (Date.parse(a.createdTime || "") || 0);
@@ -326,16 +348,35 @@ async function importAthleteContent(
 
     // Fingerprint photos; keep one of each near-duplicate group.
     const keptHashes: string[] = [];
+    // Near-duplicates set aside, with how close each came to a kept photo.
+    const dropped: { file: DriveFile; hash: string; small: Buffer; gap: number }[] = [];
     for (const p of allPhotos) {
       if (photoMeta.size >= MAX_PHOTO_CANDIDATES) break;
-      const thumb = await getDriveThumbnail(p.id);
-      const small = thumb ? await smallJpeg(thumb) : null;
+      const small = await photoPreview(p);
       if (!small) continue;
       const hash = await dHash(small);
-      if (hash && keptHashes.some((h) => hashDistance(h, hash) <= NEAR_DUPLICATE_BITS)) continue;
+      if (hash && keptHashes.length) {
+        const gap = Math.min(...keptHashes.map((h) => hashDistance(h, hash)));
+        if (gap <= NEAR_DUPLICATE_BITS) {
+          dropped.push({ file: p, hash, small, gap });
+          continue;
+        }
+      }
       if (hash) keptHashes.push(hash);
       photoMeta.set(p.id, { file: p, hash });
       candidates.push({ kind: "photo", key: p.id, small });
+    }
+    // The rule is 3–10 photos. If the duplicate filter left fewer than 3 but
+    // the folder has more, add back the least-similar of the dropped shots.
+    // (Burst shots from one spot can fingerprint alike without being the same
+    // photo — Emma Stutzman, Ghost Max 4, 2026-11-16: 7 photos in, 2 kept.)
+    if (photoMeta.size < MIN_RECAP_PHOTOS && dropped.length) {
+      dropped.sort((a, b) => b.gap - a.gap);
+      for (const d of dropped) {
+        if (photoMeta.size >= MIN_RECAP_PHOTOS) break;
+        photoMeta.set(d.file.id, { file: d.file, hash: d.hash });
+        candidates.push({ kind: "photo", key: d.file.id, small: d.small });
+      }
     }
 
     const choice =
