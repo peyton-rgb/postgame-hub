@@ -53,6 +53,29 @@ export function consolidateCollabGroups(groups: CollabGroup[]): ConsolidatedColl
     bySet.get(k)!.push(g);
   }
 
+  // Fold a SUBSET team into the one team that contains it. A feed carousel posted
+  // by two teammates plus a reel posted by those two and a third is still one
+  // team — it should be one card with Feed / Reel tabs, not two cards. Only
+  // folds when exactly one other set strictly contains it AND that set has no
+  // post on the same platform already (so two distinct reels never collapse).
+  const idSet = (k: string) => new Set(k.split("|"));
+  for (const k of [...order]) {
+    const mine = idSet(k);
+    if (mine.size < 2) continue;
+    const myPlatforms = new Set(bySet.get(k)!.map((g) => g.platform));
+    const supersets = order.filter((o) => {
+      if (o === k) return false;
+      const other = idSet(o);
+      return other.size > mine.size && Array.from(mine).every((id) => other.has(id));
+    });
+    if (supersets.length !== 1) continue;
+    const target = supersets[0];
+    if (bySet.get(target)!.some((g) => myPlatforms.has(g.platform))) continue;
+    bySet.get(target)!.push(...bySet.get(k)!);
+    bySet.delete(k);
+    order.splice(order.indexOf(k), 1);
+  }
+
   const merged: CollabGroup[] = [];
   const idToCanonical: Record<string, string> = {};
   const membersByCanonical: Record<string, string[]> = {};
@@ -81,8 +104,15 @@ export function consolidateCollabGroups(groups: CollabGroup[]): ConsolidatedColl
       .sort(PLATFORM_ORDER);
     const rawUrlKeys = Array.from(new Set(members.flatMap((g) => g.rawUrlKeys)));
 
+    // The card's roster is the FULL team: when a subset post was folded in, the
+    // canonical member may not be the one listing everybody.
+    const fullTeam = members.reduce((a, b) => (b.athleteIds.length > a.athleteIds.length ? b : a));
+
     merged.push({
       ...canonical,
+      athleteIds: fullTeam.athleteIds,
+      athleteNames: fullTeam.athleteNames,
+      combinedFollowers: fullTeam.combinedFollowers,
       sources,
       rawUrlKeys,
       platformLabel: mergedPlatformLabel(sources),
