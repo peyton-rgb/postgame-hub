@@ -594,6 +594,10 @@ function findPostUrlColInPlatformNth(
     if (!hClean) continue;
     if (hClean.includes("rate")) continue;   // never a URL column
     if (hClean.includes("repost")) continue; // exclude Reposts ("repost" ⊃ "post")
+    // v2 template: every post group starts with a "Post Date" column, which also
+    // contains "post". Counting it made Post 2's URL resolve to Post 1's URL
+    // column, so every athlete looked like a collab with themselves.
+    if (hClean.includes("date")) continue;
     if (!hClean.includes("post")) continue;
     if (count === occurrence) return i;
     count++;
