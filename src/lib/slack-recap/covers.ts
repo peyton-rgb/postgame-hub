@@ -38,8 +38,44 @@ export interface CoverChoice {
   cover: number;
   /** Index (into the candidates, kind "photo") of the athlete's best photo, or null. */
   photo: number | null;
+  /** Candidate indexes (kind "photo") of the photos to use, best first, at most
+   *  MAX_RECAP_PHOTOS, no near-duplicates. Empty when there are no photos. */
+  photos: number[];
   /** True when the AI picked; false when this is the fallback. */
   judged: boolean;
+}
+
+/** Recap content rule (Peyton, 2026-11-16): 1 video + 3–10 of the best photos. */
+export const MIN_RECAP_PHOTOS = 3;
+export const MAX_RECAP_PHOTOS = 10;
+
+/**
+ * Perceptual "difference hash": a 64-bit fingerprint that barely changes
+ * between near-identical shots (burst frames, re-exports, light edits).
+ * Two photos whose hashes differ in ≤ NEAR_DUPLICATE_BITS bits count as the
+ * same picture.
+ */
+export const NEAR_DUPLICATE_BITS = 6;
+
+export async function dHash(buf: Buffer): Promise<string | null> {
+  try {
+    const px = await sharp(buf).rotate().grayscale().resize(9, 8, { fit: "fill" }).raw().toBuffer();
+    let bits = "";
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) bits += px[y * 9 + x] > px[y * 9 + x + 1] ? "1" : "0";
+    return BigInt("0b" + bits).toString(16).padStart(16, "0");
+  } catch {
+    return null;
+  }
+}
+
+export function hashDistance(a: string, b: string): number {
+  let x = BigInt("0x" + a) ^ BigInt("0x" + b);
+  let n = 0;
+  while (x) {
+    n += Number(x & BigInt(1));
+    x >>= BigInt(1);
+  }
+  return n;
 }
 
 let resolvedFfmpeg: string | null = null;
@@ -146,8 +182,8 @@ const PROMPT = (athlete: string, brand: string, n: number) =>
   `. The ${n} images are numbered in order. Each is either a still from the athlete's video or one of their photos (labelled).\n\n` +
   `Pick:\n` +
   `- "cover": the best cover for the video. It must show the athlete clearly — face visible, in focus, well lit — ideally holding or using the product or with the brand visible. Prefer a natural, flattering, expressive moment. Reject phone screen recordings, app screens, text cards, black or blurry frames, frames where the athlete is tiny, cut off or mid-blink, and frames dominated by caption text.\n` +
-  `- "photo": the best of the PHOTOS only by the same standard, or null if there are no photos.\n\n` +
-  `Reply with JSON only: {"cover": <number>, "photo": <number or null>, "reason": "<one short sentence>"}`;
+  `- "photos": the PHOTOS to show on the athlete's recap card, best first — up to ${MAX_RECAP_PHOTOS}. Use the same standard. Leave out near-duplicates (the same moment, pose or framing — keep only the best one), blurry or badly lit shots, and anything that isn't a real photo of the athlete. Fewer good photos beat padding with weak ones. [] if there are no photos.\n\n` +
+  `Reply with JSON only: {"cover": <number>, "photos": [<numbers>], "reason": "<one short sentence>"}`;
 
 /**
  * Ask the vision model to choose. Falls back to the first frame (or first
@@ -161,6 +197,7 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
   const fallback: CoverChoice = {
     cover: photoIdx[0] ?? frameIdx[Math.floor(frameIdx.length / 2)] ?? 0,
     photo: photoIdx[0] ?? null,
+    photos: photoIdx.slice(0, MAX_RECAP_PHOTOS),
     judged: false,
   };
   if (candidates.length === 0) return fallback;
@@ -178,15 +215,25 @@ export async function chooseCover(athlete: string, brand: string, candidates: Ca
 
   try {
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 200, messages: [{ role: "user", content }] });
+    const res = await client.messages.create({ model: COVER_MODEL, max_tokens: 400, messages: [{ role: "user", content }] });
     const text = res.content.map((b: any) => (b.type === "text" ? b.text : "")).join("");
     const json = JSON.parse(text.replace(/^[\s\S]*?\{/, "{").replace(/\}[\s\S]*$/, "}"));
     const cover = Number(json.cover) - 1;
-    const photo = json.photo == null ? null : Number(json.photo) - 1;
     if (!Number.isInteger(cover) || cover < 0 || cover >= candidates.length) return fallback;
-    const okPhoto = photo != null && photoIdx.includes(photo) ? photo : fallback.photo;
-    console.log(`[slack-recap/covers] ${athlete}: cover #${cover + 1}, photo ${okPhoto == null ? "-" : `#${okPhoto + 1}`} — ${json.reason || ""}`);
-    return { cover, photo: okPhoto, judged: true };
+    const picked: number[] = [];
+    for (const n of Array.isArray(json.photos) ? json.photos : json.photo != null ? [json.photo] : []) {
+      const i = Number(n) - 1;
+      if (photoIdx.includes(i) && !picked.includes(i)) picked.push(i);
+      if (picked.length >= MAX_RECAP_PHOTOS) break;
+    }
+    // Never fewer than MIN_RECAP_PHOTOS when the folder has that many: top up
+    // from the remaining (already de-duplicated) photos in folder order.
+    for (const i of photoIdx) {
+      if (picked.length >= Math.min(MIN_RECAP_PHOTOS, photoIdx.length)) break;
+      if (!picked.includes(i)) picked.push(i);
+    }
+    console.log(`[slack-recap/covers] ${athlete}: cover #${cover + 1}, photos [${picked.map((i) => i + 1).join(", ")}] — ${json.reason || ""}`);
+    return { cover, photo: picked[0] ?? null, photos: picked, judged: true };
   } catch (e: any) {
     console.warn(`[slack-recap/covers] AI pick failed for ${athlete}, using fallback:`, e?.message || e);
     return fallback;
