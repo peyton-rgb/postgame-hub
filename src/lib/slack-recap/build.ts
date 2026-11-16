@@ -9,7 +9,7 @@
 //                     tracker, set takeaways + hidden heroes (same helpers the
 //                     10-minute recap-intake job uses)
 //   phase "content" → for each athlete without media, find their Drive folder
-//                     and import one video + one photo (same storage + media
+//                     and import the latest video + 3–10 best photos (same storage + media
 //                     row shape as /api/drive/import). The video's cover and
 //                     the photo are chosen by AI (covers.ts): the athlete
 //                     clearly visible, ideally with the product. Time-boxed;
@@ -29,15 +29,25 @@ import {
   parseTrackerAthletes,
   toTipTapHtml,
 } from "@/lib/recap-intake";
-import { getCampaignDriveMedia, getDriveThumbnail, type DriveFile } from "@/lib/google-drive";
+import {
+  getCampaignDriveMedia,
+  getDriveClient,
+  getDriveThumbnail,
+  listAllMediaInAthleteFolder,
+  type DriveFile,
+} from "@/lib/google-drive";
+import { readTrackerContentFolders } from "@/lib/slack-recap/content-links";
 import { buildStoragePath, downloadAndUpload, removeUpload } from "@/lib/drive-import";
 import { extractDriveFolderId } from "@/lib/drive-url";
 import type { BuildSummary } from "@/lib/slack-recap/views";
 import {
   chooseCover,
   coverFrame,
+  dHash,
   frameCandidates,
+  hashDistance,
   localVideo,
+  NEAR_DUPLICATE_BITS,
   smallJpeg,
   type Candidate,
 } from "@/lib/slack-recap/covers";
@@ -61,8 +71,11 @@ export interface RecapRequestState {
   covers_done?: string[];
   /** Athlete ids the content phase has already tried (imported OR no match). */
   content_tried?: string[];
-  /** Drive folder id pasted into the request — where this build pulls content from. */
+  /** Drive folder id pasted into the request — the fallback place to look for content. */
   content_folder_id?: string | null;
+  /** athlete id → that athlete's content folder, read once from the tracker's
+   *  "Content Folder" column links. Preferred over folder-name matching. */
+  athlete_folders?: Record<string, string>;
   /** Last time a build chunk saved progress. The resume sweeper restarts a
    *  "building" request whose heartbeat has gone quiet. */
   heartbeat_at?: string;
@@ -225,8 +238,10 @@ function sizeOf(f: DriveFile): number {
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
-/** Photos considered as cover/photo candidates per athlete. */
-const MAX_PHOTO_CANDIDATES = 4;
+/** Photos shown to the AI per athlete (after near-duplicates are dropped). */
+const MAX_PHOTO_CANDIDATES = 16;
+/** Photos fingerprinted per athlete to find near-duplicates (Drive thumbnail each). */
+const MAX_PHOTOS_SCANNED = 40;
 
 const MEDIA_BUCKET = "campaign-media";
 
@@ -240,9 +255,16 @@ async function uploadJpeg(supabase: any, storagePath: string, buf: Buffer): Prom
   return supabase.storage.from(MEDIA_BUCKET).getPublicUrl(storagePath).data.publicUrl as string;
 }
 
+/** Newest first by Drive createdTime — "the latest version of their video". */
+function newestFirst(a: DriveFile, b: DriveFile): number {
+  return (Date.parse(b.createdTime || "") || 0) - (Date.parse(a.createdTime || "") || 0);
+}
+
 /**
- * Import one athlete's video + photo with an AI-chosen cover.
- * Returns how many media rows were created.
+ * Import one athlete's content per the recap rule: the latest video plus 3–10
+ * of their best photos, no near-duplicates. Photos are fingerprinted and
+ * near-identical shots dropped before the AI sees them; the AI then ranks the
+ * rest and picks the video's cover. Returns how many media rows were created.
  */
 async function importAthleteContent(
   supabase: any,
@@ -252,14 +274,15 @@ async function importAthleteContent(
   files: DriveFile[],
 ): Promise<number> {
   const ok = files.filter((f) => sizeOf(f) <= MAX_AUTO_IMPORT_BYTES);
-  const video = ok.find((f) => f.mimeType.startsWith("video/"));
-  const photos = ok.filter((f) => f.mimeType.startsWith("image/")).slice(0, MAX_PHOTO_CANDIDATES);
-  if (!video && photos.length === 0) return 0;
+  const video = ok.filter((f) => f.mimeType.startsWith("video/")).sort(newestFirst)[0];
+  const allPhotos = ok.filter((f) => f.mimeType.startsWith("image/")).sort(newestFirst).slice(0, MAX_PHOTOS_SCANNED);
+  if (!video && allPhotos.length === 0) return 0;
 
   let created = 0;
   let videoUpload: { publicUrl: string; storagePath: string } | null = null;
   let local: { path: string; cleanup: () => Promise<void> } | null = null;
   const candidates: Candidate[] = [];
+  const photoMeta = new Map<string, { file: DriveFile; hash: string | null }>();
 
   try {
     if (video) {
@@ -275,28 +298,44 @@ async function importAthleteContent(
         console.warn(`[slack-recap] stills failed for ${athlete.name}:`, e?.message || e);
       }
     }
-    for (const p of photos) {
+
+    // Fingerprint photos; keep one of each near-duplicate group.
+    const keptHashes: string[] = [];
+    for (const p of allPhotos) {
+      if (photoMeta.size >= MAX_PHOTO_CANDIDATES) break;
       const thumb = await getDriveThumbnail(p.id);
       const small = thumb ? await smallJpeg(thumb) : null;
-      if (small) candidates.push({ kind: "photo", key: p.id, small });
+      if (!small) continue;
+      const hash = await dHash(small);
+      if (hash && keptHashes.some((h) => hashDistance(h, hash) <= NEAR_DUPLICATE_BITS)) continue;
+      if (hash) keptHashes.push(hash);
+      photoMeta.set(p.id, { file: p, hash });
+      candidates.push({ kind: "photo", key: p.id, small });
     }
 
     const choice =
       candidates.length > 1
         ? await chooseCover(athlete.name.trim(), brand, candidates)
-        : { cover: 0, photo: candidates[0]?.kind === "photo" ? 0 : null, judged: false };
+        : {
+            cover: 0,
+            photo: candidates[0]?.kind === "photo" ? 0 : null,
+            photos: candidates[0]?.kind === "photo" ? [0] : [],
+            judged: false,
+          };
 
-    // The athlete's photo: the AI's pick, else the first photo in the folder.
-    const pickedPhotoId =
-      choice.photo != null && candidates[choice.photo]?.kind === "photo"
-        ? (candidates[choice.photo] as { key: string }).key
-        : photos[0]?.id;
-    const photoFile = photos.find((p) => p.id === pickedPhotoId);
-    let photoUrl: string | null = null;
-    if (photoFile) {
-      const storagePath = buildStoragePath(recapId, athlete.id, photoFile.name);
+    // The athlete's photos, best first. sort_order: video 0, photos 1..n.
+    const pickedIds = choice.photos
+      .map((i) => candidates[i])
+      .filter((c): c is Extract<Candidate, { kind: "photo" }> => c?.kind === "photo")
+      .map((c) => c.key);
+    const photoUrls = new Map<string, string>();
+    let order = 1;
+    for (const id of pickedIds) {
+      const meta = photoMeta.get(id);
+      if (!meta) continue;
+      const storagePath = buildStoragePath(recapId, athlete.id, meta.file.name);
       try {
-        const up = await downloadAndUpload(supabase, { fileId: photoFile.id, fileName: photoFile.name, storagePath });
+        const up = await downloadAndUpload(supabase, { fileId: id, fileName: meta.file.name, storagePath });
         const { error } = await supabase.from("media").insert({
           campaign_id: recapId,
           athlete_id: athlete.id,
@@ -304,19 +343,23 @@ async function importAthleteContent(
           file_url: up.publicUrl,
           thumbnail_url: up.publicUrl,
           is_video_thumbnail: false,
-          drive_file_id: photoFile.id,
+          drive_file_id: id,
+          sort_order: order,
+          phash: meta.hash,
         });
         if (error) {
           await removeUpload(supabase, storagePath);
           console.error(`[slack-recap] photo insert failed for ${athlete.name}:`, error.message);
         } else {
-          photoUrl = up.publicUrl;
+          photoUrls.set(id, up.publicUrl);
           created++;
+          order++;
         }
       } catch (e: any) {
         console.error(`[slack-recap] photo import failed for ${athlete.name}:`, e?.message || e);
       }
     }
+    const firstPhotoUrl = pickedIds.map((id) => photoUrls.get(id)).find(Boolean) ?? null;
 
     if (video && videoUpload) {
       // The video's cover: a full-size still at the chosen moment, or the
@@ -331,7 +374,7 @@ async function importAthleteContent(
             await coverFrame(local.path, c.t),
           );
         } else if (c?.kind === "photo") {
-          if (c.key === photoFile?.id && photoUrl) thumbnailUrl = photoUrl;
+          if (photoUrls.has(c.key)) thumbnailUrl = photoUrls.get(c.key)!;
           else {
             const thumb = await getDriveThumbnail(c.key);
             if (thumb) {
@@ -344,7 +387,7 @@ async function importAthleteContent(
       } catch (e: any) {
         console.warn(`[slack-recap] cover save failed for ${athlete.name}:`, e?.message || e);
       }
-      if (!thumbnailUrl) thumbnailUrl = photoUrl;
+      if (!thumbnailUrl) thumbnailUrl = firstPhotoUrl;
 
       const { error } = await supabase.from("media").insert({
         campaign_id: recapId,
@@ -354,6 +397,7 @@ async function importAthleteContent(
         thumbnail_url: thumbnailUrl,
         is_video_thumbnail: false,
         drive_file_id: video.id,
+        sort_order: 0,
       });
       if (error) {
         await removeUpload(supabase, videoUpload.storagePath);
@@ -423,25 +467,49 @@ export async function runContentPhase(
 
   const { data: row } = await supabase
     .from("campaign_recaps")
-    .select("settings, drive_folder_id, client_name")
+    .select("settings, drive_folder_id, client_name, tracker_url")
     .eq("id", recapId)
     .single();
+  const reqState = ((row as any)?.settings?.recap_request || {}) as Partial<RecapRequestState>;
   // The folder pasted into the request; older requests (before 2026-11-16)
   // saved it into drive_folder_id, so fall back to that.
-  const folderId = (((row as any)?.settings?.recap_request?.content_folder_id as string | undefined) ||
-    (row as any)?.drive_folder_id) as string | null;
+  const folderId = (reqState.content_folder_id || (row as any)?.drive_folder_id) as string | null;
   const brand = ((row as any)?.client_name as string | null) || "";
-  if (!folderId) return { done: true, imported, tried: Array.from(tried) };
 
   const [{ data: athletes }, { data: media }] = await Promise.all([
     supabase.from("athletes").select("id, name").eq("campaign_id", recapId),
     supabase.from("media").select("athlete_id").eq("campaign_id", recapId),
   ]);
+  const allAthletes = (athletes as { id: string; name: string }[]) || [];
   const hasMedia = new Set(((media as any[]) || []).map((m) => m.athlete_id).filter(Boolean));
-  const todo = ((athletes as { id: string; name: string }[]) || []).filter((a) => !hasMedia.has(a.id) && !tried.has(a.id));
+  const todo = allAthletes.filter((a) => !hasMedia.has(a.id) && !tried.has(a.id));
   if (todo.length === 0) return { done: true, imported, tried: Array.from(tried) };
 
-  const drive = await getCampaignDriveMedia(folderId);
+  // Each athlete's own folder, from the tracker's Content Folder links. Read
+  // once per build and kept on the request so later chunks skip the Sheets call.
+  let athleteFolders = reqState.athlete_folders;
+  if (!athleteFolders) {
+    const byName = await readTrackerContentFolders((row as any)?.tracker_url);
+    athleteFolders = {};
+    for (const a of allAthletes) {
+      const f = byName.get(normLoose(a.name));
+      if (f) athleteFolders[a.id] = f;
+    }
+    await writeRequestState(recapId, { athlete_folders: athleteFolders });
+  }
+
+  if (!folderId && Object.keys(athleteFolders).length === 0) return { done: true, imported, tried: Array.from(tried) };
+
+  // Folder-name fallback for athletes the tracker doesn't link. Listed lazily:
+  // when every athlete has a tracker link, the pasted folder is never scanned.
+  let drive: Awaited<ReturnType<typeof getCampaignDriveMedia>> | null = null;
+  const fallbackFiles = async (name: string): Promise<DriveFile[] | null> => {
+    if (!folderId) return null;
+    if (!drive) drive = await getCampaignDriveMedia(folderId);
+    const folder = drive.athletes.find((f) => folderMatches(f.folderName, name));
+    return folder ? folder.files : null;
+  };
+  const driveClient = getDriveClient();
 
   for (const athlete of todo) {
     if (Date.now() > deadline) return { done: false, imported, tried: Array.from(tried) };
@@ -455,9 +523,18 @@ export async function runContentPhase(
       .eq("campaign_id", recapId)
       .eq("athlete_id", athlete.id);
     if ((existing || 0) > 0) continue;
-    const folder = drive.athletes.find((f) => folderMatches(f.folderName, athlete.name));
-    if (!folder) continue;
-    imported += await importAthleteContent(supabase, recapId, brand, athlete, folder.files);
+    const linked = athleteFolders[athlete.id];
+    let files: DriveFile[] | null = null;
+    if (linked) {
+      try {
+        files = await listAllMediaInAthleteFolder(driveClient, linked);
+      } catch (e: any) {
+        console.warn(`[slack-recap] couldn't open ${athlete.name}'s linked folder ${linked}:`, e?.message || e);
+      }
+    }
+    if (!files || files.length === 0) files = await fallbackFiles(athlete.name);
+    if (!files || files.length === 0) continue;
+    imported += await importAthleteContent(supabase, recapId, brand, athlete, files);
   }
   return { done: true, imported, tried: Array.from(tried) };
 }
@@ -497,7 +574,7 @@ export async function runCoversPhase(recapId: string, alreadyDone: string[], dea
       const candidates: Candidate[] = [];
       local = await localVideo(v.file_url);
       candidates.push(...(await frameCandidates(local.path)));
-      const photos = rows.filter((m) => m.type === "image" && m.athlete_id && m.athlete_id === v.athlete_id).slice(0, MAX_PHOTO_CANDIDATES);
+      const photos = rows.filter((m) => m.type === "image" && m.athlete_id && m.athlete_id === v.athlete_id).slice(0, 4);
       for (const p of photos) {
         const res = await fetch(p.file_url, { cache: "no-store" }).catch(() => null);
         const small = res?.ok ? await smallJpeg(Buffer.from(await res.arrayBuffer())) : null;
