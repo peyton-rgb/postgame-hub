@@ -51,3 +51,19 @@ test("no box → resized only, never blind-cropped", async () => {
   const m = await sharp(out).metadata();
   assert.ok(Math.abs(m.width! / m.height! - 1000 / 1500) < 0.01);
 });
+
+import { parseAiJson } from "./covers.ts";
+
+test("AI reply with nested boxes, prose and a code fence parses whole", () => {
+  const reply =
+    'Here you go:\n```json\n{"cover": 3, "photos": [2, 5], "boxes": {"3": [0.2, 0.1, 0.7, 0.95], "2": [0.3, 0.2, 0.6, 0.9]}, "reason": "face visible"}\n```';
+  const j = parseAiJson(reply);
+  assert.equal(j.cover, 3);
+  assert.deepEqual(j.photos, [2, 5]);
+  assert.deepEqual(j.boxes["2"], [0.3, 0.2, 0.6, 0.9]);
+  assert.equal(j.reason, "face visible");
+});
+
+test("a reply with no JSON throws (so the build reports it)", () => {
+  assert.throws(() => parseAiJson("sorry, I can't help with that"));
+});
