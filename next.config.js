@@ -25,6 +25,7 @@ const nextConfig = {
     // Next's file tracing can't see through @ffmpeg-installer's dynamic require.
     outputFileTracingIncludes: {
       "/api/slack/recap/build": ["./node_modules/@ffmpeg-installer/linux-x64/**"],
+      "/api/slack/recap/set-cover": ["./node_modules/@ffmpeg-installer/linux-x64/**"],
     },
   },
   async rewrites() {
