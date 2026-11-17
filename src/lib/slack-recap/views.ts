@@ -343,8 +343,19 @@ export function reviewPublishedBlocks(name: string, publisherId: string, liveUrl
   ];
 }
 
-export function liveChannelBlocks(name: string, publisherId: string, liveUrl: string, linkText: string): any[] {
-  const when = new Date().toLocaleString("en-US", {
+/** A request made in the old #campaign-recaps flow, logged here after the fact. */
+export function legacyRequestBlocks(requesterId: string, name: string, requestedAt: Date): any[] {
+  const when = requestedAt.toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
+  return [
+    {
+      type: "section",
+      text: md(`🆕 *New recap request: ${name}*\nFrom <@${requesterId}> · submitted ${when} in the old #campaign-recaps channel · logged here`),
+    },
+  ];
+}
+
+export function liveChannelBlocks(name: string, publisherId: string, liveUrl: string, linkText: string, at?: Date): any[] {
+  const when = (at || new Date()).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
