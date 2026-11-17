@@ -86,6 +86,9 @@ async function saveFramedCopy(
   }
 }
 
+/** Photo types browsers can't show; the worker converts them to JPEG. */
+const NEEDS_WORKER_CONVERSION = /\.(heic|heif|cr2|cr3|nef|arw|dng|raf|orf|rw2|pef|srw)$/i;
+
 /** Files bigger than this aren't downloaded here (serverless memory/time).
  *  Videos over it go to the ffmpeg worker to be shrunk; photos over it are skipped. */
 const MAX_AUTO_IMPORT_BYTES = 150 * 1024 * 1024;
@@ -465,18 +468,23 @@ async function importAthleteContent(
       }
     }
     // 2) Find the athlete exactly with the worker's person detector, so every
-    //    crop is tight and centred on them. iPhone HEIC photos come back as
-    //    JPEG too (browsers can't show HEIC). If the detector can't be reached,
+    //    crop is tight and centred on them. iPhone HEIC and camera raw photos
+    //    come back as JPEG too (browsers can't show either). If the detector can't be reached,
     //    the AI's second, closer look is the fallback.
     const undetected: typeof uploaded = [];
     const personsById = new Map<string, Person[]>();
     for (const u of uploaded) {
       if (!u.buf) continue;
       let probe: Buffer = u.buf;
-      try {
-        probe = await sharp(u.buf).rotate().resize({ width: 1600, height: 1600, fit: "inside" }).jpeg({ quality: 85 }).toBuffer();
-      } catch {
-        // sharp can't read it (HEIC) — send the original; the worker converts it.
+      // iPhone HEIC and camera raw (.cr2 etc.) go to the worker as-is: it
+      // converts them and hands back a JPEG. sharp can half-read some raws
+      // (just the tiny embedded preview), so don't let it try.
+      if (!NEEDS_WORKER_CONVERSION.test(photoMeta.get(u.id)!.file.name)) {
+        try {
+          probe = await sharp(u.buf).rotate().resize({ width: 1600, height: 1600, fit: "inside" }).jpeg({ quality: 85 }).toBuffer();
+        } catch {
+          // sharp can't read it — send the original; the worker converts it.
+        }
       }
       const found = await detectPersons(probe);
       if (!found) {
@@ -490,7 +498,7 @@ async function importAthleteContent(
           await removeUpload(supabase, u.storagePath);
           Object.assign(u, { storagePath: jpgPath, publicUrl: url, buf: found.jpeg });
         } catch (e: any) {
-          console.warn(`[slack-recap] HEIC copy failed for ${athlete.name}:`, e?.message || e);
+          console.warn(`[slack-recap] converted-photo copy failed for ${athlete.name}:`, e?.message || e);
         }
       }
       personsById.set(u.id, found.persons as Person[]);
