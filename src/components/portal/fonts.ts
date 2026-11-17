@@ -1,4 +1,4 @@
-import { Anton, Arimo } from "next/font/google";
+export { anton, arimo } from "@/fonts";
 
 // Anton and Arimo are required by the design system but are NOT loaded by the
 // root layout (which carries Bebas Neue, Inter and JetBrains Mono). Loading
@@ -7,16 +7,4 @@ import { Anton, Arimo } from "next/font/google";
 //
 // Anton is for campaign titles and stat figures only. Arimo is body copy.
 
-export const anton = Anton({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-anton",
-  display: "swap",
-});
 
-export const arimo = Arimo({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-arimo",
-  display: "swap",
-});

@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Anton, Arimo, Bebas_Neue, JetBrains_Mono } from "next/font/google";
+import { bebasNeue, anton, arimo, jetbrainsMono as mono } from "@/fonts";
 import "./globals.css";
 import "@/styles/motion.css";
 import SiteNav from "@/components/SiteNav";
 import PageWrapper from "@/components/PageWrapper";
 
-const bebasNeue = Bebas_Neue({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-bebas",
-  display: "swap",
-});
 
 // The design system is FOUR fonts and this is where all four are loaded, so a
 // page never has to reach for a fifth or re-import one it already has.
@@ -30,24 +24,6 @@ const bebasNeue = Bebas_Neue({
 // Inter used to sit here as a fifth face, loaded on every public page in three
 // weights and used on exactly one. It is gone; its single consumer now takes
 // the body font.
-const anton = Anton({
-  weight: "400",            // Anton ships one weight only.
-  subsets: ["latin"],
-  variable: "--font-anton",
-  display: "swap",
-});
-const arimo = Arimo({
-  weight: ["400", "700"],   // 700 is the pull-quote cut.
-  subsets: ["latin"],
-  variable: "--font-arimo",
-  display: "swap",
-});
-const mono = JetBrains_Mono({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   // metadataBase lets the openGraph image below be set as a relative URL —
