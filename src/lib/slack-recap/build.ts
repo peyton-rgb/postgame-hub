@@ -955,7 +955,8 @@ const COVER_IMAGE_HOSTS = new Set(["at.adobe.com"]);
  * The image is decoded and re-encoded with sharp, so anything that isn't a
  * real image fails here rather than being stored.
  */
-export async function setCoverFromImage(mediaId: string, imageUrl: string): Promise<string> {
+/** Validate an edited-image link and download it as an upright JPEG. */
+async function fetchEditedImage(imageUrl: string): Promise<Buffer> {
   let parsed: URL;
   try {
     parsed = new URL(imageUrl);
@@ -965,16 +966,20 @@ export async function setCoverFromImage(mediaId: string, imageUrl: string): Prom
   if (parsed.protocol !== "https:" || !COVER_IMAGE_HOSTS.has(parsed.hostname)) {
     throw new Error(`image links must be https on ${Array.from(COVER_IMAGE_HOSTS).join(", ")}`);
   }
+  const res = await fetch(parsed.toString(), { redirect: "follow" });
+  if (!res.ok) throw new Error(`couldn't download the image (${res.status})`);
+  const raw = Buffer.from(await res.arrayBuffer());
+  if (raw.length > 25 * 1024 * 1024) throw new Error("image is over 25MB");
+  return sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer();
+}
+
+export async function setCoverFromImage(mediaId: string, imageUrl: string): Promise<string> {
   const supabase = createServiceSupabase();
   const { data: v } = await supabase.from("media").select("id, campaign_id, athlete_id, type").eq("id", mediaId).single();
   const video = v as { id: string; campaign_id: string; athlete_id: string | null; type: string } | null;
   if (!video || video.type !== "video") throw new Error("that media id isn't a video");
 
-  const res = await fetch(parsed.toString(), { redirect: "follow" });
-  if (!res.ok) throw new Error(`couldn't download the image (${res.status})`);
-  const raw = Buffer.from(await res.arrayBuffer());
-  if (raw.length > 25 * 1024 * 1024) throw new Error("image is over 25MB");
-  const jpeg = await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer();
+  const jpeg = await fetchEditedImage(imageUrl);
 
   const url = await uploadJpeg(
     supabase,
@@ -984,4 +989,58 @@ export async function setCoverFromImage(mediaId: string, imageUrl: string): Prom
   const { error } = await supabase.from("media").update({ thumbnail_url: url }).eq("id", video.id);
   if (error) throw new Error(error.message);
   return url;
+}
+
+/**
+ * Swap a recap photo for a converted/edited copy — e.g. an iPhone HEIC or a
+ * camera raw (.cr2) that browsers can't show. Saves the JPEG as the photo's
+ * file_url, re-frames the card copy (thumbnail_url) on the athlete with the
+ * person detector, and repoints any of that athlete's videos whose cover was
+ * the old file.
+ */
+export async function replacePhotoFromImage(
+  mediaId: string,
+  imageUrl: string,
+): Promise<{ file_url: string; thumbnail_url: string; videos_repointed: number }> {
+  const supabase = createServiceSupabase();
+  const { data: p } = await supabase
+    .from("media")
+    .select("id, campaign_id, athlete_id, type, file_url, thumbnail_url")
+    .eq("id", mediaId)
+    .single();
+  const photo = p as {
+    id: string; campaign_id: string; athlete_id: string | null; type: string;
+    file_url: string | null; thumbnail_url: string | null;
+  } | null;
+  if (!photo || photo.type !== "image") throw new Error("that media id isn't a photo");
+
+  const jpeg = await fetchEditedImage(imageUrl);
+  const folder = photo.athlete_id || "collab";
+  const stamp = Date.now();
+  const fileUrl = await uploadJpeg(supabase, buildStoragePath(photo.campaign_id, folder, `photo-${photo.id}-${stamp}.jpg`), jpeg);
+
+  // Frame the card copy on the athlete, the same way the build does.
+  const small = await sharp(jpeg).resize({ width: 1600, height: 1600, fit: "inside" }).jpeg({ quality: 85 }).toBuffer();
+  const found = await detectPersons(small);
+  const box = pickAthleteBox((found?.persons || []) as Person[]);
+  const thumbUrl =
+    (await saveFramedCopy(supabase, buildStoragePath(photo.campaign_id, folder, `framed-${photo.id}-${stamp}.jpg`), jpeg, box)) || fileUrl;
+
+  const { error } = await supabase.from("media").update({ file_url: fileUrl, thumbnail_url: thumbUrl }).eq("id", photo.id);
+  if (error) throw new Error(error.message);
+
+  // Videos whose cover pointed at the old (unviewable) file get the new card copy.
+  const old = [photo.file_url, photo.thumbnail_url].filter(Boolean) as string[];
+  let repointed = 0;
+  if (old.length) {
+    const { data: vids } = await supabase
+      .from("media")
+      .update({ thumbnail_url: thumbUrl })
+      .eq("campaign_id", photo.campaign_id)
+      .eq("type", "video")
+      .in("thumbnail_url", old)
+      .select("id");
+    repointed = vids?.length || 0;
+  }
+  return { file_url: fileUrl, thumbnail_url: thumbUrl, videos_repointed: repointed };
 }
