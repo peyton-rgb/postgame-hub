@@ -10,7 +10,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { brandMarkUrl } from "@/lib/admin/brand-marks";
+import { brandMarkFor } from "@/lib/admin/brand-marks";
 
 export interface PortalLinkRow {
   brand_id: string;
@@ -60,8 +60,8 @@ export function BrandMark({
   name: string | null;
   size?: number;
 }) {
-  // The prototype's brand icon wins over the full logo from the brands row.
-  src = brandMarkUrl(name) ?? src;
+  // Always the brand's square icon from Supabase (see lib/admin/brand-marks).
+  src = brandMarkFor(name, src);
   if (src) {
     return (
       <img
