@@ -8,9 +8,9 @@
 //
 //   Model: YOLOX-Tiny (Megvii, Apache-2.0), downloaded at image build time to
 //          /app/models/yolox_tiny.onnx (see Dockerfile).
-//   Input: any image ffmpeg can read. iPhone HEIC files are converted to JPEG
-//          first with heif-convert, and the JPEG is handed back to the caller
-//          (browsers can't show HEIC either).
+//   Input: any image ffmpeg can read. iPhone HEIC files (heif-convert) and
+//          camera raw files (dcraw) are converted to JPEG first, and the JPEG is
+//          handed back to the caller (browsers can't show either).
 //   Output: { width, height, persons: [{ box: [l,t,r,b] (0–1), score }], jpeg? }
 // ─────────────────────────────────────────────────────────────
 
@@ -18,6 +18,7 @@ const { execFile } = require("child_process");
 const fs = require("fs/promises");
 const os = require("os");
 const path = require("path");
+const heicConvert = require("heic-convert");
 
 const SIZE = 416; // YOLOX-Tiny input
 const STRIDES = [8, 16, 32];
@@ -52,6 +53,34 @@ function isHeic(buf) {
   return ["heic", "heix", "hevc", "hevx", "heim", "heis", "mif1", "msf1"].includes(brand);
 }
 
+/**
+ * Camera raw photo? Canon CR2 has "CR" after its TIFF header; other raws are
+ * TIFF-based too, so for those dcraw is asked (dcraw -i exits 0 only on raw).
+ */
+async function isCameraRaw(buf, file) {
+  if (buf.length < 12) return false;
+  const tiff = buf.toString("hex", 0, 4) === "49492a00" || buf.toString("hex", 0, 4) === "4d4d002a";
+  if (!tiff) return false;
+  if (buf.toString("ascii", 8, 10) === "CR") return true;
+  try {
+    await run("dcraw", ["-i", file]);
+    return true;
+  } catch {
+    return false; // a plain TIFF — ffmpeg reads it directly
+  }
+}
+
+/** Raw → upright JPEG. Half-size decode (still ~2700px on a 20MP body). */
+async function rawToJpeg(file, dir) {
+  const tiff = path.join(dir, "raw.tiff");
+  // -w camera white balance, -h half size, -T TIFF out, -c to stdout. dcraw
+  // applies the camera's orientation flag itself, so portraits come out upright.
+  await fs.writeFile(tiff, await run("dcraw", ["-c", "-w", "-h", "-T", file]));
+  const out = path.join(dir, "converted.jpg");
+  await run(FFMPEG, ["-v", "error", "-y", "-i", tiff, "-q:v", "2", out]);
+  return out;
+}
+
 async function imageSize(file) {
   const out = (await run(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", file]))
     .toString()
@@ -71,7 +100,7 @@ function iou(a, b) {
 }
 
 /**
- * People in an image (Buffer). HEIC is converted to JPEG first; the JPEG is
+ * People in an image (Buffer). HEIC and camera raw are converted to JPEG first; the JPEG is
  * returned as `jpeg` so the caller can store a browser-friendly copy.
  */
 async function detectPersons(input) {
@@ -82,7 +111,19 @@ async function detectPersons(input) {
     await fs.writeFile(file, input);
     if (isHeic(input)) {
       const out = path.join(dir, "converted.jpg");
-      await run("heif-convert", ["-q", "92", file, out]);
+      try {
+        await run("heif-convert", ["-q", "92", file, out]);
+        jpeg = await fs.readFile(out);
+      } catch (e) {
+        // Some iPhone files (portrait-mode depth maps) trip libheif's checks;
+        // heic-convert (libheif compiled to wasm) reads them fine.
+        console.warn("[detect] heif-convert failed, using heic-convert:", e.message);
+        jpeg = Buffer.from(await heicConvert({ buffer: input, format: "JPEG", quality: 0.92 }));
+        await fs.writeFile(out, jpeg);
+      }
+      file = out;
+    } else if (await isCameraRaw(input, file)) {
+      const out = await rawToJpeg(file, dir);
       jpeg = await fs.readFile(out);
       file = out;
     }
@@ -146,4 +187,4 @@ async function detectPersons(input) {
   }
 }
 
-module.exports = { detectPersons, isHeic };
+module.exports = { detectPersons, isHeic, isCameraRaw };

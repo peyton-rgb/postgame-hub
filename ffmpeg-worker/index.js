@@ -613,10 +613,10 @@ app.post("/recap-video", authenticate, async (req, res) => {
 });
 
 // -- POST /detect-person -------------------------------------------------------
-// Body: the raw image bytes (any type; iPhone HEIC is converted). Returns the
+// Body: the image bytes (any type; iPhone HEIC and camera raw are converted). Returns the
 // people in it so the Hub can crop recap photos tight on the athlete:
 //   { width, height, persons: [{ box: [l,t,r,b] (0–1), score }], jpeg: base64|null }
-// `jpeg` is set only when the input was HEIC — a browser-friendly copy.
+// `jpeg` is set only when the input was HEIC or raw — a browser-friendly copy.
 const { detectPersons } = require("./detect");
 app.post(
   "/detect-person",
