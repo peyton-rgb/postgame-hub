@@ -38,7 +38,9 @@ function matchAthlete(
   return matches.length === 1 ? matches[0] : null;
 }
 
-const SCORING_MODEL = "claude-sonnet-5";
+// "claude-sonnet-5" isn't a model this account can call; claude-sonnet-4-6 is the one
+// the recap cover picker and pitch generator use successfully.
+const SCORING_MODEL = "claude-sonnet-4-6";
 
 // Thumbnails come back from Drive as PNG or JPEG. Anything else is not
 // something the vision API will take, and is worth failing loudly on rather

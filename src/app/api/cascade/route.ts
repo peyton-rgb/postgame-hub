@@ -183,7 +183,7 @@ Respond with only this JSON:
 }`;
 
   const claudeResponse = await client.messages.create({
-    model: "claude-sonnet-5",
+    model: "claude-sonnet-4-6", // "claude-sonnet-5" isn't callable on this account
     max_tokens: 2048,
     system: claudeSystemPrompt,
     messages: [
