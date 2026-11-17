@@ -21,17 +21,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { Anton } from "next/font/google";
+import { anton } from "@/fonts";
 
 // Anton is used for exactly one thing: the brand-name fallback shown when a
 // client has no usable logo. 38 of 130 brands are in that position, so this is
 // a real path rather than a defensive branch.
-const anton = Anton({
-  subsets: ["latin"],
-  weight: ["400"],
-  variable: "--font-anton",
-  display: "swap",
-});
 
 // 4MB chunks (a multiple of 256KB per Google's resumable protocol, and under
 // Vercel's ~4.5MB request-body cap since each chunk is relayed through our own

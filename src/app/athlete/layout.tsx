@@ -9,7 +9,7 @@
 // ============================================================
 
 import type { Viewport } from "next";
-import { Anton } from "next/font/google";
+import { anton } from "@/fonts";
 import "./athlete.css";
 
 // Scope the mobile viewport to the athlete app so real iPhones render at
@@ -25,12 +25,6 @@ export const viewport: Viewport = {
 // (display) is already loaded globally as --font-bebas by the root layout;
 // Arial is the body face. We attach Anton's CSS variable to the athlete
 // wrapper so it never leaks into the marketing site or staff dashboard.
-const anton = Anton({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-anton",
-  display: "swap",
-});
 
 export default function AthleteRootLayout({
   children,

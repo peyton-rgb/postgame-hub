@@ -10,7 +10,7 @@
 // ============================================================
 
 import Link from "next/link";
-import { Inter, Poppins } from "next/font/google";
+import { poppins, inter } from "@/fonts";
 import { requireAdmin } from "@/lib/admin/auth";
 import { createServiceSupabase } from "@/lib/supabase-server";
 import { PageHeader, ErrorNote } from "@/components/admin/ui";
@@ -21,8 +21,6 @@ import { saveOptinPage } from "../../actions";
 export const dynamic = "force-dynamic";
 
 // The athlete app's faces, scoped to the preview via CSS variables.
-const poppins = Poppins({ weight: ["600", "700", "800"], subsets: ["latin"], variable: "--font-poppins", display: "swap" });
-const inter = Inter({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 const POSTGAME_BRAND_ID = "7a0e28e9-d62f-427d-a207-cd22596fcf50";
 

@@ -8,7 +8,7 @@
 // ============================================================
 
 import type { Viewport } from "next";
-import { Inter, Poppins } from "next/font/google";
+import { poppins, inter } from "@/fonts";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -17,8 +17,6 @@ export const viewport: Viewport = {
   themeColor: "#0C0C10",
 };
 
-const poppins = Poppins({ weight: ["600", "700", "800"], subsets: ["latin"], variable: "--font-poppins", display: "swap" });
-const inter = Inter({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export default function JoinLayout({ children }: { children: React.ReactNode }) {
   return (
