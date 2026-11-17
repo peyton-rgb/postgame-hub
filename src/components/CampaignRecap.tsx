@@ -1784,6 +1784,7 @@ export function CampaignRecap({
                 </div>
                 <div className="space-y-0">
                   {[
+                    { label: "Total Posts", value: String(stats.tiktokPosts), raw: stats.tiktokPosts, col: "tiktok_post_url" },
                     { label: "Views", value: fmt(stats.tiktok.views), raw: stats.tiktok.views, col: "tiktok_views" },
                     { label: "Likes", value: fmt(stats.tiktok.likes), raw: stats.tiktok.likes, col: "tiktok_likes" },
                     { label: "Comments", value: fmt(stats.tiktok.comments), raw: stats.tiktok.comments, col: "tiktok_comments" },
