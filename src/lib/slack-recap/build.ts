@@ -945,3 +945,43 @@ export async function setCoverFromStill(mediaId: string, seconds: number): Promi
     await local.cleanup().catch(() => {});
   }
 }
+
+// Image hosts set-cover will pull a finished cover from. Adobe's short
+// presigned links are where edited covers (generative fill, grading) land.
+const COVER_IMAGE_HOSTS = new Set(["at.adobe.com"]);
+
+/**
+ * Make an already-edited image a video's cover, as-is (no re-cropping).
+ * The image is decoded and re-encoded with sharp, so anything that isn't a
+ * real image fails here rather than being stored.
+ */
+export async function setCoverFromImage(mediaId: string, imageUrl: string): Promise<string> {
+  let parsed: URL;
+  try {
+    parsed = new URL(imageUrl);
+  } catch {
+    throw new Error("that image link isn't a valid URL");
+  }
+  if (parsed.protocol !== "https:" || !COVER_IMAGE_HOSTS.has(parsed.hostname)) {
+    throw new Error(`image links must be https on ${Array.from(COVER_IMAGE_HOSTS).join(", ")}`);
+  }
+  const supabase = createServiceSupabase();
+  const { data: v } = await supabase.from("media").select("id, campaign_id, athlete_id, type").eq("id", mediaId).single();
+  const video = v as { id: string; campaign_id: string; athlete_id: string | null; type: string } | null;
+  if (!video || video.type !== "video") throw new Error("that media id isn't a video");
+
+  const res = await fetch(parsed.toString(), { redirect: "follow" });
+  if (!res.ok) throw new Error(`couldn't download the image (${res.status})`);
+  const raw = Buffer.from(await res.arrayBuffer());
+  if (raw.length > 25 * 1024 * 1024) throw new Error("image is over 25MB");
+  const jpeg = await sharp(raw).rotate().jpeg({ quality: 90 }).toBuffer();
+
+  const url = await uploadJpeg(
+    supabase,
+    buildStoragePath(video.campaign_id, video.athlete_id || "collab", `cover-${video.id}-edited-${Date.now()}.jpg`),
+    jpeg,
+  );
+  const { error } = await supabase.from("media").update({ thumbnail_url: url }).eq("id", video.id);
+  if (error) throw new Error(error.message);
+  return url;
+}
