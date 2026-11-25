@@ -44,7 +44,7 @@
 import { randomUUID } from 'crypto';
 import { createLiveServiceSupabase } from '@/lib/supabase-server';
 import { PLATFORMS, type Platform } from '@/lib/post-link';
-import { mirrorLinkToSheet } from '@/lib/posting-sheet-sync';
+import { mirrorLinkToSheet, mirrorStoryToDriveAndSheet } from '@/lib/posting-sheet-sync';
 import {
   BRAND_LOGO_COLUMNS,
   pickBrandLogo,
@@ -807,6 +807,10 @@ export async function writeStoryScreenshot(
       ? { ok: false, status: 503, error: 'Screenshot upload opens soon. Text us your screenshot for now.' }
       : { ok: false, status: 500, error: tooBig };
   }
+
+  // Copy it into the athlete's Drive folder and put that link in the
+  // campaign's sheet, if it has one. Best effort — never fails the save.
+  await mirrorStoryToDriveAndSheet(state.id, { bytes: file.bytes, mime, ext });
 
   await maybeMarkPosted(state.id);
   return { ok: true };

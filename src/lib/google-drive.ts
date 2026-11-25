@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { google, drive_v3 } from "googleapis";
+import { Readable } from "stream";
 import { getGoogleAuth } from "./google-auth";
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -723,7 +724,6 @@ export async function uploadFile(
   parentFolderId: string,
 ): Promise<{ id: string; url: string }> {
   const drive = getDriveClient();
-  const { Readable } = await import("stream");
 
   const res = await drive.files.create({
     supportsAllDrives: true,
