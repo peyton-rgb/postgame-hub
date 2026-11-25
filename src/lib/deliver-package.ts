@@ -44,6 +44,7 @@
 import { randomUUID } from 'crypto';
 import { createLiveServiceSupabase } from '@/lib/supabase-server';
 import { PLATFORMS, type Platform } from '@/lib/post-link';
+import { mirrorLinkToSheet } from '@/lib/posting-sheet-sync';
 import {
   BRAND_LOGO_COLUMNS,
   pickBrandLogo,
@@ -705,6 +706,10 @@ export async function writeLink(
       .is('live_url', null);
     if (error) console.error('deliver: live_url mirror failed', error);
   }
+
+  // Copy the link into the campaign's tracking sheet, if it has one.
+  // Best effort — never fails the athlete's save.
+  await mirrorLinkToSheet(state.id, platform, url);
 
   await maybeMarkPosted(state.id);
   return { ok: true };
