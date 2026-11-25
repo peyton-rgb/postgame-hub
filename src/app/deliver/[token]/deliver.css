@@ -365,3 +365,109 @@
   font-family:var(--tk-text);font-size:14px;color:var(--ink2);text-decoration:underline;text-underline-offset:3px;
 }
 .dv .tk-done{margin:24px 16px 0}
+
+/* ================= post: one step at a time (Nov 2026) ================= */
+.dv .tk-bar{position:relative}
+.dv .tk-back{
+  position:absolute;left:6px;top:10px;width:44px;height:44px;border:0;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;color:#07070A;
+}
+.dv .tk-back svg{width:18px;height:18px}
+.dv .tk-head{padding:20px 16px 0;display:flex;flex-direction:column;gap:12px}
+.dv .tk-titlerow{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.dv .tk-title{margin:0;font-family:var(--tk-display);font-weight:700;font-size:34px;line-height:1;text-transform:uppercase}
+.dv .tk-when{font-family:var(--tk-display);font-weight:500;font-size:18px;text-transform:uppercase;color:var(--orange);white-space:nowrap}
+.dv .tk-bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.dv .tk-bars span{height:4px;border-radius:2px;background:rgba(250,248,245,.14)}
+.dv .tk-bars span.on{background:var(--orange)}
+.dv .tk-steplabel,.dv .tk-flabel{font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+.dv .tk-note{font-size:15px;line-height:1.5;color:var(--ink2);padding:12px 14px;border-radius:12px;background:rgba(250,248,245,.05);border:1px solid var(--line)}
+
+.dv .tk-donelist{margin:14px 16px 0;border-radius:16px;background:rgba(250,248,245,.04);border:1px solid rgba(250,248,245,.10);overflow:hidden}
+.dv .tk-donerow{
+  width:100%;display:flex;align-items:center;gap:12px;padding:12px 16px;min-height:52px;
+  background:none;border:0;border-bottom:1px dashed rgba(250,248,245,.18);color:var(--ink);cursor:pointer;text-align:left;
+}
+.dv .tk-donerow:last-child{border-bottom:0}
+.dv .tk-dtick{width:26px;height:26px;border-radius:999px;background:rgba(250,248,245,.14);display:flex;align-items:center;justify-content:center;flex:none}
+.dv .tk-dtick svg{width:13px;height:13px}
+.dv .tk-dnum{width:26px;text-align:center;font-family:var(--tk-display);font-weight:700;font-size:18px;color:var(--ink2);flex:none}
+.dv .tk-dname{flex:1;font-family:var(--tk-display);font-weight:500;font-size:18px;text-transform:uppercase;color:var(--ink2)}
+.dv .tk-dlabel{font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.dv .tk-donerow.todo .tk-dlabel{color:var(--accent)}
+
+.dv .tk-card{margin:10px 16px 0;border-radius:18px;background:rgba(250,248,245,.07);border:1px solid rgba(250,248,245,.14)}
+.dv .tk-chead{padding:16px 16px 14px}
+.dv .tk-chead h2{margin:0;font-family:var(--tk-display);font-weight:700;font-size:28px;line-height:1;text-transform:uppercase}
+.dv .tk-chead p{font-size:15px;color:var(--ink2);margin-top:6px}
+.dv .tk-cpad{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.dv .tk-tear{border-top:1px dashed rgba(250,248,245,.25);padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.dv .tk-small{font-size:14px;line-height:1.5;color:var(--ink2)}
+
+.dv .tk-media{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dv .tk-mtile{position:relative;aspect-ratio:9/16;border-radius:12px;overflow:hidden;background:#000;border:1px solid var(--line2)}
+.dv .tk-mtile video,.dv .tk-mtile img{width:100%;height:100%;object-fit:cover;display:block}
+.dv .tk-mtile .onway{height:100%;padding:12px}
+.dv .tk-mlabel{
+  position:absolute;left:8px;bottom:8px;padding:2px 8px;border-radius:6px;background:rgba(7,7,10,.75);
+  font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+}
+
+.dv .tk-ghost{
+  display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:48px;padding:0 14px;
+  border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:var(--ink);cursor:pointer;
+  font-family:var(--tk-text);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;text-decoration:none;
+}
+.dv .tk-ghost svg{width:16px;height:16px}
+.dv .tk-ghost.small{width:auto;min-height:44px}
+.dv .tk-ghost.done{border-color:rgba(74,222,128,.5);color:var(--green-ink)}
+.dv .tk-ghost:disabled{opacity:.45;cursor:default}
+.dv .tk-caption{font-size:16px;line-height:1.55;white-space:pre-wrap}
+.dv .tk-caption.pending{color:var(--ink2)}
+.dv .tk-card .tk-go{width:100%}
+.dv .tk-go:disabled{opacity:.45;cursor:default}
+
+.dv .tk-callout{
+  border-radius:12px;background:rgba(215,63,9,.10);border:1px solid rgba(215,63,9,.45);
+  padding:12px 14px;font-size:15px;line-height:1.5;color:rgba(250,248,245,.9);
+}
+.dv .tk-walk{
+  width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;cursor:pointer;text-align:left;
+  background:rgba(215,63,9,.10);border:1.5px solid var(--orange);color:var(--ink);font-family:var(--tk-text);
+}
+.dv .tk-play{width:36px;height:36px;border-radius:999px;background:var(--orange);display:flex;align-items:center;justify-content:center;flex:none;color:var(--ink)}
+.dv .tk-walk-t{flex:1;display:flex;flex-direction:column;gap:2px}
+.dv .tk-walk-h{font-family:var(--tk-display);font-weight:500;font-size:19px;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
+.dv .tk-walk-s{font-size:14px;color:var(--ink2)}
+.dv .tk-walk-c{color:var(--orange);width:16px;height:16px}
+
+/* the numbered taps, ticket style */
+.dv .tk-card .quick{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.dv .tk-card .quick li{display:flex;gap:12px;font-size:16px;line-height:1.5}
+.dv .tk-card .quick .n{
+  font-family:var(--tk-display);font-weight:700;font-size:17px;color:var(--orange);width:24px;flex:none;
+  background:none;height:auto;border:0;border-radius:0;display:block;
+}
+
+/* link + screenshot fields inside the tear */
+.dv .tk-tear .flabel{font-weight:600;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);margin:0}
+.dv .tk-tear .linkfield input{border-radius:12px;font-size:16px}
+.dv .tk-tear .btn.primary{
+  min-height:52px;border-radius:12px;font-family:var(--tk-text);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+}
+.dv .tk-tear .btn.ghost{border-radius:12px;font-family:var(--tk-text);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+
+.dv .tk-later{padding:22px 16px 0;display:flex;flex-direction:column;gap:10px}
+.dv .tk-laterlist{border-radius:16px;background:rgba(250,248,245,.04);border:1px solid rgba(250,248,245,.10);overflow:hidden}
+.dv .tk-laterrow{
+  width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:52px;
+  background:none;border:0;border-bottom:1px dashed rgba(250,248,245,.18);color:var(--ink);cursor:pointer;text-align:left;
+}
+.dv .tk-laterrow:last-child{border-bottom:0}
+.dv .tk-laterrow:disabled{cursor:default;opacity:.7}
+.dv .tk-lnum{width:20px;font-family:var(--tk-display);font-weight:700;font-size:18px;color:var(--ink2);flex:none}
+.dv .tk-lnum svg{width:14px;height:14px;color:var(--green-ink)}
+.dv .tk-lname{flex:1;font-family:var(--tk-display);font-weight:500;font-size:20px;text-transform:uppercase}
+.dv .tk-lsub{font-size:13px;color:var(--ink2);text-align:right}
+.dv .tk-stuck{margin:20px 16px 0;text-align:center;font-size:14px;color:var(--ink2)}
+.dv .tk-finished .tk-chead h2{color:var(--green-ink)}
