@@ -189,7 +189,8 @@ export type DeliverView = {
     hashtag: string | null;
     ftcNote: string | null;
   };
-  logos: { postgame: string | null; brand: string | null };
+  /** postgameOnLight: the dark-ink Postgame mark, for the white top bar. */
+  logos: { postgame: string | null; postgameOnLight: string | null; brand: string | null };
   posts: DeliverPost[];
   /** The post to open on: the first not yet posted, else the last one. */
   activePostId: string;
@@ -236,7 +237,7 @@ function stripAt(handle: string | null | undefined): string | null {
 async function loadLogos(
   supabase: ReturnType<typeof createLiveServiceSupabase>,
   brandId: string | null
-): Promise<{ postgame: string | null; brand: string | null; brandName: string | null }> {
+): Promise<{ postgame: string | null; postgameOnLight: string | null; brand: string | null; brandName: string | null }> {
   const ids = brandId ? [POSTGAME_BRAND_ID, brandId] : [POSTGAME_BRAND_ID];
   const [{ data: brands }, { data: logoRows }] = await Promise.all([
     supabase
@@ -259,7 +260,10 @@ async function loadLogos(
     null;
   const brand = brandId ? plateLogo(brandId, byId.get(brandId), rowsFor(brandId)) : null;
 
-  return { postgame, brand, brandName: brandId ? byId.get(brandId)?.name?.trim() || null : null };
+  // The white top bar needs the opposite: Postgame's dark-ink file.
+  const postgameOnLight = byId.get(POSTGAME_BRAND_ID)?.logo_dark_url || null;
+
+  return { postgame, postgameOnLight, brand, brandName: brandId ? byId.get(brandId)?.name?.trim() || null : null };
 }
 
 // True when a logo's measured ink is light enough to vanish on the off-white
@@ -505,7 +509,7 @@ export async function loadDeliverView(token: string): Promise<DeliverView | null
       hashtag: campaign?.hashtag ?? null,
       ftcNote: campaign?.ftc_note ?? row.ftc_note,
     },
-    logos: { postgame: logos.postgame, brand: logos.brand },
+    logos: { postgame: logos.postgame, postgameOnLight: logos.postgameOnLight, brand: logos.brand },
     posts,
     activePostId,
   };
@@ -597,7 +601,7 @@ export async function loadPostgameLogo(): Promise<string | null> {
  */
 export async function loadBrandLockup(
   brandId: string | null
-): Promise<{ postgame: string | null; brand: string | null; brandName: string | null }> {
+): Promise<{ postgame: string | null; postgameOnLight: string | null; brand: string | null; brandName: string | null }> {
   return loadLogos(createLiveServiceSupabase(), brandId);
 }
 

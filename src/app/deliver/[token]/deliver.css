@@ -315,3 +315,53 @@
 .dv .xrow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .dv .xrow .pcell img{border-radius:8px}
 .dv .xrow .pnumber{min-width:20px;height:20px;font-size:12px;left:4px;top:4px}
+
+/* ================= home: the game-day ticket (Nov 2026) =================
+   Oswald for the big type, Inter for everything read. Full-bleed white
+   logo bar, the post's own photo with the athlete's name, then the ticket. */
+.dv .wrap.tk-wrap{padding:0 0 48px}
+.dv .tk{
+  --tk-display:var(--font-oswald),"Oswald","Arial Narrow",sans-serif;
+  --tk-text:var(--font-inter),"Inter",Arial,sans-serif;
+  font-family:var(--tk-text);
+}
+.dv .tk-bar{height:64px;background:#FFFFFF;display:flex;align-items:center;justify-content:center;gap:16px}
+.dv .tk-pg{height:20px;width:auto}
+.dv .tk-brand{height:42px;width:auto}
+.dv .tk-x{font-weight:600;font-size:13px;color:#8A8681}
+
+.dv .tk-photo{position:relative;height:390px;background:#131317;overflow:hidden}
+.dv .tk-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%}
+.dv .tk-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,7,10,0) 0%,rgba(7,7,10,0) 45%,#07070A 100%)}
+.dv .tk-name{
+  position:absolute;left:20px;right:20px;bottom:14px;margin:0;
+  font-family:var(--tk-display);font-weight:700;font-size:44px;line-height:.95;color:var(--ink);
+}
+
+.dv .tk-ticket{margin:10px 16px 0;border-radius:18px;background:rgba(250,248,245,.07);border:1px solid rgba(250,248,245,.14)}
+.dv .tk-main{padding:16px}
+.dv .tk-date{font-family:var(--tk-display);font-weight:700;font-size:40px;line-height:1;text-transform:uppercase}
+.dv .tk-sub{font-size:15px;color:var(--ink2);margin-top:6px}
+.dv .tk-stub{
+  border-top:1px dashed rgba(250,248,245,.25);padding:12px 10px;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;text-align:center;
+}
+.dv .tk-stub span{
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2);
+}
+.dv .tk-stub span.done{color:var(--green-ink)}
+.dv .tk-stub svg{width:12px;height:12px;flex:none}
+
+.dv .tk-actions{padding:14px 16px 0;display:flex;flex-direction:column;gap:12px}
+.dv .tk-go{
+  min-height:56px;border:0;border-radius:12px;background:var(--orange);color:var(--ink);cursor:pointer;
+  font-family:var(--tk-text);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;
+}
+.dv .tk-go:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.dv .tk-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:14px;color:var(--ink2)}
+.dv .tk-next{
+  min-height:44px;padding:0;background:none;border:0;cursor:pointer;text-align:left;
+  font-family:var(--tk-text);font-size:14px;color:var(--ink2);text-decoration:underline;text-underline-offset:3px;
+}
+.dv .tk-done{margin:24px 16px 0}

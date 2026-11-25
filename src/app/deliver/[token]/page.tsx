@@ -15,11 +15,16 @@
 // ============================================================
 
 import type { Metadata } from 'next';
+import { Inter, Oswald } from 'next/font/google';
 import { loadDeliverView, loadPostgameLogo } from '@/lib/deliver-package';
 import DeliverPage from './DeliverPage';
 import './deliver.css';
 
 export const dynamic = 'force-dynamic';
+
+// The ticket design's two faces, loaded for this page only.
+const oswald = Oswald({ subsets: ['latin'], weight: ['500', '700'], variable: '--font-oswald', display: 'swap' });
+const inter = Inter({ subsets: ['latin'], weight: ['400', '600', '700'], variable: '--font-inter', display: 'swap' });
 
 // Same title for valid and invalid tokens, and never indexed.
 export const metadata: Metadata = {
@@ -54,5 +59,9 @@ export default async function Page({ params }: { params: { token: string } }) {
     );
   }
 
-  return <DeliverPage token={params.token} view={view} />;
+  return (
+    <div className={`${oswald.variable} ${inter.variable}`}>
+      <DeliverPage token={params.token} view={view} />
+    </div>
+  );
 }
