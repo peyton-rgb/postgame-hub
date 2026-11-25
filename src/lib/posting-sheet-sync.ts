@@ -58,8 +58,8 @@ const SHEET_SYNC: Record<string, SheetTarget> = {
     tab: 'Athlete Posting',
     handleHeader: 'IG Handle',
     columns: {
-      reel: { instagram: 'IG Reel', tiktok: 'TikTok #1' },
-      feed: { instagram: 'IG Feed', tiktok: 'TikTok #2' },
+      reel: { instagram: 'IG Reel', tiktok: 'TikTok #1', x: 'X/Twitter #1' },
+      feed: { instagram: 'IG Feed', tiktok: 'TikTok #2', x: 'X/Twitter #2' },
     },
     storyColumns: { reel: 'IG Story #1', feed: 'IG Story #2' },
     storyDrive: {
