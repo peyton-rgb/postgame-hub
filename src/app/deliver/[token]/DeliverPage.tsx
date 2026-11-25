@@ -55,14 +55,6 @@ const WALKTHROUGH_KEY = /^[a-z0-9-]{1,80}$/;
 const SHOT_HANDLE = 'raisingcanes';
 
 const TASK_COUNT = 6;
-const STEP_NAMES = [
-  'Save your files',
-  'Copy your caption',
-  'Post it on Instagram',
-  'Share it to your Story',
-  'Post it on TikTok',
-  'Post it on X',
-];
 
 // --- helpers ---------------------------------------------------------------
 
@@ -265,12 +257,6 @@ const hasDate = (p: DeliverPost) => !!p.date;
 const CHECK = (
   <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M3 8.5l3.2 3.2L13 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-const CLOCK = (
-  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <circle cx="8" cy="8" r="6.2" stroke="currentColor" strokeWidth="1.6" />
-    <path d="M8 4.8V8l2.2 1.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
 const CHEVRON = (
@@ -490,16 +476,6 @@ function ShotViewer({
   );
 }
 
-function HelpBox() {
-  // Wording unchanged from the shipped page.
-  return (
-    <div className="help">
-      <p>
-        Date doesn&apos;t work, or stuck on a step? Reply to the text this link came in, <b>before</b> you post.
-      </p>
-    </div>
-  );
-}
 
 // ============================================================
 // HOME — board 7
@@ -636,50 +612,7 @@ function Home({
 // POST — boards 8 and 9
 // ============================================================
 
-type StepState = 'done' | 'current' | 'todo' | 'locked';
 
-function StepRow({
-  n,
-  title,
-  line,
-  state,
-  open,
-  onToggle,
-  children,
-}: {
-  n: number;
-  title: string;
-  line: string | null;
-  state: StepState;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  const locked = state === 'locked';
-  return (
-    <div className={`srow ${state}${open ? ' open' : ''}`}>
-      <button
-        type="button"
-        className="shead"
-        onClick={onToggle}
-        disabled={locked}
-        aria-expanded={open}
-        aria-controls={`step-${n}`}
-      >
-        <span className="circle" aria-hidden="true">{state === 'done' ? CHECK : n}</span>
-        <span className="stext">
-          <span className="st">{title}</span>
-          {line && <span className="ss">{line}</span>}
-        </span>
-      </button>
-      {open && !locked && (
-        <div className="sbody" id={`step-${n}`}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ---- one platform's link (steps 3, 5, 6) -----------------------------------
 
@@ -1002,7 +935,7 @@ function Taps({ items }: { items: string[] }) {
     <ol className="quick">
       {items.map((html, i) => (
         <li key={i}>
-          <span className="n">{i + 1}</span>
+          <span className="n">{String(i + 1).padStart(2, '0')}</span>
           <span dangerouslySetInnerHTML={{ __html: html }} />
         </li>
       ))}
@@ -1069,55 +1002,54 @@ function PostScreen({
   const igTaps = (walk?.quick_steps?.[igKey] ?? fallbackQuickSteps(igKey, who)).map(personalise);
   const shots = walk && walk.platform === igKey ? walk : null;
 
-  // ---- step state ----
-  // Steps 1–2: this browser's ticks. Steps 3–6: what the server has.
+  // ---- step state: five screens, one at a time ----
+  // 0 Grab your post (save + caption: this browser's ticks), then one screen
+  // per place, done when the SERVER has the link or screenshot.
   const links = post.links ?? {};
   const story = post.storyScreenshot?.url;
   const fourIn = !!links.instagram && !!story && !!links.tiktok && !!links.x;
   const posted = post.status === 'posted' || fourIn;
-  const done = [
-    ticks[0] || posted,
-    ticks[1] || posted,
-    !!links.instagram,
-    !!story,
-    !!links.tiktok,
-    !!links.x,
+  const igName = feed ? 'IG Feed' : 'IG Reel';
+  const NAMES = ['Grab your post', igName, 'Story Repost', 'TikTok', 'X'];
+  const SUBS = [
+    feed ? 'Photos + caption' : 'Video + cover + caption',
+    'Post + paste link',
+    'Share + screenshot',
+    'Post + paste link',
+    'Post + paste link',
   ];
-  const locked = [false, false, undated, undated, undated, undated];
-  const current = done.findIndex((d, i) => !d && !locked[i]);
-  const doneCount = done.filter(Boolean).length;
-  // 'auto' = open whichever step is current. Ticks load from localStorage
-  // after the first render, so a step chosen on mount would be stale; 'auto'
-  // follows them until the athlete taps a row or presses a button.
-  const [openSel, setOpenSel] = useState<number | null | 'auto'>('auto');
-  const open = openSel === 'auto' ? (current >= 0 ? current : null) : openSel;
-  useEffect(() => {
-    setOpenSel('auto'); // a different post: back to its current step
-  }, [post.postId]);
-  const setOpen = (v: number | null) => setOpenSel(v);
+  const sDone = [(ticks[0] && ticks[1]) || posted, !!links.instagram, !!story, !!links.tiktok, !!links.x];
+  const sLocked = [false, undated, undated, undated, undated];
+  const current = sDone.findIndex((d, i) => !d && !sLocked[i]);
+  const STEPS = NAMES.length;
 
-  /** Open the next step that still needs doing after step i (i is now done). */
-  const openAfter = (i: number, doneNow: boolean[]) => {
-    const nxt = doneNow.findIndex((d, j) => j > i && !d && !locked[j]);
-    const any = nxt >= 0 ? nxt : doneNow.findIndex((d, j) => !d && !locked[j]);
-    setOpen(any >= 0 ? any : null);
+  // 'auto' follows the first step still to do (ticks load after mount).
+  const [sel, setSel] = useState<number | null | 'auto'>('auto');
+  useEffect(() => setSel('auto'), [post.postId]);
+  const shown = sel === 'auto' ? (current >= 0 ? current : fourIn ? null : 0) : sel;
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [shown]);
+
+  /** After step i, go to the next step still to do (or the finished card). */
+  const goAfter = (i: number, doneNow: boolean[]) => {
+    const nxt = doneNow.findIndex((d, j) => j > i && !d && !sLocked[j]);
+    const any = nxt >= 0 ? nxt : doneNow.findIndex((d, j) => !d && !sLocked[j]);
+    setSel(any >= 0 ? any : doneNow.every(Boolean) ? null : 'auto');
   };
-  /** Steps 1–2: tick in this browser, then move on. */
-  const advance = (i: number) => {
-    setTick(i, true);
-    openAfter(i, done.map((d, j) => (j === i ? true : d)));
-  };
-  /** Steps 3–6: the server answered; take its view, then move on. */
+  /** Steps 2–5: the server answered; take its view, then move on. */
   const serverSaved = (i: number) => (next: DeliverView) => {
     onServerView(next);
     const p = next.posts.find((x) => x.postId === post.postId);
     const l = p?.links ?? {};
-    const doneNow = [done[0], done[1], !!l.instagram, !!p?.storyScreenshot, !!l.tiktok, !!l.x];
+    const doneNow = [sDone[0], !!l.instagram, !!p?.storyScreenshot, !!l.tiktok, !!l.x];
     doneNow[i] = true;
-    openAfter(i, doneNow);
+    goAfter(i, doneNow);
   };
-  const stateOf = (i: number): StepState =>
-    done[i] ? 'done' : locked[i] ? 'locked' : i === current ? 'current' : 'todo';
+  const open = (i: number) => {
+    if (sLocked[i] && !sDone[i]) return;
+    setSel(i);
+  };
 
   // ---- step 1: save ----
   const videoSlot = post.files.video;
@@ -1158,7 +1090,7 @@ function PostScreen({
       setShowSingles(true);
       setSaveNote('Save them one at a time with the two buttons below.');
     } else if (how === 'failed') setSaveNote('Couldn’t save them together. Tap and hold each one to save it.');
-    if (how === 'shared' || how === 'downloaded') advance(0);
+    if (how === 'shared' || how === 'downloaded') setTick(0, true);
   }
 
   /** One file saved from the per-file links; both saved ticks the step. */
@@ -1167,7 +1099,7 @@ function PostScreen({
     const c = which === 'cover' ? true : savedCover || !coverSlot;
     if (which === 'video') setSavedVideo(true);
     else setSavedCover(true);
-    if (v && c) advance(0);
+    if (v && c) setTick(0, true);
   }
 
   // ---- step 2: caption ----
@@ -1181,10 +1113,8 @@ function PostScreen({
     if (!caption) return;
     await copyText(caption);
     setCopied(true);
-    setTimeout(() => {
-      setCopied(false);
-      advance(1);
-    }, 1400);
+    setTick(1, true);
+    setTimeout(() => setCopied(false), 1400);
   }
   useEffect(() => {
     if (!tagCopied) return;
@@ -1199,274 +1129,242 @@ function PostScreen({
       ? `Next up: your ${shortLabel(nextPost)}. It goes up ${nextPost.dateLabel}.`
       : `Next up: your ${shortLabel(nextPost)}. We'll text you its date.`
     : "That's everything for now.";
-
-  // ---- step lines ----
-  const DONE_LINES = [
-    feed ? 'Photos saved' : 'Video and cover saved',
-    'Caption copied',
-    feed ? 'Post up · link saved' : 'Reel posted · link saved',
-    'Story screenshot sent',
-    'TikTok posted · link saved',
-    'X post up · link saved',
-  ];
-  const TODO_LINES = [
-    feed ? (photos.length ? `${photos.length} photos` : 'Photos on their way') : 'Video + cover photo',
-    'Same caption everywhere',
-    feed ? 'Carousel + link' : 'Reel + link',
-    'Share + send a screenshot',
-    feed ? 'Same photos + link' : 'Same video + link',
-    feed ? 'Photos 1–4 + link' : 'Same video + link',
-  ];
-  const lines: (string | null)[] = TODO_LINES.map((todo, i) => {
-    const st = stateOf(i);
-    if (st === 'done') return DONE_LINES[i];
-    if (st === 'locked') return 'Opens once your date is set';
-    if (i === 0 && feed && photos.length) return 'A carousel: post them together, in this order';
-    if (st === 'current') return null;
-    return todo;
-  });
-
-  const toggle = (i: number) => {
-    if (locked[i] && !done[i]) return;
-    setOpen(open === i ? null : i);
-  };
-  const stepName = (i: number) => (i === 0 && feed ? 'Save your photos' : STEP_NAMES[i]);
   const xPhotos = photos.slice(0, 4);
 
+  const walkButton = (
+    <button
+      type="button"
+      className="tk-walk"
+      aria-expanded={showShots}
+      onClick={() => setShowShots((v) => !v)}
+    >
+      <span className="tk-play" aria-hidden="true">
+        <svg width="12" height="14" viewBox="0 0 10 12"><path d="M1.5 1l7.5 5-7.5 5z" fill="currentColor" /></svg>
+      </span>
+      <span className="tk-walk-t">
+        <span className="tk-walk-h">{showShots ? 'Hide the walkthrough' : 'Walk me through it'}</span>
+        <span className="tk-walk-s">Stuck on a step? See every tap on screen.</span>
+      </span>
+      <span className="tk-walk-c">{CHEVRON}</span>
+    </button>
+  );
+
+  const doneRow = (i: number) => (
+    <button type="button" key={i} className="tk-donerow" onClick={() => open(i)}>
+      <span className="tk-dtick">{CHECK}</span>
+      <span className="tk-dname">{NAMES[i]}</span>
+      <span className="tk-dlabel">Done</span>
+    </button>
+  );
+
   return (
-    <>
-      <header className="topbar">
-        <button type="button" className="backlink" onClick={onBack}>
+    <div className="tk">
+      <header className="tk-bar">
+        <button type="button" className="tk-back" onClick={onBack} aria-label="Back to all posts">
           {BACK}
-          All posts
         </button>
-        {logos.brand && (
-          <span className="plate">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logos.brand} alt={campaign.brandName ?? ''} />
-          </span>
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {logos.postgameOnLight && <img className="tk-pg" src={logos.postgameOnLight} alt="Postgame" />}
+        {logos.postgameOnLight && logos.brand && <span className="tk-x">×</span>}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {logos.brand && <img className="tk-brand" src={logos.brand} alt={campaign.brandName ?? ''} />}
       </header>
 
-      <h1 className="posttitle">Your {shortLabel(post)}</h1>
-
-      {undated ? (
-        <div className="datebox">
-          <span className="ic">{CLOCK}</span>
-          <div>
-            <div className="t">Date coming soon.</div>
-            <p>
-              We&apos;ll text you when it&apos;s set. Don&apos;t post it yet, but you can save your{' '}
-              {feed ? 'photos' : 'files'} now.
-            </p>
-          </div>
+      <div className="tk-head">
+        <div className="tk-titlerow">
+          <h1 className="tk-title">Your {shortLabel(post)}</h1>
+          <span className="tk-when">{undated ? 'Date TBD' : days === 0 ? 'Today' : ticketDate(post)}</span>
         </div>
-      ) : (
+        <div className="tk-bars" aria-hidden="true">
+          {sDone.map((d, i) => (
+            <span key={i} className={d || i === shown ? 'on' : ''} />
+          ))}
+        </div>
+        <div className="tk-steplabel">
+          {shown === null ? `All ${STEPS} done` : `Step ${shown + 1} of ${STEPS}`}
+        </div>
+        {undated && (
+          <p className="tk-note">
+            Date coming soon. We&apos;ll text you when it&apos;s set. Don&apos;t post yet, but you can grab your{' '}
+            {feed ? 'photos' : 'files'} now.
+          </p>
+        )}
+        {!undated && post.dateConditional && (
+          <p className="tk-note">Only post if {athlete.school ?? 'your team'} wins that day. Any time after the win works.</p>
+        )}
+      </div>
+
+      {/* steps before the open one, collapsed */}
+      {shown !== null && shown > 0 && (
+        <div className="tk-donelist">{Array.from({ length: shown }, (_, i) => i).map((i) => (sDone[i] ? doneRow(i) : (
+          <button type="button" key={i} className="tk-donerow todo" onClick={() => open(i)}>
+            <span className="tk-dnum">{i + 1}</span>
+            <span className="tk-dname">{NAMES[i]}</span>
+            <span className="tk-dlabel">Not yet</span>
+          </button>
+        )))}</div>
+      )}
+
+      {shown === null && (
         <>
-          <div className="dateline">
-            <span className="ic">{CLOCK}</span>
-            {days === 0 ? `Post today · ${post.dateLabel}` : `Post on ${post.dateLabel}`}
-          </div>
-          {post.dateConditional ? (
-            <div className="datebox cond">
-              <span className="ic">{CLOCK}</span>
-              <p>
-                Only post if {athlete.school ?? 'your team'} wins that day. Any time after the win works.
-              </p>
+          <div className="tk-donelist">{sDone.map((_, i) => doneRow(i))}</div>
+          <section className="tk-card tk-finished" role="status">
+            <div className="tk-chead">
+              <h2>All {STEPS} are up</h2>
+              <p>Thanks, {firstName}. We got your Instagram, TikTok and X links and your Story screenshot. {nextLine}</p>
             </div>
-          ) : (
-            <p className="datesub">Any time that day works.</p>
-          )}
+            <div className="tk-cpad">
+              <button type="button" className="tk-go" onClick={onBack}>
+                Back to your posts
+              </button>
+            </div>
+          </section>
         </>
       )}
 
-      <div className="places4">
-        <div className="pchips" aria-label="Where it goes">
-          {['Instagram', 'Story', 'TikTok', 'X'].map((name) => (
-            <span key={name}>{name}</span>
-          ))}
-        </div>
-        <p className="note">{feed ? 'One post' : 'One video'}, four places, all the same day.</p>
-      </div>
-
-      {fourIn ? (
-        <div className="finished" role="status">
-          <div className="t">
-            <span className="tick">{CHECK}</span>
-            All 4 are up. Thanks, {firstName}.
+      {/* ---- 1 · grab your post ---- */}
+      {shown === 0 && (
+        <section className="tk-card">
+          <div className="tk-chead">
+            <h2>Grab your post</h2>
+            <p>{feed ? 'Save your photos, then copy the caption.' : 'Save the video and cover, then copy the caption.'}</p>
           </div>
-          <p>We got your Instagram, TikTok and X links and your Story screenshot. {nextLine}</p>
-        </div>
-      ) : (
-        <div className="progress">
-          <div className="prow-l">
-            <b>{current >= 0 ? `Step ${current + 1} of ${TASK_COUNT}` : `${doneCount} of ${TASK_COUNT} done`}</b>
-            <span>{current < 0 ? 'Waiting for your date' : stepName(current)}</span>
-          </div>
-          <div className="segs six" aria-hidden="true">
-            {done.map((d, i) => (
-              <span key={i} className={d ? 'done' : i === current ? 'current' : ''} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="steps">
-        {/* ---- 1 · save ---- */}
-        <StepRow
-          n={1}
-          title={feed && photos.length ? `Save your ${photos.length} photos` : feed ? 'Save your photos' : 'Save your files'}
-          line={lines[0]}
-          state={stateOf(0)}
-          open={open === 0}
-          onToggle={() => toggle(0)}
-        >
-          {feed ? (
-            photos.length ? (
-              <div className="pgrid">
-                {photos.map((p, i) => (
-                  <figure className="pcell" key={`${p.position}-${p.url}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={`Photo ${i + 1}`} />
-                    <span className="pnumber">{i + 1}</span>
-                  </figure>
-                ))}
-              </div>
-            ) : (
-              <div className="onway">
-                <b>Your photos are on their way.</b>
-                <span>Waiting on {brand}&apos;s approval. They appear here on their own.</span>
-              </div>
-            )
-          ) : (
-            <div className="tiles">
-              <div className="tile">
-                {videoSlot ? (
-                  // The cover as poster, so the tile isn't a black box while
-                  // the (large) video loads.
-                  <video
-                    className="media"
-                    src={videoSlot}
-                    poster={coverSlot ?? undefined}
-                    controls
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <div className="onway">
-                    <b>On its way.</b>
-                    <span>Waiting on {brand}&apos;s approval.</span>
+          <div className="tk-cpad">
+            {feed ? (
+              photos.length ? (
+                <>
+                  <div className="pgrid">
+                    {photos.map((ph, i) => (
+                      <figure className="pcell" key={`${ph.position}-${ph.url}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={ph.url} alt={`Photo ${i + 1}`} />
+                        <span className="pnumber">{i + 1}</span>
+                      </figure>
+                    ))}
                   </div>
-                )}
-                <div className="tt">Video</div>
-                <div className="ts">This is your post</div>
-              </div>
-              <div className="tile">
-                {coverSlot ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img className="media" src={coverSlot} alt="" />
-                ) : (
-                  <div className="onway">
-                    <b>On its way.</b>
-                    <span>Waiting on {brand}&apos;s approval.</span>
-                  </div>
-                )}
-                <div className="tt">Cover photo</div>
-                <div className="ts">Goes on the Reel</div>
-              </div>
-            </div>
-          )}
-          <button
-            type="button"
-            className={`btn ${done[0] ? 'done' : 'primary'}`}
-            disabled={!filesReady || saving}
-            onClick={saveStepFiles}
-          >
-            {DOWNLOAD}
-            {saving
-              ? 'Preparing…'
-              : done[0]
-                ? 'Saved ✓ · Save again'
-                : feed
-                  ? photos.length
-                    ? `Save all ${photos.length} photos`
-                    : 'Save all photos'
-                  : 'Save both to Photos'}
-          </button>
-          {saveNote && <p className="note" role="status">{saveNote}</p>}
-          {!feed && showSingles && (
-            <div className="singles">
-              {videoSlot && (
-                <a
-                  className={`btn small ${savedVideo ? 'done' : 'ghost'}`}
-                  href={downloadHref(videoSlot, fileName(athlete.name, 'video', videoSlot))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  onClick={() => savedOne('video')}
-                >
-                  {savedVideo ? 'Video saved ✓' : 'Save video'}
-                </a>
-              )}
-              {coverSlot && (
-                <a
-                  className={`btn small ${savedCover ? 'done' : 'ghost'}`}
-                  href={downloadHref(coverSlot, fileName(athlete.name, 'cover', coverSlot))}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download
-                  onClick={() => savedOne('cover')}
-                >
-                  {savedCover ? 'Cover saved ✓' : 'Save cover'}
-                </a>
-              )}
-            </div>
-          )}
-          {!feed && <p className="note">The photo is the Reel&apos;s cover, not a separate post.</p>}
-        </StepRow>
-
-        {/* ---- 2 · caption ---- */}
-        <StepRow
-          n={2}
-          title="Copy your caption"
-          line={lines[1]}
-          state={stateOf(1)}
-          open={open === 1}
-          onToggle={() => toggle(1)}
-        >
-          <div className="capcard">
-            {caption ? (
-              <p className="captext">{caption}</p>
+                  <p className="tk-small">A carousel: post them together, in this order.</p>
+                </>
+              ) : (
+                <div className="onway">
+                  <b>Your photos are on their way.</b>
+                  <span>Waiting on {brand}&apos;s approval. They appear here on their own.</span>
+                </div>
+              )
             ) : (
-              <p className="captext pending">Your caption is on its way. It&apos;ll appear here once it&apos;s approved.</p>
+              <div className="tk-media">
+                <div className="tk-mtile">
+                  {videoSlot ? (
+                    <video
+                      src={videoSlot}
+                      poster={coverSlot ?? undefined}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <div className="onway">
+                      <b>On its way.</b>
+                      <span>Waiting on {brand}&apos;s approval.</span>
+                    </div>
+                  )}
+                  <span className="tk-mlabel">Video</span>
+                </div>
+                <div className="tk-mtile">
+                  {coverSlot ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={coverSlot} alt="" />
+                  ) : (
+                    <div className="onway">
+                      <b>On its way.</b>
+                      <span>Waiting on {brand}&apos;s approval.</span>
+                    </div>
+                  )}
+                  <span className="tk-mlabel">Cover</span>
+                </div>
+              </div>
             )}
+            <button
+              type="button"
+              className={`tk-ghost${ticks[0] ? ' done' : ''}`}
+              disabled={!filesReady || saving}
+              onClick={saveStepFiles}
+            >
+              {DOWNLOAD}
+              {saving
+                ? 'Preparing…'
+                : ticks[0]
+                  ? 'Saved ✓ · Save again'
+                  : feed
+                    ? photos.length
+                      ? `Save all ${photos.length} photos`
+                      : 'Save all photos'
+                    : 'Save both'}
+            </button>
+            {saveNote && <p className="tk-small" role="status">{saveNote}</p>}
+            {!feed && showSingles && (
+              <div className="singles">
+                {videoSlot && (
+                  <a
+                    className={`tk-ghost${savedVideo ? ' done' : ''}`}
+                    href={downloadHref(videoSlot, fileName(athlete.name, 'video', videoSlot))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    onClick={() => savedOne('video')}
+                  >
+                    {savedVideo ? 'Video saved ✓' : 'Save video'}
+                  </a>
+                )}
+                {coverSlot && (
+                  <a
+                    className={`tk-ghost${savedCover ? ' done' : ''}`}
+                    href={downloadHref(coverSlot, fileName(athlete.name, 'cover', coverSlot))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    onClick={() => savedOne('cover')}
+                  >
+                    {savedCover ? 'Cover saved ✓' : 'Save cover'}
+                  </a>
+                )}
+              </div>
+            )}
+            {!feed && <p className="tk-small">The photo is the Reel&apos;s cover, not a separate post.</p>}
           </div>
-          <button
-            type="button"
-            className={`btn ${copied ? 'done' : 'primary'}`}
-            disabled={!caption}
-            onClick={copyCaption}
-          >
-            {COPY}
-            {copied ? 'Copied ✓' : 'Copy caption'}
-          </button>
-          {caption && (
-            <p className="note">
-              Use this same caption on Instagram, TikTok and X.
-              {captionHasTag ? ' The tag and hashtag are already in it.' : ''}
-            </p>
-          )}
-          {caption && !captionHasTag && campaign.tagHandle && (
-            <>
-              <p className="note">Paste it exactly, then tag this account too.</p>
+
+          <div className="tk-tear">
+            <div className="tk-flabel">Your caption</div>
+            {caption ? (
+              <p className="tk-caption">{caption}</p>
+            ) : (
+              <p className="tk-caption pending">Your caption is on its way. It&apos;ll appear here once it&apos;s approved.</p>
+            )}
+            <button
+              type="button"
+              className={`tk-ghost${copied || ticks[1] ? ' done' : ''}`}
+              disabled={!caption}
+              onClick={copyCaption}
+            >
+              {COPY}
+              {copied ? 'Copied ✓' : 'Copy caption'}
+            </button>
+            {caption && (
+              <p className="tk-small">
+                Use this same caption on Instagram, TikTok and X.
+                {captionHasTag ? ' The tag and hashtag are already in it.' : ''}
+              </p>
+            )}
+            {caption && !captionHasTag && campaign.tagHandle && (
               <div className="tagrow">
                 <div>
-                  <div className="tl">Tag this account</div>
+                  <div className="tl">Tag this account too</div>
                   <div className="tv">@{campaign.tagHandle}</div>
                 </div>
                 <button
                   type="button"
-                  className={`btn small ${tagCopied ? 'done' : 'ghost'}`}
+                  className={`tk-ghost small${tagCopied ? ' done' : ''}`}
                   onClick={async () => {
                     await copyText(`@${campaign.tagHandle}`);
                     setTagCopied(true);
@@ -1475,159 +1373,209 @@ function PostScreen({
                   {tagCopied ? 'Copied ✓' : 'Copy'}
                 </button>
               </div>
-            </>
-          )}
-        </StepRow>
+            )}
+            <button
+              type="button"
+              className="tk-go"
+              onClick={() => {
+                setTick(0, true);
+                setTick(1, true);
+                if (undated) onBack();
+                else goAfter(0, [true, sDone[1], sDone[2], sDone[3], sDone[4]]);
+              }}
+            >
+              {undated ? 'Done for now' : `Next · ${igName}`}
+            </button>
+          </div>
+        </section>
+      )}
 
-        {/* ---- 3 · Instagram ---- */}
-        <StepRow
-          n={3}
-          title="Post it on Instagram"
-          line={lines[2]}
-          state={stateOf(2)}
-          open={open === 2}
-          onToggle={() => toggle(2)}
-        >
-          <Taps items={igTaps} />
-          {campaign.ftcNote && (
-            <div className="dontskip">
-              <div className="t">Don&apos;t skip</div>
-              <p>{campaign.ftcNote}</p>
+      {/* ---- 2 · Instagram ---- */}
+      {shown === 1 && (
+        <section className="tk-card">
+          <div className="tk-chead">
+            <h2>Post your {feed ? 'IG Feed post' : 'IG Reel'}</h2>
+            <p>About 3 minutes in the Instagram app.</p>
+          </div>
+          <div className="tk-cpad">
+            <Taps items={igTaps} />
+            {campaign.ftcNote && (
+              <div className="tk-callout">
+                <b>Don&apos;t skip this.</b> {campaign.ftcNote}
+              </div>
+            )}
+            {shots && walkButton}
+            {shots && showShots && (
+              <ShotViewer
+                walk={shots}
+                base={walkBase}
+                personalise={personalise}
+                storageKey={`pg-deliver:${token}:${post.postId}:shot`}
+                onClose={() => setShowShots(false)}
+              />
+            )}
+          </div>
+          <div className="tk-tear">
+            <LinkField
+              token={token}
+              postId={post.postId}
+              platform="instagram"
+              label={`Paste your ${shortLabel(post)}'s link`}
+              placeholder={feed ? 'instagram.com/p/…' : 'instagram.com/reel/…'}
+              helper={
+                <>
+                  On your {feed ? 'post' : 'Reel'}: tap <b>···</b> → <b>Copy link</b>.
+                </>
+              }
+              buttonLabel="Save link · Next"
+              saved={links.instagram}
+              onSaved={serverSaved(1)}
+            />
+            {links.instagram && (
+              <button type="button" className="tk-go" onClick={() => goAfter(1, sDone)}>
+                Next
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ---- 3 · Story ---- */}
+      {shown === 2 && (
+        <section className="tk-card">
+          <div className="tk-chead">
+            <h2>Share it to your Story</h2>
+            <p>About 1 minute. Same {feed ? 'post' : 'Reel'}, on your Story.</p>
+          </div>
+          <div className="tk-cpad">
+            <Taps items={storyTaps(feed, who)} />
+            <div className="tk-callout">
+              <b>Why a screenshot?</b> Stories disappear after 24 hours, so the screenshot is how we show {brand} it
+              went up.
             </div>
-          )}
-          {shots ? (
-            <>
+          </div>
+          <div className="tk-tear">
+            <StoryUpload token={token} postId={post.postId} saved={story} onSaved={serverSaved(2)} />
+            {story && (
+              <button type="button" className="tk-go" onClick={() => goAfter(2, sDone)}>
+                Next
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ---- 4 · TikTok ---- */}
+      {shown === 3 && (
+        <section className="tk-card">
+          <div className="tk-chead">
+            <h2>Post it on TikTok</h2>
+            <p>About 3 minutes. Same {feed ? 'photos' : 'video'}, same caption.</p>
+          </div>
+          <div className="tk-cpad">
+            <Taps items={tiktokTaps(feed, who, photos.length)} />
+            <div className="tk-callout">
+              <b>Don&apos;t skip 04.</b> TikTok requires the brand content label on paid posts.
+            </div>
+          </div>
+          <div className="tk-tear">
+            <LinkField
+              token={token}
+              postId={post.postId}
+              platform="tiktok"
+              label="Paste your TikTok's link"
+              placeholder={feed ? 'tiktok.com/@you/photo/…' : 'tiktok.com/@you/video/…'}
+              helper={
+                <>
+                  On your TikTok: tap <b>Share</b> → <b>Copy link</b>.
+                </>
+              }
+              buttonLabel="Save link · Next"
+              saved={links.tiktok}
+              onSaved={serverSaved(3)}
+            />
+            {links.tiktok && (
+              <button type="button" className="tk-go" onClick={() => goAfter(3, sDone)}>
+                Next
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* ---- 5 · X ---- */}
+      {shown === 4 && (
+        <section className="tk-card">
+          <div className="tk-chead">
+            <h2>Post it on X</h2>
+            <p>About 1 minute. Same {feed ? 'photos' : 'video'}, same caption.</p>
+          </div>
+          <div className="tk-cpad">
+            <Taps items={xTaps(feed)} />
+            {feed && xPhotos.length > 0 && (
+              <>
+                <div className="xrow">
+                  {xPhotos.map((ph, i) => (
+                    <figure className="pcell" key={`x-${ph.position}-${ph.url}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={ph.url} alt={`Photo ${i + 1}`} />
+                      <span className="pnumber">{i + 1}</span>
+                    </figure>
+                  ))}
+                </div>
+                {photos.length >= 5 && <p className="tk-small">X allows 4 photos. Use photos 1–4.</p>}
+              </>
+            )}
+          </div>
+          <div className="tk-tear">
+            <LinkField
+              token={token}
+              postId={post.postId}
+              platform="x"
+              label="Paste your X post's link"
+              placeholder="x.com/you/status/…"
+              helper={
+                <>
+                  On your post: tap <b>Share</b> → <b>Copy link</b>.
+                </>
+              }
+              buttonLabel="Save link · Finish"
+              saved={links.x}
+              onSaved={serverSaved(4)}
+            />
+            {links.x && (
+              <button type="button" className="tk-go" onClick={() => goAfter(4, sDone)}>
+                Next
+              </button>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* steps after the open one */}
+      {shown !== null && shown < STEPS - 1 && (
+        <div className="tk-later">
+          <div className="tk-flabel">Still to go</div>
+          <div className="tk-laterlist">
+            {Array.from({ length: STEPS - 1 - shown }, (_, k) => shown + 1 + k).map((i) => (
               <button
                 type="button"
-                className="btn ghost"
-                aria-expanded={showShots}
-                onClick={() => setShowShots((v) => !v)}
+                key={i}
+                className={`tk-laterrow${sDone[i] ? ' done' : ''}`}
+                onClick={() => open(i)}
+                disabled={sLocked[i] && !sDone[i]}
               >
-                {showShots ? 'Hide the screenshots' : 'See it with screenshots'}
+                <span className="tk-lnum">{sDone[i] ? CHECK : i + 1}</span>
+                <span className="tk-lname">{NAMES[i]}</span>
+                <span className="tk-lsub">{sDone[i] ? 'Done' : sLocked[i] ? 'Once your date is set' : SUBS[i]}</span>
               </button>
-              {showShots && (
-                <ShotViewer
-                  walk={shots}
-                  base={walkBase}
-                  personalise={personalise}
-                  storageKey={`pg-deliver:${token}:${post.postId}:shot`}
-                  onClose={() => setShowShots(false)}
-                />
-              )}
-            </>
-          ) : (
-            <p className="note">Screenshots coming.</p>
-          )}
-          <LinkField
-            token={token}
-            postId={post.postId}
-            platform="instagram"
-            label={`Your ${shortLabel(post)}'s link`}
-            placeholder={feed ? 'instagram.com/p/…' : 'instagram.com/reel/…'}
-            helper={
-              <>
-                Tap <b>···</b> on your {feed ? 'post' : 'Reel'} → <b>Copy link</b>.
-              </>
-            }
-            buttonLabel="Save link & keep going"
-            saved={links.instagram}
-            onSaved={serverSaved(2)}
-          />
-        </StepRow>
-
-        {/* ---- 4 · Story ---- */}
-        <StepRow
-          n={4}
-          title="Share it to your Story"
-          line={lines[3]}
-          state={stateOf(3)}
-          open={open === 3}
-          onToggle={() => toggle(3)}
-        >
-          <p className="note">Now put the same {feed ? 'post' : 'Reel'} on your Story.</p>
-          <Taps items={storyTaps(feed, who)} />
-          <p className="note">Stories disappear after a day, so a screenshot is how we show {brand} it went up.</p>
-          <StoryUpload token={token} postId={post.postId} saved={story} onSaved={serverSaved(3)} />
-        </StepRow>
-
-        {/* ---- 5 · TikTok ---- */}
-        <StepRow
-          n={5}
-          title="Post it on TikTok"
-          line={lines[4]}
-          state={stateOf(4)}
-          open={open === 4}
-          onToggle={() => toggle(4)}
-        >
-          <p className="note">Same {feed ? 'photos' : 'video'}, same caption, on TikTok.</p>
-          <Taps items={tiktokTaps(feed, who, photos.length)} />
-          <div className="dontskip">
-            <div className="t">Don&apos;t skip</div>
-            <p>Turn on Content disclosure → Brand content.</p>
+            ))}
           </div>
-          <p className="note">Screenshots for TikTok are coming.</p>
-          <LinkField
-            token={token}
-            postId={post.postId}
-            platform="tiktok"
-            label="Your TikTok's link"
-            placeholder={feed ? 'tiktok.com/@you/photo/…' : 'tiktok.com/@you/video/…'}
-            helper={
-              <>
-                On TikTok, tap <b>Share</b> → <b>Copy link</b>.
-              </>
-            }
-            buttonLabel="Save link & keep going"
-            saved={links.tiktok}
-            onSaved={serverSaved(4)}
-          />
-        </StepRow>
+        </div>
+      )}
 
-        {/* ---- 6 · X ---- */}
-        <StepRow
-          n={6}
-          title="Post it on X"
-          line={lines[5]}
-          state={stateOf(5)}
-          open={open === 5}
-          onToggle={() => toggle(5)}
-        >
-          <p className="note">Last one: post it on X.</p>
-          <Taps items={xTaps(feed)} />
-          {feed && xPhotos.length > 0 && (
-            <>
-              <div className="xrow">
-                {xPhotos.map((p, i) => (
-                  <figure className="pcell" key={`x-${p.position}-${p.url}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={`Photo ${i + 1}`} />
-                    <span className="pnumber">{i + 1}</span>
-                  </figure>
-                ))}
-              </div>
-              {photos.length >= 5 && <p className="note">X allows 4 photos. Use photos 1–4.</p>}
-            </>
-          )}
-          <LinkField
-            token={token}
-            postId={post.postId}
-            platform="x"
-            label="Your X post's link"
-            placeholder="x.com/you/status/…"
-            helper={
-              <>
-                Tap the <b>share</b> icon on your post → <b>Copy link</b>.
-              </>
-            }
-            buttonLabel="Send your links"
-            saved={links.x}
-            onSaved={serverSaved(5)}
-          />
-        </StepRow>
-      </div>
-
-      <HelpBox />
-    </>
+      <p className="tk-stuck">Stuck? Reply to the text this link came in.</p>
+    </div>
   );
 }
 
@@ -1685,7 +1633,7 @@ export default function DeliverPage({ token, view: initialView }: { token: strin
 
   return (
     <div className="dv">
-      <main className={post ? 'wrap' : 'wrap tk-wrap'}>
+      <main className="wrap tk-wrap">
         {post ? (
           <PostScreen
             view={view}
