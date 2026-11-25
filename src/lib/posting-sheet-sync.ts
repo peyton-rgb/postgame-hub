@@ -38,7 +38,7 @@ type SheetTarget = {
 const SHEET_SYNC: Record<string, SheetTarget> = {
   // Raising Cane's · Caniac Ambassador · Basketball 2027 — internal sheet
   '373c15c7-1cb2-422c-8805-8ecfdd986227': {
-    spreadsheetId: '1JZotrWSQcx3t3Sl1Klzpohwwy67xDWlsdrlKWchm7uc', // TEST COPY — revert before merge
+    spreadsheetId: '1Cc5yHKAC91YmOr2Xkh18tt2fqBf4kl-jBeOkcnSRhNw',
     tab: 'Athlete Posting',
     handleHeader: 'IG Handle',
     columns: {
