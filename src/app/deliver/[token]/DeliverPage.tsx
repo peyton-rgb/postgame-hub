@@ -259,12 +259,6 @@ const cardLabel = (p: DeliverPost) => (isFeed(p) ? p.label ?? 'Feed post' : 'Ree
 /** A post is undated when it has no date — whatever placeholder its label holds. */
 const hasDate = (p: DeliverPost) => !!p.date;
 
-function dateLine(p: DeliverPost, school: string | null): string {
-  if (!hasDate(p)) return "Date coming soon. We'll text you.";
-  return p.dateConditional
-    ? `${p.dateLabel} · only if ${school ?? 'your team'} wins`
-    : `${p.dateLabel} · any time that day`;
-}
 
 // --- icons -----------------------------------------------------------------
 
@@ -289,11 +283,6 @@ const BACK = (
     <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const ARROW = (
-  <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 const DOWNLOAD = (
   <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
     <path d="M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
@@ -305,27 +294,7 @@ const COPY = (
     <path d="M3 10.5V4a1.5 1.5 0 011.5-1.5H11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
-const PHOTO_ICON = (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.6" />
-    <circle cx="8.5" cy="10" r="1.6" stroke="currentColor" strokeWidth="1.4" />
-    <path d="M4 17l4.8-4.2 3.4 3 3-2.4L20 17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
 
-function Thumb({ p, size }: { p: DeliverPost; size: 'big' | 'small' }) {
-  const src = p.files.cover ?? p.files.photos[0]?.url ?? null;
-  return (
-    <span className={`thumb ${size}`}>
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" />
-      ) : (
-        <span className="ph">{PHOTO_ICON}</span>
-      )}
-    </span>
-  );
-}
 
 // Highlight boxes are positioned in % of the image, so until the image has
 // loaded they would collapse into thin lines across a zero-height box.
@@ -536,99 +505,116 @@ function HelpBox() {
 // HOME — board 7
 // ============================================================
 
+/** "FRI, DEC 4" from the plain date; falls back to the label. */
+function ticketDate(p: DeliverPost): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(p.date ?? '');
+  if (m) {
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return d
+      .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
+      .toUpperCase();
+  }
+  return (p.dateLabel ?? 'Date coming soon').toUpperCase();
+}
+
+/** The four places this post goes, and whether each is already in. */
+function ticketPlatforms(p: DeliverPost): { name: string; done: boolean }[] {
+  return [
+    { name: isFeed(p) ? 'IG Feed' : 'IG Reel', done: !!p.links.instagram },
+    { name: 'Story Repost', done: !!p.storyScreenshot },
+    { name: 'TikTok', done: !!p.links.tiktok },
+    { name: 'X', done: !!p.links.x },
+  ];
+}
+
 function Home({
   view,
   activeId,
-  today,
   onOpen,
 }: {
   view: DeliverView;
   activeId: string;
-  today: string | null;
   onOpen: (postId: string) => void;
 }) {
   const { athlete, campaign, posts, logos } = view;
-  const firstName = athlete.name.trim().split(/\s+/)[0];
   const allDone = posts.length > 0 && posts.every(isPosted);
   const active = allDone ? null : posts.find((p) => p.postId === activeId) ?? null;
-  const days = active && today ? daysBetween(today, active.date) : null;
-
-  const headline = !active
-    ? "You're all done"
-    : !hasDate(active)
-      ? `Your ${shortLabel(active)} is next`
-      : days === 0
-        ? `Your ${shortLabel(active)} goes up today`
-        : days !== null && days < 0
-          ? `Your ${shortLabel(active)} is next`
-          : `Your ${shortLabel(active)} goes up ${active.dateLabel}`;
-
-  const when =
-    !active || !hasDate(active)
-      ? 'Date coming soon'
-      : days === null
-        ? active.dateLabel
-        : days === 0
-          ? 'Due today'
-          : days === 1
-            ? 'Tomorrow'
-            : days > 1
-              ? `In ${days} days`
-              : `Due ${active.dateLabel}`;
-
-  const comingUp = posts.filter((p) => !isPosted(p) && p.postId !== active?.postId);
+  const hero = active ?? posts[posts.length - 1] ?? null;
+  const photo = hero ? hero.files.cover ?? hero.files.photos[0]?.url ?? null : null;
+  const next = posts.find((p) => !isPosted(p) && p.postId !== active?.postId) ?? null;
   const done = posts.filter(isPosted);
-  const greeting = [campaign.title, campaign.seasonLabel].filter(Boolean).join(', ');
+  const started = active ? ticketPlatforms(active).some((x) => x.done) : false;
+
+  const when = (p: DeliverPost) =>
+    !hasDate(p)
+      ? "We'll text you the date"
+      : p.dateConditional
+        ? `only if ${athlete.school ?? 'your team'} wins`
+        : 'any time that day';
 
   return (
-    <>
-      <p className="greet">
-        Hi {firstName}
-        {greeting ? ` · ${greeting}` : ''}
-      </p>
-      <h1 className="headline">{headline}</h1>
+    <div className="tk">
+      <header className="tk-bar">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {logos.postgameOnLight && <img className="tk-pg" src={logos.postgameOnLight} alt="Postgame" />}
+        {logos.postgameOnLight && logos.brand && <span className="tk-x">×</span>}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {logos.brand && <img className="tk-brand" src={logos.brand} alt={campaign.brandName ?? ''} />}
+      </header>
 
-      {active && (
-        <div className="hero">
-          <div className="hero-top">
-            <Thumb p={active} size="big" />
-            <div className="hero-text">
-              <div className="when">
-                Post {posts.indexOf(active) + 1} of {posts.length} · {when}
+      <div className="tk-photo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {photo && <img src={photo} alt="" />}
+        <div className="tk-fade" />
+        <h1 className="tk-name">{athlete.name}</h1>
+      </div>
+
+      {active ? (
+        <>
+          <section className="tk-ticket">
+            <div className="tk-main">
+              <div className="tk-date">{ticketDate(active)}</div>
+              <div className="tk-sub">
+                {cardLabel(active)} · {when(active)}
               </div>
-              <div className="ptitle">{cardLabel(active)}</div>
-              <div className="dline">{dateLine(active, athlete.school)}</div>
+            </div>
+            <div className="tk-stub">
+              {ticketPlatforms(active).map((x) => (
+                <span key={x.name} className={x.done ? 'done' : ''}>
+                  {x.done && CHECK}
+                  {x.name}
+                </span>
+              ))}
+            </div>
+          </section>
+
+          <div className="tk-actions">
+            <button type="button" className="tk-go" onClick={() => onOpen(active.postId)}>
+              {started ? 'Keep going' : 'Start posting'}
+            </button>
+            <div className="tk-foot">
+              {next ? (
+                <button type="button" className="tk-next" onClick={() => onOpen(next.postId)}>
+                  Next: {shortLabel(next)} · {next.dateLabel ?? 'date TBD'}
+                </button>
+              ) : (
+                <span />
+              )}
+              <span>Stuck? Reply to the text</span>
             </div>
           </div>
-          <button type="button" className="btn primary" onClick={() => onOpen(active.postId)}>
-            Start · {TASK_COUNT} quick steps {ARROW}
-          </button>
-        </div>
-      )}
-
-      {comingUp.length > 0 && (
-        <section className="group">
-          <h2 className="gtitle">Coming up</h2>
-          {comingUp.map((p) => (
-            <button type="button" className="prow" key={p.postId} onClick={() => onOpen(p.postId)}>
-              <Thumb p={p} size="small" />
-              <span className="prow-text">
-                <span className="prow-t">
-                  {cardLabel(p)}
-                  {isFeed(p) && p.files.photos.length > 0
-                    ? ` · ${p.files.photos.length} photo${p.files.photos.length === 1 ? '' : 's'}`
-                    : ''}
-                </span>
-                <span className="prow-s">{dateLine(p, athlete.school)}</span>
-              </span>
-              <span className="chev">{CHEVRON}</span>
-            </button>
-          ))}
+        </>
+      ) : (
+        <section className="tk-ticket">
+          <div className="tk-main">
+            <div className="tk-date">You&apos;re all done</div>
+            <div className="tk-sub">Every post is up. Thank you!</div>
+          </div>
         </section>
       )}
 
       {done.length > 0 && (
-        <section className="group">
+        <section className="group tk-done">
           <h2 className="gtitle">Done</h2>
           {done.map((p) => (
             <button type="button" className="prow done" key={p.postId} onClick={() => onOpen(p.postId)}>
@@ -642,11 +628,7 @@ function Home({
           ))}
         </section>
       )}
-
-      <HelpBox />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {logos.postgame && <img className="footmark" src={logos.postgame} alt="Postgame" />}
-    </>
+    </div>
   );
 }
 
@@ -1703,7 +1685,7 @@ export default function DeliverPage({ token, view: initialView }: { token: strin
 
   return (
     <div className="dv">
-      <main className="wrap">
+      <main className={post ? 'wrap' : 'wrap tk-wrap'}>
         {post ? (
           <PostScreen
             view={view}
@@ -1716,19 +1698,7 @@ export default function DeliverPage({ token, view: initialView }: { token: strin
             onServerView={setView}
           />
         ) : (
-          <>
-            <header className="topbar">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {logos.postgame ? <img className="pg" src={logos.postgame} alt="Postgame" /> : <span />}
-              {logos.brand && (
-                <span className="plate">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={logos.brand} alt={campaign.brandName ?? ''} />
-                </span>
-              )}
-            </header>
-            <Home view={view} activeId={activeId} today={today} onOpen={setOpenId} />
-          </>
+          <Home view={view} activeId={activeId} onOpen={setOpenId} />
         )}
       </main>
     </div>
